@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import urllib.error
@@ -746,6 +747,8 @@ def make_tray(window: "MainWindow") -> QSystemTrayIcon:
 
 
 def run(store: SettingsStore) -> None:
+    # Qt's raise() also activates the app on macOS, which swipes away the full-screen Space a box pops up over.
+    os.environ.setdefault("QT_MAC_SET_RAISE_PROCESS", "0")
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("Screen Translator")
     bridge = Bridge()
