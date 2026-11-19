@@ -68,6 +68,11 @@ def _self_test() -> int:
     from screen_translator.text import assemble
     from screen_translator.translator import LlamaTranslator, build_messages
 
+    from PySide6.QtCore import qVersion
+
+    import screen_translator.desktop  # noqa: F401
+
+    print(f"Desktop UI: Qt {qVersion()}", flush=True)
     print("llama.cpp:", llama_cpp.llama_print_system_info().decode(), flush=True)
     devices = _llama_devices()
     for name, desc, kind in devices:

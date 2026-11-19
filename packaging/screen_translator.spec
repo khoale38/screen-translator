@@ -18,10 +18,10 @@ hiddenimports = collect_submodules("screen_translator") + collect_submodules(
     "llama_cpp", filter=lambda name: not name.startswith("llama_cpp.server")
 )
 
-excludes = ["tkinter", "pytest", "IPython", "matplotlib", "PyQt5", "PyQt6", "PySide2", "PySide6", "gi"]
+excludes = ["tkinter", "pytest", "IPython", "matplotlib", "PyQt5", "PyQt6", "PySide2", "gi", "webview"]
 
 if sys.platform == "darwin":
-    hiddenimports += ["objc", "Vision", "Quartz"]
+    hiddenimports += ["objc", "Vision", "Quartz", "AppKit"]
 if sys.platform == "darwin" and os.environ.get("SCREEN_TRANSLATOR_OCR") != "rapidocr":
     excludes += ["rapidocr", "onnxruntime", "cv2"]
 else:
