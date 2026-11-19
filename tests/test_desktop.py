@@ -7,6 +7,7 @@ QtCore = pytest.importorskip("PySide6.QtCore")
 QtWidgets = pytest.importorskip("PySide6.QtWidgets")
 
 from screen_translator import desktop  # noqa: E402
+from screen_translator.appearance import Style, text_sizes  # noqa: E402
 
 QRect = QtCore.QRect
 
@@ -26,7 +27,7 @@ def test_source_frame_area_excludes_its_label_strip(app):
 def test_overlay_stays_inside_the_area_and_shrinks_text_to_fit(app):
     overlay = desktop.TranslationOverlay()
     area = QRect(100, 500, 800, 100)
-    overlay.show_text("Tối qua bạn đã ở đâu vậy?", True, area, "cover")
+    overlay.show_text("Tối qua bạn đã ở đâu vậy?", True, area)
     assert area.contains(overlay.geometry())
     assert 16 <= overlay._font_size <= 40
 
@@ -34,15 +35,16 @@ def test_overlay_stays_inside_the_area_and_shrinks_text_to_fit(app):
 def test_overlay_grows_upwards_when_the_translation_is_too_long(app):
     overlay = desktop.TranslationOverlay()
     area = QRect(100, 500, 300, 40)
-    overlay.show_text("A much longer translation that cannot possibly fit on one short line " * 3, True, area, "cover")
+    overlay.show_text("A much longer translation that cannot possibly fit on one short line " * 3, True, area)
     assert overlay.geometry().bottom() == area.bottom()
     assert overlay.geometry().height() > area.height()
 
 
 def test_overlay_below_mode_sits_under_the_text(app):
     overlay = desktop.TranslationOverlay()
+    overlay.style = Style(mode="below")
     area = QRect(100, 500, 800, 100)
-    overlay.show_text("Hello", True, area, "below")
+    overlay.show_text("Hello", True, area)
     assert overlay.geometry().top() > area.bottom()
 
 
@@ -138,10 +140,10 @@ def test_screens_are_numbered_and_switching_moves_a_running_translation(app, tmp
 def test_translation_text_is_sized_like_the_original(app):
     overlay = desktop.TranslationOverlay()
     area = QRect(100, 500, 900, 160)
-    overlay.show_text("Chạy trốn khỏi cảnh sát.", True, area, "cover", line_height=0.15)
+    overlay.show_text("Chạy trốn khỏi cảnh sát.", True, area, line_height=0.15)
     assert 16 <= overlay._font_size <= round(0.15 * 160 * 0.85)
-    assert desktop._text_sizes(30, 200)[0] == 26
-    assert desktop._text_sizes(0, 100)[0] == 40
+    assert text_sizes(30, 200)[0] == 26
+    assert text_sizes(0, 100)[0] == 40
 
 
 def test_what_you_are_watching_is_saved_as_notes(app, tmp_path):
@@ -152,20 +154,29 @@ def test_what_you_are_watching_is_saved_as_notes(app, tmp_path):
     assert api.posts[-1] == ("/api/settings", {"notes": "A Korean drama"})
 
 
-def test_the_box_behind_the_text_can_be_turned_off(app, tmp_path):
+def test_picking_a_style_updates_the_overlays_and_is_saved(app, tmp_path):
     window, api = make_window(tmp_path, overlay_box=False)
-    assert not window.box.isChecked() and not window.overlays[0].box
-    window.box.setChecked(True)
-    assert all(overlay.box for overlay in window.overlays)
+    panel = window.appearance
+    assert panel.style_outline.isChecked() and not window.overlays[0].style.box
+    assert not panel.opacity.isVisibleTo(panel)
+    panel.style_box.click()
+    assert all(overlay.style.box for overlay in window.overlays)
+    assert panel.preview.style.box and panel.opacity.isVisibleTo(panel)
     assert api.posts[-1] == ("/api/settings", {"overlay_box": True})
+    panel.below.click()
+    assert window.overlays[0].style.mode == "below"
+    assert api.posts[-1] == ("/api/settings", {"overlay_mode": "below"})
+    panel.opacity.setValue(70)
+    assert window.overlays[0].style.opacity == 0.7
+    assert api.posts[-1] == ("/api/settings", {"overlay_opacity": 0.7})
 
 
 def test_without_the_box_only_the_outlined_text_is_painted(app):
     overlay = desktop.TranslationOverlay()
     corners = {}
     for box in (True, False):
-        overlay.box = box
-        overlay.show_text("Chạy trốn khỏi cảnh sát.", True, QRect(100, 500, 800, 100), "cover", line_height=0.3)
+        overlay.style = Style(box=box)
+        overlay.show_text("Chạy trốn khỏi cảnh sát.", True, QRect(100, 500, 800, 100), line_height=0.3)
         image = overlay.grab().toImage()
         corners[box] = image.pixelColor(3, image.height() // 2).alpha()
         assert any(image.pixelColor(x, image.height() // 2).alpha() > 200 for x in range(image.width()))
@@ -175,11 +186,11 @@ def test_without_the_box_only_the_outlined_text_is_painted(app):
 def test_the_box_hugs_the_text_instead_of_filling_the_area(app):
     overlay = desktop.TranslationOverlay()
     area = QRect(100, 500, 900, 200)
-    overlay.show_text("Vào xe.", True, area, "cover", line_height=0.2)
+    overlay.show_text("Vào xe.", True, area, line_height=0.2)
     box = overlay.geometry()
     assert box.width() < area.width() / 2 and box.height() < area.height() / 2
     assert abs(box.center().x() - area.center().x()) <= 1 and abs(box.center().y() - area.center().y()) <= 1
-    overlay.show_text("Vào xe.", True, area, "below", line_height=0.2)
+    overlay.restyle(Style(mode="below"))
     assert overlay.geometry().top() == area.bottom() + 6
 
 
@@ -195,10 +206,10 @@ def test_text_that_comes_back_unchanged_is_left_uncovered(app):
 
 
 def test_text_size_can_scale_the_original_or_be_fixed():
-    assert desktop._text_sizes(40, 200, "x1")[0] == 34
-    assert desktop._text_sizes(40, 200, "x1.5")[0] == 51
-    assert desktop._text_sizes(40, 200, "x0.75")[0] == 26
-    assert desktop._text_sizes(40, 200, "px24") == [24]
+    assert text_sizes(40, 200, "x1")[0] == 34
+    assert text_sizes(40, 200, "x1.5")[0] == 51
+    assert text_sizes(40, 200, "x0.75")[0] == 26
+    assert text_sizes(40, 200, "px24") == [24]
 
 
 def test_changing_text_size_resizes_what_is_already_shown(app, tmp_path):
@@ -208,7 +219,35 @@ def test_changing_text_size_resizes_what_is_already_shown(app, tmp_path):
                      "final": True, "ms": 1, "context_lines": 0, "line_height": 0.1})
     overlay = window.overlays[0]
     assert overlay._font_size <= 17
-    window.text_size.setCurrentIndex(window.text_size.findData("px44"))
+    panel = window.appearance
+    panel.fixed.setChecked(True)
+    assert panel.size_value.text() == "24 px" and api.posts[-1] == ("/api/settings", {"text_size": "px24"})
+    panel.size.setValue(44)
     assert overlay._font_size == 44
     assert api.posts[-1] == ("/api/settings", {"text_size": "px44"})
     assert window.screen_overlay.text_size == "px44"
+    panel.fixed.setChecked(False)
+    panel.size.setValue(150)
+    assert panel.size_value.text() == "150% of the original"
+    assert api.posts[-1] == ("/api/settings", {"text_size": "x1.5"})
+
+
+def test_saved_settings_load_into_the_appearance_controls(app, tmp_path):
+    window, _ = make_window(tmp_path, overlay_box=True, overlay_opacity=0.6, overlay_mode="below", text_size="x1.25",
+                            target_lang="ja")
+    panel = window.appearance
+    assert panel.style() == Style(True, 0.6, "below", "x1.25")
+    assert panel.size_value.text() == "125% of the original"
+    assert panel.preview.target == "ja" and not panel.style_box.icon().isNull()
+
+
+def test_the_preview_follows_the_mode_and_hides_area_only_controls(app, tmp_path):
+    window, _ = make_window(tmp_path, scope="area")
+    panel = window.appearance
+    assert panel.preview.scope == "area" and panel.style_box.isVisibleTo(panel)
+    window.scope.setCurrentIndex(window.scope.findData("screen"))
+    assert panel.preview.scope == "screen"
+    assert not panel.style_box.isVisibleTo(panel) and not panel.cover.isVisibleTo(panel)
+    assert panel.size.isVisibleTo(panel)
+    image = panel.preview.grab().toImage()
+    assert image.width() > 100 and image.pixelColor(image.width() // 2, 5).alpha() == 255

@@ -13,11 +13,12 @@ from PySide6.QtGui import (
     QAction, QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut,
 )
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
+    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 from . import languages
+from .appearance import AppearancePanel, Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes
 from .capture import exclude_window_from_capture
 from .config import SettingsStore
 from .models import MODELS
@@ -27,8 +28,6 @@ GREEN = QColor(46, 204, 113)
 HEADER = 26
 EDGE = 10
 TAB = 330
-PAD_X = 10
-PAD_Y = 4
 
 
 class Bridge(QObject):
@@ -175,11 +174,9 @@ class TranslationOverlay(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.text = ""
         self.final = True
-        self.opacity = 0.92
-        self.box = True
-        self.text_size = "x1"
-        self._placement: tuple[QRect, str, float] | None = None
-        self.anchor = QRect()
+        self.style = Style()
+        self._font_size = 20
+        self._placement: tuple[QRect, float] | None = None
         self.window_number = 0
 
     def ensure_native(self) -> None:
@@ -191,74 +188,24 @@ class TranslationOverlay(QWidget):
             self.hide()
         exclude_window_from_capture(self.window_number)
 
-    def show_text(self, text: str, final: bool, area: QRect, mode: str, line_height: float = 0.0) -> None:
+    def show_text(self, text: str, final: bool, area: QRect, line_height: float = 0.0) -> None:
         self.text, self.final = text, final
-        self._placement = (area, mode, line_height)
+        self._placement = (area, line_height)
         if not text:
             return
-        rect = QRect(area)
-        if mode == "below":
-            rect.moveTop(area.bottom() + 6)
-        sizes = _text_sizes(line_height * area.height(), rect.height(), self.text_size)
-        size = self._fit(rect, sizes)
-        if size is None:
-            size = sizes[-1]
-            needed = self._height_for(rect.width(), size)
-            if mode == "cover":
-                rect.setTop(rect.bottom() - needed)
-            else:
-                rect.setHeight(needed)
-        self._font_size = size
-        if self.box:
-            rect = self._hug(rect, size, mode)
+        rect, self._font_size = place_translation(text, area, self.style, line_height)
         self.setGeometry(rect)
         self.show()
         self.raise_()
         self.update()
 
-    def _font(self, size: int) -> QFont:
-        font = _pixel_font(self.font(), size)
-        font.setWeight(QFont.DemiBold)
-        return font
-
-    def _height_for(self, width: int, size: int) -> int:
-        bounds = QFontMetrics(self._font(size)).boundingRect(
-            QRect(0, 0, width - 2 * PAD_X, 10_000), Qt.TextWordWrap, self.text)
-        return bounds.height() + 2 * PAD_Y
-
-    def _hug(self, rect: QRect, size: int, mode: str) -> QRect:
-        """Shrink the box to the wrapped text, centred on the area (or just under it in "below" mode)."""
-        bounds = QFontMetrics(self._font(size)).boundingRect(
-            QRect(0, 0, rect.width() - 2 * PAD_X, 10_000), Qt.AlignCenter | Qt.TextWordWrap, self.text)
-        snug = QRect(0, 0, min(rect.width(), bounds.width() + 2 * PAD_X), min(rect.height(), bounds.height() + 2 * PAD_Y))
-        snug.moveCenter(rect.center())
-        if mode == "below":
-            snug.moveTop(rect.top())
-        return snug
-
-    def _fit(self, rect: QRect, sizes: list[int]) -> int | None:
-        return next((size for size in sizes if self._height_for(rect.width(), size) <= rect.height()), None)
+    def restyle(self, style: Style) -> None:
+        self.style = style
+        if self.isVisible() and self.text and self._placement:
+            self.show_text(self.text, self.final, *self._placement)
 
     def paintEvent(self, _event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        size = getattr(self, "_font_size", 20)
-        painter.setFont(self._font(size))
-        rect = self.rect().adjusted(PAD_X, PAD_Y, -PAD_X, -PAD_Y)
-        flags = Qt.AlignCenter | Qt.TextWordWrap
-        if self.box:
-            painter.setBrush(QColor(14, 20, 32, int(255 * self.opacity)))
-            painter.setPen(Qt.NoPen)
-            painter.drawRoundedRect(self.rect(), 6, 6)
-        else:
-            painter.setPen(QColor(0, 0, 0, 230 if self.final else 160))
-            reach = max(1, round(size / 12))
-            for dx in range(-reach, reach + 1):
-                for dy in range(-reach, reach + 1):
-                    if dx or dy:
-                        painter.drawText(rect.translated(dx, dy), flags, self.text)
-        painter.setPen(QColor(255, 255, 255, 255 if self.final else 190))
-        painter.drawText(rect, flags, self.text)
+        paint_translation(QPainter(self), self.rect(), self.text, self._font_size, self.style, self.final)
 
 
 class ScreenOverlay(QWidget):
@@ -317,15 +264,15 @@ class ScreenOverlay(QWidget):
     def _layout(self, block: dict) -> tuple[QRectF, int]:
         rect = self._rect(block)
         text = self.translations[block["text"]][0]
-        sizes = _text_sizes(block["line_height"] * self.height(), rect.height(), self.text_size)
+        sizes = text_sizes(block["line_height"] * self.height(), rect.height(), self.text_size)
         flags = Qt.TextWordWrap
         for size in sizes:
-            needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
+            needed = QFontMetrics(pixel_font(size)).boundingRect(
                 rect.toRect().adjusted(2, 0, -2, 0), flags, text)
             if needed.height() <= rect.height() and needed.width() <= rect.width() - 4:
                 return rect, size
         size = sizes[-1]
-        needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
+        needed = QFontMetrics(pixel_font(size)).boundingRect(
             QRect(0, 0, int(rect.width()) - 4, 10_000), flags, text)
         rect.setHeight(max(rect.height(), needed.height() + 4))
         return rect, size
@@ -345,14 +292,7 @@ class ScreenOverlay(QWidget):
                 continue
             rect, size = self._layouts[i]
             text, final = self.translations[block["text"]]
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(block["bg"]))
-            painter.drawRoundedRect(rect, 3, 3)
-            ink = QColor(block["fg"])
-            ink.setAlpha(255 if final else 170)
-            painter.setPen(ink)
-            painter.setFont(_pixel_font(self.font(), size))
-            painter.drawText(rect.adjusted(2, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap, text)
+            paint_patch(painter, rect, text, size, block["bg"], block["fg"], final)
 
 
 class ScreenFlash(QWidget):
@@ -387,36 +327,8 @@ class ScreenFlash(QWidget):
         painter.setBrush(GREEN)
         painter.drawRoundedRect(badge, 14, 14)
         painter.setPen(Qt.white)
-        painter.setFont(_pixel_font(self.font(), 40))
+        painter.setFont(pixel_font(40))
         painter.drawText(badge, Qt.AlignCenter, self.label)
-
-
-TEXT_SIZES = {
-    "x1": "Match the original",
-    "x0.75": "Original, 75%",
-    "x1.25": "Original, 125%",
-    "x1.5": "Original, 150%",
-    "px18": "Fixed: small (18 px)",
-    "px24": "Fixed: medium (24 px)",
-    "px32": "Fixed: large (32 px)",
-    "px44": "Fixed: extra large (44 px)",
-}
-
-
-def _text_sizes(original_px: float, box_px: int, setting: str = "x1") -> list[int]:
-    """Pixel sizes to try, largest first. "pxN" is a fixed size; "xS" scales the original text's size by S."""
-    if setting.startswith("px"):
-        return [int(setting[2:])]
-    scale = float(setting[1:]) if setting.startswith("x") else 1.0
-    base = original_px * 0.85 if original_px >= 6 else min(40, max(16, box_px * 0.55))
-    start = max(9, min(120, round(base * scale)))
-    return list(range(start, max(8, round(start * 0.6)) - 1, -1))
-
-
-def _pixel_font(base: QFont, size: int) -> QFont:
-    font = QFont(base.family())
-    font.setPixelSize(size)
-    return font
 
 
 class MainWindow(QWidget):
@@ -447,15 +359,7 @@ class MainWindow(QWidget):
         self.model = QComboBox()
         for spec in MODELS.values():
             self.model.addItem(spec.label, spec.key)
-        self.box = QCheckBox("Box behind text")
-        self.box.setToolTip("Off: draw only the outlined translation, without the dark box.")
-        self.mode = QComboBox()
-        self.mode.addItem("Cover the original text", "cover")
-        self.mode.addItem("Show below the original text", "below")
-
-        self.text_size = QComboBox()
-        for key, label in TEXT_SIZES.items():
-            self.text_size.addItem(label, key)
+        self.appearance = AppearancePanel()
         self.min_text = QComboBox()
         for px, label in ((0, "Off: translate all text"), (12, "Smaller than 12 px (tiny print)"),
                           (16, "Smaller than 16 px (chat, captions)"), (20, "Smaller than 20 px")):
@@ -482,18 +386,11 @@ class MainWindow(QWidget):
         self.last.setWordWrap(True)
         self.last.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
-        self.mode_row = QWidget()
-        mode_layout = QHBoxLayout(self.mode_row)
-        mode_layout.setContentsMargins(0, 0, 0, 0)
-        mode_layout.addWidget(self.mode, 1)
-        mode_layout.addWidget(self.box)
         self.screen_label = QLabel("Screen")
-        self.mode_label = QLabel("Overlay")
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (self.mode_label, self.mode_row), (QLabel("Text size"), self.text_size),
-                (self.min_text_label, self.min_text),
+                (QLabel("Model"), self.model), (self.min_text_label, self.min_text),
                 (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
@@ -508,6 +405,7 @@ class MainWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addLayout(download_row)
+        layout.addWidget(self.appearance)
         layout.addLayout(tools)
         layout.addWidget(self.start)
         layout.addWidget(self.status)
@@ -520,12 +418,12 @@ class MainWindow(QWidget):
         self.more.clicked.connect(lambda: webbrowser.open(f"{self.api.base_url}/panel"))
         self.download.clicked.connect(self.toggle_download)
         for combo, key in ((self.source_lang, "source_lang"), (self.target_lang, "target_lang"),
-                           (self.model, "model"), (self.mode, "overlay_mode"), (self.scope, "scope"),
+                           (self.model, "model"), (self.scope, "scope"),
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
-        self.box.toggled.connect(self.set_box)
-        self.text_size.currentIndexChanged.connect(lambda _i: self.set_text_size(self.text_size.currentData()))
+        self.appearance.changed.connect(self.apply_appearance)
+        self.target_lang.currentIndexChanged.connect(lambda _i: self.appearance.set_target(self.target_lang.currentData()))
         self.notes.editingFinished.connect(lambda: self.api.call("/api/settings", {"notes": self.notes.text().strip()}))
         self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
@@ -540,19 +438,15 @@ class MainWindow(QWidget):
     def load(self) -> None:
         s = self.store.settings
         for combo, value in ((self.source_lang, s.source_lang), (self.target_lang, s.target_lang),
-                             (self.model, s.model), (self.mode, s.overlay_mode), (self.scope, s.scope),
+                             (self.model, s.model), (self.scope, s.scope),
                              (self.screen_pick, s.screen_name), (self.min_text, s.min_text_px)):
             combo.blockSignals(True)
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
         self.notes.setText(s.notes)
-        self.box.blockSignals(True)
-        self.box.setChecked(s.overlay_box)
-        self.text_size.blockSignals(True)
-        self.text_size.setCurrentIndex(max(0, self.text_size.findData(s.text_size)))
-        self.text_size.blockSignals(False)
+        self.appearance.set_values(Style(s.overlay_box, s.overlay_opacity, s.overlay_mode, s.text_size))
+        self.appearance.set_target(s.target_lang)
         self.screen_overlay.text_size = s.text_size
-        self.box.blockSignals(False)
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
         if not self.sources:
@@ -571,8 +465,8 @@ class MainWindow(QWidget):
             widget.setVisible(screen and self.screen_pick.count() > 1)
         for widget in (self.min_text_label, self.min_text):
             widget.setVisible(screen)
-        for widget in (self.mode_label, self.mode_row, self.select):
-            widget.setVisible(not screen)
+        self.appearance.set_scope("screen" if screen else "area")
+        self.select.setVisible(not screen)
         self.add_area.setVisible(not screen and self.select.isChecked())
         if screen:
             self.select.setChecked(False)
@@ -642,26 +536,18 @@ class MainWindow(QWidget):
         frame.removed.connect(lambda f=frame: self.remove_source(f))
         self.sources.append(frame)
         self.overlays.append(TranslationOverlay())
-        self.overlays[-1].opacity = self.store.settings.overlay_opacity
-        self.overlays[-1].box = self.store.settings.overlay_box
-        self.overlays[-1].text_size = self.text_size.currentData() or self.store.settings.text_size
+        self.overlays[-1].style = self.appearance.style()
         self.number_sources()
         return frame
 
-    def set_text_size(self, setting: str) -> None:
+    def apply_appearance(self, patch: dict) -> None:
+        style = self.appearance.style()
         for overlay in self.overlays:
-            overlay.text_size = setting
-            if overlay.isVisible() and overlay.text and overlay._placement:
-                overlay.show_text(overlay.text, overlay.final, *overlay._placement)
-        self.screen_overlay.text_size = setting
-        self.screen_overlay.set_blocks(self.screen_overlay.blocks)
-        self.api.call("/api/settings", {"text_size": setting})
-
-    def set_box(self, on: bool) -> None:
-        for overlay in self.overlays:
-            overlay.box = on
-            overlay.update()
-        self.api.call("/api/settings", {"overlay_box": on})
+            overlay.restyle(style)
+        if "text_size" in patch:
+            self.screen_overlay.text_size = style.text_size
+            self.screen_overlay.set_blocks(self.screen_overlay.blocks)
+        self.api.call("/api/settings", patch)
 
     def new_area(self) -> None:
         last = self.sources[-1].area()
@@ -748,7 +634,7 @@ class MainWindow(QWidget):
             area = event.get("area", 0)
             if area < len(self.overlays):
                 self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
-                                              self.store.settings.overlay_mode, event.get("line_height", 0.0))
+                                              event.get("line_height", 0.0))
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -820,7 +706,7 @@ def tray_icon() -> QIcon:
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setPen(QPen(Qt.black, 3))
     painter.drawRoundedRect(3, 5, 38, 34, 7, 7)
-    painter.setFont(_pixel_font(QFont(), 22))
+    painter.setFont(pixel_font(22))
     painter.drawText(QRect(3, 5, 38, 34), Qt.AlignCenter, "文A")
     painter.end()
     icon = QIcon(pixmap)
