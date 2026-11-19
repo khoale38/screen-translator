@@ -22,6 +22,7 @@ from . import languages
 from .appearance import Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes
 from .capture import exclude_window_from_capture
 from .config import SettingsStore
+from .hotkeys import GlobalHotkeys, label as shortcut
 from .models import MODELS
 from .server import serve
 
@@ -178,6 +179,7 @@ class TranslationOverlay(QWidget):
         self.style = Style()
         self._font_size = 20
         self._placement: tuple[QRect, float] | None = None
+        self.hidden_by_user = False
         self.window_number = 0
 
     def ensure_native(self) -> None:
@@ -197,6 +199,8 @@ class TranslationOverlay(QWidget):
         screen = QGuiApplication.screenAt(area.center()) or QGuiApplication.primaryScreen()
         rect, self._font_size = place_translation(text, area, self.style, line_height, screen.geometry())
         self.setGeometry(rect)
+        if self.hidden_by_user:
+            return
         self.show()
         self.raise_()
         self.update()
@@ -399,6 +403,11 @@ class MainWindow(QWidget):
         self.more = QPushButton("Glossary && more…")
         self.start = QPushButton()
         self.start.setMinimumHeight(52)
+        self.overlays_hidden = False
+        self.hotkeys: GlobalHotkeys | None = None
+        self.shortcuts = QLabel()
+        self.shortcuts.setWordWrap(True)
+        self.shortcuts.setStyleSheet("color: gray; font-size: 11px;")
         self.status = QLabel()
         self.status.setWordWrap(True)
         self.last = QLabel()
@@ -427,6 +436,7 @@ class MainWindow(QWidget):
         layout.addLayout(download_row)
         layout.addLayout(tools)
         layout.addWidget(self.start)
+        layout.addWidget(self.shortcuts)
         layout.addWidget(self.status)
         layout.addWidget(self.last)
 
@@ -620,6 +630,38 @@ class MainWindow(QWidget):
             "capture_rects": [native_rect(a) for a in areas],
         })
 
+    def enable_global_hotkeys(self) -> None:
+        self.hotkeys = GlobalHotkeys(self)
+        self.hotkeys.triggered.connect(self.on_hotkey)
+        taken = self.hotkeys.register()
+        text = (f"Works in any app: {shortcut('T')} start/stop · {shortcut('H')} hide or show translations · "
+                f"{shortcut('1')}–9 translate screen 1–9")
+        if taken:
+            text += f"<br><span style='color:#d64545'>Already used by another app: {', '.join(taken)}</span>"
+        self.shortcuts.setText(text)
+
+    def on_hotkey(self, action: str) -> None:
+        if action == "toggle":
+            self.toggle_running()
+        elif action == "hide":
+            self.set_overlays_hidden(not self.overlays_hidden)
+        elif action.startswith("screen"):
+            self.choose_screen(int(action[len("screen"):]))
+
+    def set_overlays_hidden(self, hidden: bool) -> None:
+        """Peek at the original text; translations keep arriving underneath and show again when un-hidden."""
+        self.overlays_hidden = hidden
+        for overlay in self.overlays:
+            overlay.hidden_by_user = hidden
+            if hidden:
+                overlay.hide()
+            elif self.running and overlay.text and overlay._placement:
+                overlay.show_text(overlay.text, overlay.final, *overlay._placement)
+        self.screen_overlay.setVisible(not hidden and self.running and self.whole_screen())
+        if self.running:
+            self.status.setText(f"Translations hidden. Press {shortcut('H')} to show them again." if hidden else
+                                "Translating.")
+
     def toggle_running(self) -> None:
         if self.running:
             self.api.call("/api/stop", {})
@@ -649,14 +691,15 @@ class MainWindow(QWidget):
                                  f"font-weight: 600; border-radius: 8px; }}")
         self.scope.setEnabled(not running)
         if not running:
+            self.set_overlays_hidden(False)
             for overlay in self.overlays:
                 overlay.hide()
             self.screen_overlay.hide()
             if self.whole_screen():
-                self.status.setText("Start (Ctrl+Enter) to translate every piece of text on the screen in place.")
+                self.status.setText("Start to translate every piece of text on the screen in place.")
             else:
                 self.status.setText("Click “Select areas”, drag the green box over the text (add more boxes if the "
-                                    "text is in several places), then Start (Ctrl+Enter).")
+                                    "text is in several places), then Start.")
 
     def on_event(self, event: dict) -> None:
         kind = event["type"]
@@ -755,7 +798,7 @@ def make_tray(window: "MainWindow") -> QSystemTrayIcon:
     show.triggered.connect(lambda: bring_to_front(window))
     toggle.triggered.connect(window.toggle_running)
     quit_app.triggered.connect(window.close)
-    menu.aboutToShow.connect(lambda: toggle.setText("Stop" if window.running else "Start"))
+    menu.aboutToShow.connect(lambda: toggle.setText(f"{'Stop' if window.running else 'Start'}    {shortcut('T')}"))
     for action in (show, toggle, quit_app):
         menu.addAction(action)
     tray.setContextMenu(menu)
@@ -784,6 +827,7 @@ def run(store: SettingsStore) -> None:
         AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
     window = MainWindow(Api(f"http://127.0.0.1:{store.settings.port}"), store, bridge)
     tray = make_tray(window)
+    window.enable_global_hotkeys()
     window.show()
     bring_to_front(window)
     app.exec()

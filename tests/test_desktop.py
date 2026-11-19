@@ -230,3 +230,48 @@ def test_whole_screen_mode_only_shows_the_text_size(app, tmp_path):
     assert window.text_size.isVisibleTo(window)
     assert not window.position.isVisibleTo(window) and not window.box.isVisibleTo(window)
 
+
+
+def line_event(text, area=0):
+    return {"type": "line", "area": area, "source": "x", "translation": text, "final": True, "ms": 1,
+            "context_lines": 0, "line_height": 0.3}
+
+
+def test_the_hide_shortcut_hides_translations_and_brings_back_the_latest(app, tmp_path):
+    window, _ = make_window(tmp_path, areas=[[100, 500, 900, 200]])
+    window.running = True
+    window.on_event(line_event("Cắt đuôi cảnh sát"))
+    overlay = window.overlays[0]
+    assert overlay.isVisible()
+    window.on_hotkey("hide")
+    assert not overlay.isVisible() and "hidden" in window.status.text()
+    window.on_event(line_event("Lấy tiền mặt"))
+    assert not overlay.isVisible()
+    window.on_hotkey("hide")
+    assert overlay.isVisible() and overlay.text == "Lấy tiền mặt"
+
+
+def test_the_start_shortcut_starts_and_stops(app, tmp_path):
+    window, api = make_window(tmp_path)
+    window.on_hotkey("toggle")
+    assert window.running and api.posts[-1] == ("/api/start", {})
+    window.on_hotkey("hide")
+    window.on_hotkey("toggle")
+    assert not window.running and api.posts[-1] == ("/api/stop", {})
+    assert not window.overlays_hidden
+
+
+def test_the_screen_shortcut_picks_a_screen(app, tmp_path):
+    window, _ = make_window(tmp_path, scope="area")
+    window.on_hotkey("screen1")
+    assert window.whole_screen() and window.screen_pick.currentIndex() == 0
+
+
+def test_the_window_lists_the_shortcuts_and_any_another_app_holds(app, tmp_path, monkeypatch):
+    from screen_translator import hotkeys
+
+    monkeypatch.setattr(hotkeys.GlobalHotkeys, "register", lambda self: [hotkeys.label("H")])
+    window, _ = make_window(tmp_path)
+    window.enable_global_hotkeys()
+    text = window.shortcuts.text()
+    assert hotkeys.label("T") in text and "Already used by another app: " + hotkeys.label("H") in text
