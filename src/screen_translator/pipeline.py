@@ -135,7 +135,10 @@ class Pipeline:
                     stabilizer = Stabilizer(settings.stable_ticks, settings.min_text_chars)
                     previous_thumb = None
 
-                frame = capture.grab(settings.monitor, settings.region)
+                if settings.capture_rect:
+                    frame = capture.grab_rect(settings.capture_rect)
+                else:
+                    frame = capture.grab(settings.monitor, settings.region)
                 thumb = thumbnail(frame)
                 if changed(previous_thumb, thumb):
                     text = assemble(ocr.recognize(frame, settings.source_lang))

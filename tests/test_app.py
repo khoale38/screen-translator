@@ -1,5 +1,6 @@
 import asyncio
 import json
+import socket
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
@@ -54,7 +55,10 @@ class EchoTranslator:
 def store(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline_module, "resolve_model", lambda settings: "fake.gguf")
     s = SettingsStore(tmp_path / "settings.json")
-    s.update({"capture_interval_s": 0.01, "stable_ticks": 2})
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    s.update({"capture_interval_s": 0.01, "stable_ticks": 2, "port": port})
     return s
 
 

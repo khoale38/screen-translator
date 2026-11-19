@@ -40,6 +40,10 @@ class Settings:
     target_lang: str = "en"
     monitor: int = 1
     region: Region | None = None
+    capture_rect: dict | None = None
+    area: list[int] | None = None
+    overlay_mode: str = "cover"
+    overlay_opacity: float = 0.92
     capture_interval_s: float = 0.4
     stable_ticks: int = 2
     min_text_chars: int = 2

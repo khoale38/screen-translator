@@ -70,7 +70,7 @@ def test_translates_a_dialogue_with_context_end_to_end():
     pipeline = Pipeline(store, events.append, ocr_factory=lambda: ocr, capture_factory=DialogueScreen,
                         permission_check=lambda: None)
     pipeline.start()
-    deadline = time.monotonic() + 240
+    deadline = time.monotonic() + float(os.environ.get("ST_E2E_TIMEOUT", "240"))
     finals = lambda: [e for e in events if e["type"] == "line" and e["final"]]
     while len(finals()) < len(SCRIPT) and time.monotonic() < deadline:
         errors = [e for e in events if e["type"] == "status" and e["state"] == "error"]

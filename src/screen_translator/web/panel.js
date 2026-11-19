@@ -225,10 +225,6 @@ async function init() {
     String(state.settings.monitor));
   render();
   connect();
-  if (window.pywebview) $("float").hidden = false;
 }
-
-window.addEventListener("pywebviewready", () => { $("float").hidden = false; });
-$("float").onclick = () => window.pywebview && window.pywebview.api.open_floating();
 
 init().catch((err) => showError(err.message));

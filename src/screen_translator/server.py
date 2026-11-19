@@ -27,8 +27,11 @@ class Hub:
         self.lines: deque[dict] = deque(maxlen=30)
         self.status: dict = {"type": "status", "state": "stopped", "error": ""}
         self.download: dict | None = None
+        self.listeners: list[Callable[[dict], None]] = []
 
     def emit(self, event: dict) -> None:
+        for listener in self.listeners:
+            listener(event)
         if event["type"] == "line":
             if self.lines and self.lines[-1]["id"] == event["id"]:
                 self.lines[-1] = event
@@ -56,8 +59,11 @@ def create_app(
     store: SettingsStore,
     pipeline_factory: Callable[[SettingsStore, Callable[[dict], None]], Pipeline] = Pipeline,
     capture_factory: Callable[[], ScreenCapture] = ScreenCapture,
+    on_event: Callable[[dict], None] | None = None,
 ) -> web.Application:
     hub = Hub()
+    if on_event:
+        hub.listeners.append(on_event)
     pipeline = pipeline_factory(store, hub.emit)
     cancel_download = threading.Event()
     ocr_hint = "" if sys.platform == "darwin" else RapidOcr.hint
@@ -238,9 +244,14 @@ def create_app(
     return app
 
 
-def serve(store: SettingsStore, ready: threading.Event | None = None, stop: threading.Event | None = None) -> None:
+def serve(
+    store: SettingsStore,
+    ready: threading.Event | None = None,
+    stop: threading.Event | None = None,
+    on_event: Callable[[dict], None] | None = None,
+) -> None:
     async def main() -> None:
-        runner = web.AppRunner(create_app(store))
+        runner = web.AppRunner(create_app(store, on_event=on_event))
         await runner.setup()
         await web.TCPSite(runner, "127.0.0.1", store.settings.port).start()
         if ready:

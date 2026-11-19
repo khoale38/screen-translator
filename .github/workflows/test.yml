@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 75
     env:
       SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\.st-home
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +39,7 @@ jobs:
         env:
           ST_E2E: "1"
           ST_E2E_MODEL: qwen3.5-2b
+          ST_E2E_TIMEOUT: "600"
         run: .venv\Scripts\python -m pytest -q -s tests/test_e2e.py
 
       - name: Screen capture smoke test

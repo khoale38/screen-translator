@@ -46,6 +46,12 @@ class ScreenCapture:
         shot = self._sct.grab(self._bounds(monitor, region))
         return Frame(bytes(shot.bgra), shot.width, shot.height)
 
+    def grab_rect(self, rect: dict) -> Frame:
+        if sys.platform == "darwin" and _excluded_window:
+            return _grab_below_window(rect, _excluded_window)
+        shot = self._sct.grab({k: int(rect[k]) for k in ("left", "top", "width", "height")})
+        return Frame(bytes(shot.bgra), shot.width, shot.height)
+
     def jpeg(self, monitor: int, max_width: int = 1600) -> bytes:
         frame = self.grab(monitor, None)
         image = Image.frombuffer("RGB", (frame.width, frame.height), frame.bgra, "raw", "BGRX")
@@ -57,6 +63,30 @@ class ScreenCapture:
 
     def close(self) -> None:
         self._sct.close()
+
+
+_excluded_window = 0
+
+
+def exclude_window_from_capture(window_number: int) -> None:
+    """macOS only: capture what is underneath this window, so our overlay never reads its own text."""
+    global _excluded_window
+    _excluded_window = window_number
+
+
+def _grab_below_window(rect: dict, window_number: int) -> Frame:
+    import Quartz
+
+    bounds = Quartz.CGRectMake(rect["left"], rect["top"], rect["width"], rect["height"])
+    image = Quartz.CGWindowListCreateImage(
+        bounds, Quartz.kCGWindowListOptionOnScreenBelowWindow, window_number, Quartz.kCGWindowImageDefault,
+    )
+    width, height = Quartz.CGImageGetWidth(image), Quartz.CGImageGetHeight(image)
+    stride = Quartz.CGImageGetBytesPerRow(image)
+    raw = bytes(Quartz.CGDataProviderCopyData(Quartz.CGImageGetDataProvider(image)))
+    if stride != width * 4:
+        raw = np.frombuffer(raw, np.uint8).reshape(height, stride)[:, : width * 4].tobytes()
+    return Frame(raw, width, height)
 
 
 SCREEN_PERMISSION_HELP = (
