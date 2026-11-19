@@ -61,6 +61,21 @@ class ScriptedScreenOcr:
         return [OcrLine(text, 0.99, box) for text, box in lines]
 
 
+class BatchEchoTranslator(EchoTranslator):
+    """Answers numbered lists like the model does, but skips any line containing "skip me"."""
+
+    def translate(self, messages, on_partial=None):
+        content = messages[-1]["content"]
+        rows = [line.split(". ", 1) for line in content.splitlines()]
+        if len(rows) < 2 or not all(len(r) == 2 and r[0].isdigit() for r in rows):
+            return super().translate(messages, on_partial)
+        self.calls.append(messages)
+        reply = "\n".join(f"{n}. EN({text})" for n, text in rows if "skip me" not in text)
+        if on_partial:
+            on_partial(reply.splitlines()[0] + "\n")
+        return reply
+
+
 async def test_whole_screen_translates_each_block_once_and_reuses_translations(store):
     menu = ("ファイル", (0.05, 0.02, 0.1, 0.03))
     first = ("こんにちは", (0.3, 0.4, 0.3, 0.05))
@@ -68,7 +83,7 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
     script = [[menu, first]] * 4 + [[menu, second]] * 4 + [[menu, first]] * 4
     store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
                   "screen_interval_s": 0.01})
-    translator = EchoTranslator()
+    translator = BatchEchoTranslator()
 
     def factory(store, emit):
         pipeline = make_pipeline_factory([""], translator)(store, emit)
@@ -95,7 +110,7 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
         task.cancel()
 
     translated = [call[-1]["content"] for call in translator.calls]
-    assert translated == ["ファイル", "こんにちは", "さようなら"]
+    assert translated == ["1. ファイル\n2. こんにちは", "さようなら"]
     finals = [e for e in events if e["type"] == "screen_text" and e["final"]]
     assert [e["translation"] for e in finals] == ["EN(ファイル)", "EN(こんにちは)", "EN(さようなら)"]
     assert any(e["type"] == "screen" and [b["text"] for b in e["blocks"]] == ["ファイル"] for e in events)
@@ -136,3 +151,80 @@ async def test_each_area_is_read_on_its_own_and_shares_one_context(store):
     assert finals[0]["translation"] == "EN(カイ)" and finals[1]["translation"] == "EN(行こう)"
     assert sorted(e["context_lines"] for e in finals.values()) == [0, 1]
     assert finals[0]["line_height"] == pytest.approx(0.8)
+
+
+
+def test_batch_replies_are_parsed_by_number_and_unfinished_lines_wait():
+    from screen_translator.translator import parse_numbered
+
+    raw = "1. Cài đặt\n2) Tiếp tục chơi\n3. Thoát"
+    assert parse_numbered(raw, 3) == {1: "Cài đặt", 2: "Tiếp tục chơi", 3: "Thoát"}
+    assert parse_numbered(raw, 3, complete=False) == {1: "Cài đặt", 2: "Tiếp tục chơi"}
+    assert parse_numbered("1. A\n7. out of range\nchatter", 3) == {1: "A"}
+
+
+def test_batches_are_capped_by_count_and_length():
+    from screen_translator.pipeline import _take_batch
+
+    assert len(_take_batch([f"label {i}" for i in range(30)])) == 12
+    assert _take_batch(["x" * 1000, "y" * 300, "z"]) == ["x" * 1000]
+    assert _take_batch(["x" * 5000]) == ["x" * 5000]
+
+
+async def test_blocks_the_model_skips_in_a_batch_are_translated_one_by_one(store):
+    lines = [(f"line {i}", (0.1, 0.1 * i, 0.5, 0.04)) for i in range(1, 4)] + [("skip me", (0.1, 0.6, 0.5, 0.04))]
+    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+                  "screen_interval_s": 0.01})
+    translator = BatchEchoTranslator()
+
+    def factory(store, emit):
+        pipeline = make_pipeline_factory([""], translator)(store, emit)
+        pipeline.ocr_factory = lambda: ScriptedScreenOcr([lines])
+        pipeline.capture_factory = FakeScreenCapture
+        return pipeline
+
+    events = []
+    app = create_app(store, factory, FakeScreenCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: sum(1 for e in events if e["type"] == "screen_text" and e["final"]) >= 4)
+        await client.post("/api/stop", json={})
+
+    assert len(translator.calls) == 2
+    assert translator.calls[1][-1]["content"] == "skip me"
+    finals = {e["source"]: e["translation"] for e in events if e["type"] == "screen_text" and e["final"]}
+    assert finals == {"line 1": "EN(line 1)", "line 2": "EN(line 2)", "line 3": "EN(line 3)", "skip me": "EN(skip me)"}
+    assert any(e["type"] == "screen_text" and not e["final"] for e in events)
+
+
+class StillCapture(FakeCapture):
+    def grab_rect(self, rect):
+        return Frame(bytes([90]) * (16 * 16 * 4), 16, 16)
+
+
+class CountingOcr(ScriptedScreenOcr):
+    reads = 0
+
+    def recognize(self, frame, lang):
+        CountingOcr.reads += 1
+        return super().recognize(frame, lang)
+
+
+async def test_a_still_screen_is_published_after_a_single_read(store):
+    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+                  "screen_interval_s": 0.3})
+    CountingOcr.reads = 0
+
+    def factory(store, emit):
+        pipeline = make_pipeline_factory([""], BatchEchoTranslator())(store, emit)
+        pipeline.ocr_factory = lambda: CountingOcr([[("Settings", (0.1, 0.1, 0.3, 0.05))]])
+        pipeline.capture_factory = StillCapture
+        return pipeline
+
+    events = []
+    app = create_app(store, factory, StillCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: any(e["type"] == "screen" and e["blocks"] for e in events), timeout=0.25)
+        await client.post("/api/stop", json={})
+    assert CountingOcr.reads == 1

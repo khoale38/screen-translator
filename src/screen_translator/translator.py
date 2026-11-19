@@ -50,6 +50,40 @@ def build_messages(
     return messages
 
 
+_NUMBERED = re.compile(r"^\s*(\d+)\s*[.)、:：]\s*(.*?)\s*$")
+
+
+def build_batch_messages(
+    texts: list[str],
+    history: list[Turn],
+    source_lang: str,
+    target_lang: str,
+    glossary: dict[str, str] | None = None,
+    notes: str = "",
+) -> list[dict]:
+    """One request for many separate pieces of on-screen text; reading the prompt once is most of the speed-up."""
+    numbered = "\n".join(f"{i}. {' / '.join(text.splitlines())}" for i, text in enumerate(texts, 1))
+    messages = build_messages(numbered, history, source_lang, target_lang, glossary, notes)
+    messages[0]["content"] += (
+        "\n\nThe latest message is a numbered list of separate pieces of text seen on one screen. Translate each "
+        "one on its own, using the others only as context. Reply with the same numbers, one line each, nothing else."
+    )
+    return messages
+
+
+def parse_numbered(raw: str, count: int, complete: bool = True) -> dict[int, str]:
+    """Numbered lines of a batch reply; without `complete` the last line may still be streaming and is left out."""
+    lines = raw.splitlines()
+    if not complete and lines and not raw.endswith("\n"):
+        lines = lines[:-1]
+    found = {}
+    for line in lines:
+        match = _NUMBERED.match(line)
+        if match and 1 <= int(match.group(1)) <= count and match.group(2):
+            found[int(match.group(1))] = match.group(2)
+    return found
+
+
 def clean_output(raw: str) -> str:
     text = _THINK.sub("", raw)
     if "<think>" in text:
@@ -96,7 +130,7 @@ class LlamaTranslator:
         # Reasoning models (Qwen3/3.5) honour this flag in their own template; others ignore it.
         formatted = self._format(messages=messages, enable_thinking=False)
         tokens = self._llm.tokenize(formatted.prompt.encode("utf-8"), add_bos=False, special=True)
-        budget = min(512, 64 + 3 * len(messages[-1]["content"]))
+        budget = min(1024, 64 + 3 * len(messages[-1]["content"]))
         raw = ""
         shown = ""
         for chunk in self._llm.create_completion(

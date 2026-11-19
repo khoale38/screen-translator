@@ -15,7 +15,9 @@ from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
 from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normalize, similar
-from .translator import LlamaTranslator, Translator, build_messages, label_speaker
+from .translator import (
+    LlamaTranslator, Translator, build_batch_messages, build_messages, label_speaker, parse_numbered,
+)
 
 Emit = Callable[[dict], None]
 
@@ -292,8 +294,10 @@ class Pipeline:
                     previous_thumb, candidate, seen, shown = None, frozenset(), 0, []
                     self._publish_screen([], 0)
 
-                frame = capture.grab_rect(settings.screen_rect) if settings.screen_rect else capture.grab(settings.monitor, None)
+                grab = lambda: capture.grab_rect(settings.screen_rect) if settings.screen_rect else capture.grab(settings.monitor, None)
+                frame = grab()
                 thumb = thumbnail(frame)
+                settled = False
                 if changed(previous_thumb, thumb):
                     blocks = [
                         b for b in group_blocks(ocr.recognize(frame, settings.source_lang), frame.width, frame.height)
@@ -302,13 +306,17 @@ class Pipeline:
                     for b in blocks:
                         b.bg, b.fg = block_colors(frame, b.box)
                     ms = round((time.monotonic() - started) * 1000)
+                    # A second look straight after OCR: if nothing moved, publish now instead of after the next tick.
+                    after = thumbnail(grab())
+                    settled = not changed(thumb, after)
+                    thumb = after
                 previous_thumb = thumb
 
                 signature = _signature(blocks)
                 seen = seen + 1 if signature == candidate else 1
                 candidate = signature
                 if signature != _signature(shown):
-                    if seen >= settings.stable_ticks:
+                    if seen >= settings.stable_ticks or settled:
                         shown = blocks
                         self._publish_screen(shown, ms)
                     else:
@@ -328,11 +336,43 @@ class Pipeline:
             self._screen_changed.clear()
             with self._screen_lock:
                 blocks = list(self._screen_blocks)
-            pending = next((b for b in blocks if self._cache_key(b.text) not in self._cache), None)
-            if pending is None:
+            pending = list(dict.fromkeys(b.text for b in blocks if self._cache_key(b.text) not in self._cache))
+            if not pending:
                 self._screen_changed.wait(0.2)
                 continue
-            self._translate_block(translator, pending.text)
+            batch = _take_batch(pending)
+            if len(batch) == 1:
+                self._translate_block(translator, batch[0])
+                continue
+            for text in self._translate_batch(translator, batch):
+                self._translate_block(translator, text)
+
+    def _translate_batch(self, translator: Translator, texts: list[str]) -> list[str]:
+        """Translate several blocks in one call; returns the ones the model skipped, to be done one by one."""
+        settings = self.store.settings
+        history = self.context.turns()[-4:]
+        messages = build_batch_messages(texts, history, settings.source_lang, settings.target_lang,
+                                        settings.glossary, settings.notes)
+        started = time.monotonic()
+        shown: dict[int, str] = {}
+
+        def partial(raw: str) -> None:
+            for number, line in parse_numbered(raw, len(texts), complete=False).items():
+                if shown.get(number) != line:
+                    shown[number] = line
+                    self.emit({"type": "screen_text", "source": texts[number - 1], "translation": line,
+                               "final": False})
+
+        done = parse_numbered(translator.translate(messages, partial), len(texts))
+        ms = round((time.monotonic() - started) * 1000)
+        for number, line in done.items():
+            source = texts[number - 1]
+            translation = label_speaker(source, line)
+            self._remember(source, translation)
+            self.context.add(source, translation)
+            self.emit({"type": "screen_text", "source": source, "translation": translation, "final": True,
+                       "ms": ms, "context_lines": len(history), "batch": len(texts)})
+        return [text for number, text in enumerate(texts, 1) if number not in done]
 
     def _translate_block(self, translator: Translator, text: str) -> None:
         settings = self.store.settings
@@ -349,6 +389,16 @@ class Pipeline:
         self.context.add(text, translation)
         self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
                    "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})
+
+
+def _take_batch(texts: list[str], max_items: int = 12, max_chars: int = 1200) -> list[str]:
+    batch, size = [], 0
+    for text in texts:
+        if batch and (len(batch) >= max_items or size + len(text) > max_chars):
+            break
+        batch.append(text)
+        size += len(text)
+    return batch
 
 
 def _key(block: Block) -> tuple:
