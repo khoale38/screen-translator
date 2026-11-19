@@ -6,14 +6,12 @@ from dataclasses import dataclass
 from statistics import median
 from difflib import SequenceMatcher
 
-from .ocr import OcrLine
+from .ocr import BUTTON_MISREAD, OcrLine
 
 _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
-# The L1/R1 button icon comes out of OCR as "LI", "Lt", "L|" or "L!"; "Lt." stays, as that is lieutenant.
-_BUTTON_MISREAD = re.compile(r"(?<![A-Za-z])([LR])[Il|t!](?![A-Za-z0-9.])")
 
 
 def normalize(text: str) -> str:
@@ -38,7 +36,7 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3) -> list[OcrLi
     """Drop HUD icons and dot rows that OCR reads as text: keep lines with at least two letters, minus edge symbols."""
     kept = []
     for line in lines:
-        text = _BUTTON_MISREAD.sub(r"\g<1>1", line.text.strip().strip(_DECORATION + " "))
+        text = BUTTON_MISREAD.sub(r"\g<1>1", line.text.strip().strip(_DECORATION + " "))
         if line.confidence >= min_confidence and sum(ch.isalpha() for ch in text) >= 2:
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept

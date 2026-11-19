@@ -84,3 +84,14 @@ def test_a_taller_ocr_box_on_the_first_row_does_not_split_the_paragraph():
             OcrLine("loadout to overpower your", 1.0, (0.022, 0.313, 0.2, 0.020)),
             OcrLine("for a short time.", 1.0, (0.046, 0.344, 0.11, 0.023))]
     assert assemble(rows) == "Use the adrenaline from your loadout to overpower your for a short time."
+
+
+def test_ocr_prefers_a_runner_up_guess_that_keeps_the_button():
+    from screen_translator.ocr import prefer_button_reading
+
+    guesses = ["Hold L to open your loadout", "Hold LI to open your loadout", "Hold Lt to open your loadout"]
+    assert prefer_button_reading(guesses) == "Hold LI to open your loadout"
+    assert prefer_button_reading(["Hold to open your loadout", "Hold LI to open your loadout"]) == \
+        "Hold LI to open your loadout"
+    assert prefer_button_reading(["Hold on, Lisa", "Hold on, LI sa"]) == "Hold on, Lisa"
+    assert prefer_button_reading(["Press R1 to access", "Press RI to access"]) == "Press R1 to access"

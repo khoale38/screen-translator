@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass
@@ -16,6 +17,21 @@ class OcrLine:
     text: str
     confidence: float
     box: tuple[float, float, float, float]
+
+
+# The L1/R1 button icon comes out of OCR as "LI", "Lt", "L|" or "L!"; "Lt." stays, as that is lieutenant.
+BUTTON_MISREAD = re.compile(r"(?<![A-Za-z])([LR])[Il|t!](?![A-Za-z0-9.])")
+_BUTTON = re.compile(r"(?<![A-Za-z])[LR][12Il|t!](?![A-Za-z0-9.])")
+_LONE_BUTTON = re.compile(r"(?<![A-Za-z])[LR][12Il|t!]?(?![A-Za-z0-9.])")
+
+
+def prefer_button_reading(candidates: list[str]) -> str:
+    """Vision's first guess often drops the 1 from an L1 icon; take a close runner-up that still has it."""
+    top = candidates[0]
+    if _BUTTON.search(top):
+        return top
+    bare = lambda text: " ".join(_LONE_BUTTON.sub(" ", text).split())
+    return next((c for c in candidates[1:] if _BUTTON.search(c) and bare(c) == bare(top)), top)
 
 
 class OcrEngine(Protocol):
@@ -70,13 +86,13 @@ class AppleVisionOcr:
 
             lines = []
             for observation in request.results() or []:
-                candidates = observation.topCandidates_(1)
+                candidates = observation.topCandidates_(5)
                 if not candidates:
                     continue
-                best = candidates[0]
+                text = prefer_button_reading([str(c.string()) for c in candidates])
                 bb = observation.boundingBox()
                 x, y, w, h = bb.origin.x, bb.origin.y, bb.size.width, bb.size.height
-                lines.append(OcrLine(str(best.string()), float(best.confidence()), (x, 1.0 - y - h, w, h)))
+                lines.append(OcrLine(text, float(candidates[0].confidence()), (x, 1.0 - y - h, w, h)))
             return lines
 
 
