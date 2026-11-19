@@ -14,6 +14,16 @@ def _ensure_std_streams() -> None:
     sys.stdout = sys.stderr = log
 
 
+def _no_error_dialogs() -> None:
+    """Without a GPU driver, loading the Vulkan backend can raise a modal "vulkan-1.dll was not found" box that
+    blocks until clicked; fail quietly instead so llama.cpp falls back to the CPU."""
+    if sys.platform == "win32":
+        import ctypes
+
+        # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+
+
 def _ggml():
     from llama_cpp import _ggml, llama_cpp
 
@@ -107,6 +117,7 @@ def _self_test() -> int:
 
 if __name__ == "__main__":
     _ensure_std_streams()
+    _no_error_dialogs()
     _load_llama_backends()
     if sys.argv[1:] == ["--self-test"]:
         sys.exit(_self_test())

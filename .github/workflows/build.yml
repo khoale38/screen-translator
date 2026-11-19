@@ -19,6 +19,7 @@ env:
 jobs:
   macos:
     runs-on: macos-15
+    timeout-minutes: 90
     env:
       # llama-cpp-python 0.3.37 ships only an sdist, so it is compiled here; NATIVE=OFF keeps it portable.
       CMAKE_ARGS: -DGGML_METAL=on -DGGML_NATIVE=OFF
@@ -51,6 +52,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 120
     defaults:
       run:
         shell: pwsh

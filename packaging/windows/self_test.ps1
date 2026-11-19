@@ -11,7 +11,13 @@ $env:HTTP_PROXY = "http://127.0.0.1:9"
 $env:HTTPS_PROXY = "http://127.0.0.1:9"
 Remove-Item -Recurse -Force (Join-Path $env:SCREEN_TRANSLATOR_HOME "ocr-models") -ErrorAction SilentlyContinue
 $log = Join-Path $env:SCREEN_TRANSLATOR_HOME "screen-translator.log"
-$test = Start-Process dist\screen-translator\screen-translator.exe -ArgumentList "--self-test" -Wait -PassThru
+$test = Start-Process dist\screen-translator\screen-translator.exe -ArgumentList "--self-test" -PassThru
+$null = $test.Handle  # without this, ExitCode stays empty once the process exits
+if (-not $test.WaitForExit(20 * 60 * 1000)) {
+    Get-Content $log -ErrorAction SilentlyContinue
+    Stop-Process -Id $test.Id -Force
+    Write-Error "The self-test was still running after 20 minutes; the log above shows how far it got."
+}
 Get-Content $log
 if ($test.ExitCode -ne 0) { exit $test.ExitCode }
 if (-not (Select-String -Path $log -Pattern "^Translation:" -Quiet)) {
