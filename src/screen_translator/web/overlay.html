@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Translation Overlay</title>
+<style>
+  :root {
+    --size: 40px;
+    --bg: rgba(0, 0, 0, 0.55);
+    --fg: #ffffff;
+    --src: #ffd479;
+  }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    padding: 2vh 4vw; box-sizing: border-box;
+    font-family: "Noto Sans", "Hiragino Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  body.top { justify-content: flex-start; }
+  body.left { align-items: flex-start; }
+  #lines { display: flex; flex-direction: column; gap: 0.35em; max-width: 100%; font-size: var(--size); }
+  body.left #lines { align-items: flex-start; }
+  body:not(.left) #lines { align-items: center; text-align: center; }
+  .line {
+    background: var(--bg); color: var(--fg); padding: 0.18em 0.6em; border-radius: 0.3em;
+    line-height: 1.3; font-weight: 600; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    transition: opacity 0.4s ease; overflow-wrap: anywhere;
+  }
+  .line.old { opacity: 0.6; font-size: 0.8em; }
+  .line.pending { opacity: 0.8; }
+  .src { display: block; color: var(--src); font-size: 0.55em; font-weight: 500; }
+  .hide { opacity: 0; }
+</style>
+</head>
+<body>
+<div id="lines"></div>
+<script src="/static/overlay.js"></script>
+</body>
+</html>

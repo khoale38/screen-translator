@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen Translator</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header>
+  <h1>Screen Translator</h1>
+  <span id="status" class="pill">stopped</span>
+  <button id="toggle" class="primary">Start</button>
+</header>
+<p id="error" class="error" hidden></p>
+
+<main>
+  <section>
+    <h2>Live</h2>
+    <div id="live" class="live"><p class="muted">Translations appear here once you press Start.</p></div>
+    <p class="muted small">OCR: <span id="ocr">—</span></p>
+  </section>
+
+  <section>
+    <h2>Languages</h2>
+    <div class="row">
+      <label>From <select id="source_lang"></select></label>
+      <label>To <select id="target_lang"></select></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Capture area</h2>
+    <div class="row">
+      <label>Screen <select id="monitor"></select></label>
+      <span id="region-label" class="muted small"></span>
+    </div>
+    <div class="row">
+      <button id="pick">Select area…</button>
+      <button id="full">Whole screen</button>
+      <button id="test-ocr">Test OCR</button>
+    </div>
+    <p id="ocr-test" class="muted small"></p>
+    <div id="picker" hidden>
+      <p class="small">Drag over the subtitles or dialogue box, then press Save.</p>
+      <div id="shot-wrap"><img id="shot" alt="Screenshot of the selected screen"><div id="sel"></div></div>
+      <div class="row"><button id="save-region" class="primary">Save area</button><button id="cancel-pick">Cancel</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Context</h2>
+    <div class="row">
+      <label>Remember last <input id="context_lines" type="number" min="0" max="30"> lines</label>
+      <label>for <input id="context_minutes" type="number" min="0.5" max="120" step="0.5"> min</label>
+    </div>
+    <label class="block">Background notes
+      <textarea id="notes" rows="2" placeholder="e.g. Fantasy RPG. Aria is a girl, Kael is her older brother. Keep it casual."></textarea>
+    </label>
+    <label class="block">Glossary <span class="muted small">(one per line: source = translation)</span>
+      <textarea id="glossary" rows="3" placeholder="ユキ = Yuki&#10;魔導士 = Mage"></textarea>
+    </label>
+    <div class="row"><button id="save-context">Save</button><button id="clear-context">Forget context now</button></div>
+  </section>
+
+  <section>
+    <h2>Model</h2>
+    <label class="block">Translation model <select id="model"></select></label>
+    <div id="download-row" class="row" hidden>
+      <button id="download" class="primary">Download</button>
+      <progress id="progress" max="1" value="0" hidden></progress>
+      <span id="progress-label" class="muted small"></span>
+    </div>
+    <label class="block">Custom GGUF file <span class="muted small">(optional, overrides the list)</span>
+      <input id="custom_model_path" type="text" placeholder="/path/to/model.gguf">
+    </label>
+    <p class="muted small">Models run on this computer. Nothing you capture leaves your machine.</p>
+  </section>
+
+  <section>
+    <h2>OBS</h2>
+    <p class="small">Add a <b>Browser Source</b> with this URL, 1920×1080:</p>
+    <div class="row"><input id="overlay-url" readonly><button id="copy">Copy</button></div>
+    <p class="muted small">Options: <code>?lines=2&amp;size=40&amp;source=1&amp;position=top&amp;bg=0.55&amp;hold=8</code></p>
+    <button id="float" hidden>Open floating subtitles</button>
+  </section>
+</main>
+<script src="/static/panel.js"></script>
+</body>
+</html>

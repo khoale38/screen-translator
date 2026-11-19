@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Dialogue demo</title>
+<style>
+  body { margin: 0; height: 100vh; background: #1d2433; display: flex; align-items: flex-end; justify-content: center; font-family: "Hiragino Sans", sans-serif; }
+  #box { width: 86%; min-height: 150px; margin-bottom: 6vh; padding: 22px 30px; background: rgba(0,0,0,.75); border: 3px solid #c9b37e; border-radius: 12px; color: #fff; }
+  #name { color: #ffd479; font-size: 26px; margin-bottom: 8px; }
+  #text { font-size: 34px; line-height: 1.5; }
+  #marker { position: fixed; top: 10px; left: 14px; color: #8892a6; font: 16px monospace; }
+</style></head>
+<body>
+<div id="marker">Screen Translator demo</div>
+<div id="box"><div id="name"></div><div id="text"></div></div>
+<script>
+const script = [
+  ["カイ", "ユキはまだ帰ってこないの？"],
+  ["アオイ", "彼女、昨日から連絡がないんだ。"],
+  ["カイ", "まさか、あの森に行ったんじゃ…"],
+  ["アオイ", "…行ったよ。止めたけど聞かなかった。"],
+  ["カイ", "だから言ったでしょ、あいつは危ないって。"],
+];
+let i = 0;
+async function play() {
+  const [name, line] = script[i % script.length];
+  document.getElementById("name").textContent = name;
+  const el = document.getElementById("text");
+  el.textContent = "";
+  for (const ch of line) { el.textContent += ch; await new Promise(r => setTimeout(r, 70)); }
+  i++;
+  setTimeout(play, 3200);
+}
+setTimeout(play, 2500);
+</script>
+</body></html>
