@@ -73,6 +73,9 @@ def test_bullets_are_trimmed_but_dialogue_ellipses_stay():
 def test_controller_button_misreads_become_the_button_name():
     assert assemble([line("Hold LI to open your loadout", 0.1, 0.4)]) == "Hold L1 to open your loadout"
     assert assemble([line("Press R| to access your items", 0.1, 0.4)]) == "Press R1 to access your items"
+    assert assemble([line("Hold Lt to open your loadout", 0.1, 0.4)]) == "Hold L1 to open your loadout"
+    assert assemble([line("Hold L! to open your loadout", 0.1, 0.4)]) == "Hold L1 to open your loadout"
+    assert assemble([line("Lt. Dan was right", 0.1, 0.4)]) == "Lt. Dan was right"
     assert assemble([line("LIKE AND SUBSCRIBE", 0.1, 0.4)]) == "LIKE AND SUBSCRIBE"
 
 

@@ -177,6 +177,8 @@ class TranslationOverlay(QWidget):
         self.final = True
         self.opacity = 0.92
         self.box = True
+        self.text_size = "x1"
+        self._placement: tuple[QRect, str, float] | None = None
         self.anchor = QRect()
         self.window_number = 0
 
@@ -191,12 +193,13 @@ class TranslationOverlay(QWidget):
 
     def show_text(self, text: str, final: bool, area: QRect, mode: str, line_height: float = 0.0) -> None:
         self.text, self.final = text, final
+        self._placement = (area, mode, line_height)
         if not text:
             return
         rect = QRect(area)
         if mode == "below":
             rect.moveTop(area.bottom() + 6)
-        sizes = _text_sizes(line_height * area.height(), rect.height())
+        sizes = _text_sizes(line_height * area.height(), rect.height(), self.text_size)
         size = self._fit(rect, sizes)
         if size is None:
             size = sizes[-1]
@@ -268,6 +271,7 @@ class ScreenOverlay(QWidget):
         self.blocks: list[dict] = []
         self.translations: dict[str, tuple[str, bool]] = {}
         self.skip = QRect()
+        self.text_size = "x1"
         self._layouts: dict[int, tuple[QRectF, int]] = {}
         self.window_number = 0
 
@@ -313,7 +317,7 @@ class ScreenOverlay(QWidget):
     def _layout(self, block: dict) -> tuple[QRectF, int]:
         rect = self._rect(block)
         text = self.translations[block["text"]][0]
-        sizes = _text_sizes(block["line_height"] * self.height(), rect.height())
+        sizes = _text_sizes(block["line_height"] * self.height(), rect.height(), self.text_size)
         flags = Qt.TextWordWrap
         for size in sizes:
             needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
@@ -387,10 +391,25 @@ class ScreenFlash(QWidget):
         painter.drawText(badge, Qt.AlignCenter, self.label)
 
 
-def _text_sizes(original_px: float, box_px: int) -> list[int]:
-    """Pixel sizes to try, largest first: start from the original text's size and shrink at most to 60% of it."""
-    start = round(original_px * 0.85) if original_px >= 6 else min(40, max(16, round(box_px * 0.55)))
-    start = max(9, min(96, start))
+TEXT_SIZES = {
+    "x1": "Match the original",
+    "x0.75": "Original, 75%",
+    "x1.25": "Original, 125%",
+    "x1.5": "Original, 150%",
+    "px18": "Fixed: small (18 px)",
+    "px24": "Fixed: medium (24 px)",
+    "px32": "Fixed: large (32 px)",
+    "px44": "Fixed: extra large (44 px)",
+}
+
+
+def _text_sizes(original_px: float, box_px: int, setting: str = "x1") -> list[int]:
+    """Pixel sizes to try, largest first. "pxN" is a fixed size; "xS" scales the original text's size by S."""
+    if setting.startswith("px"):
+        return [int(setting[2:])]
+    scale = float(setting[1:]) if setting.startswith("x") else 1.0
+    base = original_px * 0.85 if original_px >= 6 else min(40, max(16, box_px * 0.55))
+    start = max(9, min(120, round(base * scale)))
     return list(range(start, max(8, round(start * 0.6)) - 1, -1))
 
 
@@ -434,6 +453,9 @@ class MainWindow(QWidget):
         self.mode.addItem("Cover the original text", "cover")
         self.mode.addItem("Show below the original text", "below")
 
+        self.text_size = QComboBox()
+        for key, label in TEXT_SIZES.items():
+            self.text_size.addItem(label, key)
         self.notes = QLineEdit()
         self.notes.setPlaceholderText("e.g. GTA V gameplay, a Korean drama, a Japanese visual novel")
         self.notes.setToolTip("Telling the model what you are watching makes slang and idioms translate properly.")
@@ -464,7 +486,8 @@ class MainWindow(QWidget):
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (self.mode_label, self.mode_row), (QLabel("Watching"), self.notes))
+                (QLabel("Model"), self.model), (self.mode_label, self.mode_row), (QLabel("Text size"), self.text_size),
+                (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
             form.addWidget(field, row, 1)
@@ -495,6 +518,7 @@ class MainWindow(QWidget):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
         self.box.toggled.connect(self.set_box)
+        self.text_size.currentIndexChanged.connect(lambda _i: self.set_text_size(self.text_size.currentData()))
         self.notes.editingFinished.connect(lambda: self.api.call("/api/settings", {"notes": self.notes.text().strip()}))
         self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
@@ -517,6 +541,10 @@ class MainWindow(QWidget):
         self.notes.setText(s.notes)
         self.box.blockSignals(True)
         self.box.setChecked(s.overlay_box)
+        self.text_size.blockSignals(True)
+        self.text_size.setCurrentIndex(max(0, self.text_size.findData(s.text_size)))
+        self.text_size.blockSignals(False)
+        self.screen_overlay.text_size = s.text_size
         self.box.blockSignals(False)
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
@@ -604,8 +632,18 @@ class MainWindow(QWidget):
         self.overlays.append(TranslationOverlay())
         self.overlays[-1].opacity = self.store.settings.overlay_opacity
         self.overlays[-1].box = self.store.settings.overlay_box
+        self.overlays[-1].text_size = self.text_size.currentData() or self.store.settings.text_size
         self.number_sources()
         return frame
+
+    def set_text_size(self, setting: str) -> None:
+        for overlay in self.overlays:
+            overlay.text_size = setting
+            if overlay.isVisible() and overlay.text and overlay._placement:
+                overlay.show_text(overlay.text, overlay.final, *overlay._placement)
+        self.screen_overlay.text_size = setting
+        self.screen_overlay.set_blocks(self.screen_overlay.blocks)
+        self.api.call("/api/settings", {"text_size": setting})
 
     def set_box(self, on: bool) -> None:
         for overlay in self.overlays:

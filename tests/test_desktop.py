@@ -191,3 +191,23 @@ def test_text_that_comes_back_unchanged_is_left_uncovered(app):
     assert overlay._unchanged(block)
     overlay.set_translation("MIXIFOOD", "Mixi Food", True)
     assert not overlay._unchanged(block)
+
+
+def test_text_size_can_scale_the_original_or_be_fixed():
+    assert desktop._text_sizes(40, 200, "x1")[0] == 34
+    assert desktop._text_sizes(40, 200, "x1.5")[0] == 51
+    assert desktop._text_sizes(40, 200, "x0.75")[0] == 26
+    assert desktop._text_sizes(40, 200, "px24") == [24]
+
+
+def test_changing_text_size_resizes_what_is_already_shown(app, tmp_path):
+    window, api = make_window(tmp_path, areas=[[100, 500, 900, 200]], overlay_box=False)
+    window.running = True
+    window.on_event({"type": "line", "area": 0, "source": "Lose the cops", "translation": "Cắt đuôi cảnh sát",
+                     "final": True, "ms": 1, "context_lines": 0, "line_height": 0.1})
+    overlay = window.overlays[0]
+    assert overlay._font_size <= 17
+    window.text_size.setCurrentIndex(window.text_size.findData("px44"))
+    assert overlay._font_size == 44
+    assert api.posts[-1] == ("/api/settings", {"text_size": "px44"})
+    assert window.screen_overlay.text_size == "px44"

@@ -12,7 +12,8 @@ _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
-_BUTTON_MISREAD = re.compile(r"(?<![A-Za-z])([LR])[Il|](?![A-Za-z0-9])")
+# The L1/R1 button icon comes out of OCR as "LI", "Lt", "L|" or "L!"; "Lt." stays, as that is lieutenant.
+_BUTTON_MISREAD = re.compile(r"(?<![A-Za-z])([LR])[Il|t!](?![A-Za-z0-9.])")
 
 
 def normalize(text: str) -> str:

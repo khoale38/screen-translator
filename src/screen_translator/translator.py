@@ -28,6 +28,8 @@ def build_messages(
         f"- Translate what the line means, not word by word. Idioms, slang, game objectives and film dialogue must "
         f"become what a native {target} speaker would actually say in that situation (e.g. \"hit the books\" means "
         f"study hard, not strike books). Keep it as short and punchy as the original.\n"
+        f"- Keep controller buttons, keys and on-screen labels such as L1, R2, X, Enter or Esc exactly as written, "
+        f"and keep holding a button distinct from pressing or tapping it.\n"
         f"- Write complete, natural {target}. When the source leaves out a subject or object (common in Japanese, "
         f"Korean and Chinese), work out who or what is meant from the earlier lines and state it.\n"
         f"- If the latest message continues the previous one, translate it so it reads naturally after it.\n"
