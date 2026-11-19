@@ -111,6 +111,15 @@ class Translator(Protocol):
 
 
 class LlamaTranslator:
+    """llama.cpp backed translator.
+
+    Qwen3.5's hybrid layers cannot be trimmed back to a shared prompt start, so llama.cpp re-reads the whole prompt
+    for every line (about 1 s). Instead the state after the instructions is saved once and restored per line.
+    """
+
+    max_snapshots = 3
+    min_shared_tokens = 64
+
     def __init__(self, model_path: str, gpu_layers: int = -1, n_ctx: int = 4096) -> None:
         from llama_cpp import Llama
         from llama_cpp.llama_chat_format import Jinja2ChatFormatter
@@ -122,23 +131,51 @@ class LlamaTranslator:
             eos_token=token_text(self._llm.token_eos()),
             bos_token=token_text(self._llm.token_bos()),
         )
+        self.temperature = 0.2
+        self._snapshots: dict[tuple[int, ...], object] = {}
 
     def close(self) -> None:
+        self._snapshots.clear()
         self._llm.close()
 
-    def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str:
+    def _tokens(self, messages: list[dict]):
         # Reasoning models (Qwen3/3.5) honour this flag in their own template; others ignore it.
         formatted = self._format(messages=messages, enable_thinking=False)
-        tokens = self._llm.tokenize(formatted.prompt.encode("utf-8"), add_bos=False, special=True)
+        return formatted, self._llm.tokenize(formatted.prompt.encode("utf-8"), add_bos=False, special=True)
+
+    def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str:
+        formatted, tokens = self._tokens(messages)
+        self._resume(tokens)
         budget = min(1024, 64 + 3 * len(messages[-1]["content"]))
         raw = ""
         shown = ""
         for chunk in self._llm.create_completion(
-            tokens, stream=True, temperature=0.2, top_p=0.9, max_tokens=budget, stop=formatted.stop,
+            tokens, stream=True, temperature=self.temperature, top_p=0.9, max_tokens=budget, stop=formatted.stop,
         ):
             raw += chunk["choices"][0]["text"]
             visible = clean_output(raw)
             if on_partial and visible != shown:
                 shown = visible
                 on_partial(visible)
+        self._save_instructions(messages, tokens)
         return clean_output(raw)
+
+    def _resume(self, tokens: list[int]) -> None:
+        matches = [key for key in self._snapshots if len(key) < len(tokens) and tuple(tokens[: len(key)]) == key]
+        if matches:
+            key = max(matches, key=len)
+            self._snapshots[key] = self._snapshots.pop(key)
+            self._llm.load_state(self._snapshots[key])
+
+    def _save_instructions(self, messages: list[dict], tokens: list[int]) -> None:
+        """Snapshot the prompt up to the first message, after this line so it is not delayed; once per instruction set."""
+        _, probe = self._tokens(messages[:1] + [{"role": "user", "content": "\u2063"}])
+        shared = next((i for i, (a, b) in enumerate(zip(tokens, probe)) if a != b), min(len(tokens), len(probe)))
+        key = tuple(tokens[:shared])
+        if shared < self.min_shared_tokens or key in self._snapshots:
+            return
+        self._llm.reset()
+        self._llm.eval(list(key))
+        self._snapshots[key] = self._llm.save_state()
+        while len(self._snapshots) > self.max_snapshots:
+            self._snapshots.pop(next(iter(self._snapshots)))
