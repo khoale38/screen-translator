@@ -18,7 +18,7 @@ env:
 
 jobs:
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       # llama-cpp-python 0.3.37 ships only an sdist, so it is compiled here; NATIVE=OFF keeps it portable.
       CMAKE_ARGS: -DGGML_METAL=on -DGGML_NATIVE=OFF
@@ -55,29 +55,53 @@ jobs:
       run:
         shell: pwsh
     env:
-      CMAKE_ARGS: -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON
+      # BACKEND_DL loads ggml-vulkan.dll at runtime, so PCs without a Vulkan driver fall back to the CPU backend.
+      CMAKE_ARGS: -DGGML_VULKAN=on -DGGML_BACKEND_DL=on -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON
+      SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\ci-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: 1.4.309.0
+          cache: true
+          stripdown: true
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
-          cache-suffix: windows-cpu-avx2
+          cache-suffix: windows-vulkan-dl-avx2
       - name: Install
         run: |
           uv venv --python (Get-Command python).Source
           uv pip install ".[desktop]" pyinstaller
       - name: Build app
         run: .venv\Scripts\python -m PyInstaller --noconfirm --clean --distpath dist --workpath build\pyinstaller packaging\screen_translator.spec
-      - name: Self-test
+      - name: Restore test model
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: ci-home/models
+          key: model-Qwen3.5-4B-Q4_K_M
+      - name: Download test model
+        if: steps.model.outputs.cache-hit != 'true'
         run: |
-          $env:SCREEN_TRANSLATOR_HOME = "$env:RUNNER_TEMP\st-home"
-          $test = Start-Process dist\screen-translator\screen-translator.exe -ArgumentList "--self-test" -Wait -PassThru
-          Get-Content "$env:SCREEN_TRANSLATOR_HOME\screen-translator.log"
-          exit $test.ExitCode
+          New-Item -ItemType Directory -Force ci-home\models | Out-Null
+          curl.exe -fL --retry 3 -o ci-home\models\Qwen3.5-4B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
+      - name: Self-test without a Vulkan loader
+        run: |
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and -not $_.StartsWith($env:VULKAN_SDK) }) -join ';'
+          ./packaging/windows/self_test.ps1
+      - name: Install the Vulkan runtime
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: 1.4.309.0
+          install_runtime: true
+          install_runtime_only: true
+      - name: Self-test with a Vulkan loader but no GPU
+        run: ./packaging/windows/self_test.ps1
       - name: Build installer and zip
         run: |
           $version = .venv\Scripts\python -c "from importlib.metadata import version; print(version('screen-translator'))"

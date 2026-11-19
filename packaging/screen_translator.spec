@@ -32,6 +32,8 @@ a = Analysis(
     excludes=["tkinter", "pytest", "IPython", "matplotlib", "PyQt5", "PyQt6", "PySide2", "PySide6", "gi"],
     noarchive=False,
 )
+# The Vulkan loader ships with GPU drivers; a bundled copy would shadow the system one.
+a.binaries = [entry for entry in a.binaries if os.path.basename(entry[0]).lower() != "vulkan-1.dll"]
 pyz = PYZ(a.pure)
 
 exe = EXE(
