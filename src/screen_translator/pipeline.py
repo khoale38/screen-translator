@@ -11,6 +11,7 @@ from typing import Callable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .context import ContextWindow
+from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
 from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normalize, similar
@@ -212,6 +213,9 @@ class Pipeline:
 
     def _translate(self, translator: Translator, event: TextEvent) -> None:
         settings = self.store.settings
+        if already_in(settings.target_lang, event.text):
+            self.emit({"type": "clear", "area": event.area})
+            return
         history = self.context.turns()
         replace = event.extends_previous and bool(history) and self._last_area == event.area
         self._last_area = event.area
@@ -293,7 +297,7 @@ class Pipeline:
                 if changed(previous_thumb, thumb):
                     blocks = [
                         b for b in group_blocks(ocr.recognize(frame, settings.source_lang), frame.width, frame.height)
-                        if len(b.text) >= settings.min_text_chars and any(ch.isalpha() for ch in b.text)
+                        if len(b.text) >= settings.min_text_chars and not already_in(settings.target_lang, b.text)
                     ]
                     for b in blocks:
                         b.bg, b.fg = block_colors(frame, b.box)

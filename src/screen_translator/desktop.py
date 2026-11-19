@@ -286,6 +286,10 @@ class ScreenOverlay(QWidget):
             if block.get("translation"):
                 self.translations[block["text"]] = (block["translation"], True)
         self._layouts = {i: self._layout(b) for i, b in enumerate(blocks) if b["text"] in self.translations}
+
+    def _unchanged(self, block: dict) -> bool:
+        text, final = self.translations.get(block["text"], ("", False))
+        return final and " ".join(text.split()).casefold() == " ".join(block["text"].split()).casefold()
         self.update()
 
     def set_translation(self, source: str, text: str, final: bool) -> None:
@@ -328,7 +332,7 @@ class ScreenOverlay(QWidget):
         skip = QRectF(self.skip.translated(-self.geometry().topLeft()))
         for i, block in enumerate(self.blocks):
             rect = self._rect(block)
-            if not skip.isEmpty() and skip.intersects(rect):
+            if (not skip.isEmpty() and skip.intersects(rect)) or self._unchanged(block):
                 continue
             if i not in self._layouts:
                 painter.setPen(QPen(QColor(46, 204, 113, 140), 1, Qt.DashLine))

@@ -180,3 +180,14 @@ def test_the_box_hugs_the_text_instead_of_filling_the_area(app):
     assert abs(box.center().x() - area.center().x()) <= 1 and abs(box.center().y() - area.center().y()) <= 1
     overlay.show_text("Vào xe.", True, area, "below", line_height=0.2)
     assert overlay.geometry().top() == area.bottom() + 6
+
+
+def test_text_that_comes_back_unchanged_is_left_uncovered(app):
+    overlay = desktop.ScreenOverlay()
+    overlay.setGeometry(QRect(0, 0, 1000, 800))
+    block = {"text": "MIXIFOOD", "box": (0.8, 0.9, 0.1, 0.05), "line_height": 0.05, "bg": "#000000", "fg": "#ffffff"}
+    overlay.set_blocks([block])
+    overlay.set_translation("MIXIFOOD", "MIXIFOOD", True)
+    assert overlay._unchanged(block)
+    overlay.set_translation("MIXIFOOD", "Mixi Food", True)
+    assert not overlay._unchanged(block)

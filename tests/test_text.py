@@ -68,3 +68,16 @@ def test_hud_symbols_and_lone_characters_are_not_text():
 def test_bullets_are_trimmed_but_dialogue_ellipses_stay():
     assert assemble([line("• Press R1 to access your items", 0.1, 0.4)]) == "Press R1 to access your items"
     assert assemble([line("…行ったよ。", 0.1, 0.4)]) == "…行ったよ。"
+
+
+def test_controller_button_misreads_become_the_button_name():
+    assert assemble([line("Hold LI to open your loadout", 0.1, 0.4)]) == "Hold L1 to open your loadout"
+    assert assemble([line("Press R| to access your items", 0.1, 0.4)]) == "Press R1 to access your items"
+    assert assemble([line("LIKE AND SUBSCRIBE", 0.1, 0.4)]) == "LIKE AND SUBSCRIBE"
+
+
+def test_a_taller_ocr_box_on_the_first_row_does_not_split_the_paragraph():
+    rows = [OcrLine("Use the adrenaline from your", 1.0, (0.024, 0.276, 0.19, 0.033)),
+            OcrLine("loadout to overpower your", 1.0, (0.022, 0.313, 0.2, 0.020)),
+            OcrLine("for a short time.", 1.0, (0.046, 0.344, 0.11, 0.023))]
+    assert assemble(rows) == "Use the adrenaline from your loadout to overpower your for a short time."

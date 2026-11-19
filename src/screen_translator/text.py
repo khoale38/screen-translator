@@ -12,6 +12,7 @@ _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
+_BUTTON_MISREAD = re.compile(r"(?<![A-Za-z])([LR])[Il|](?![A-Za-z0-9])")
 
 
 def normalize(text: str) -> str:
@@ -36,7 +37,7 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3) -> list[OcrLi
     """Drop HUD icons and dot rows that OCR reads as text: keep lines with at least two letters, minus edge symbols."""
     kept = []
     for line in lines:
-        text = line.text.strip().strip(_DECORATION + " ")
+        text = _BUTTON_MISREAD.sub(r"\g<1>1", line.text.strip().strip(_DECORATION + " "))
         if line.confidence >= min_confidence and sum(ch.isalpha() for ch in text) >= 2:
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
@@ -78,7 +79,9 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     """Wrapped text fills its first row, so a wide gap, a size change or a short row over a wide one is a new line."""
     height = max(above.box[3], below.box[3])
     gap = below.box[1] - (above.box[1] + above.box[3])
-    if gap > 0.6 * height or min(above.box[3], below.box[3]) / height < 0.75:
+    ratio = min(above.box[3], below.box[3]) / height
+    # OCR boxes vary in height for the same font, so a size change alone only counts when it is large or spaced out.
+    if gap > 0.6 * height or ratio < 0.6 or (ratio < 0.75 and gap > 0.3 * height):
         return True
     is_label = len(above_text) <= 12 and above_width < 0.4 * below_width
     return is_label and gap > 0.15 * height
@@ -181,12 +184,12 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
 def _same_block(a: tuple, b: tuple) -> bool:
     """Words split on one row, or wrapped rows of one paragraph; never side-by-side columns or differently sized text."""
     height = max(a[3], b[3])
-    if min(a[3], b[3]) / height < 0.7:
-        return False
+    ratio = min(a[3], b[3]) / height
     if abs((a[1] + a[3] / 2) - (b[1] + b[3] / 2)) < height / 2:
         gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
-        return gap < 0.8 * height
+        return ratio >= 0.7 and gap < 0.8 * height
     upper, lower = (a, b) if a[1] < b[1] else (b, a)
     gap = lower[1] - (upper[1] + upper[3])
     overlap = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
-    return -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
+    same_size = ratio >= 0.75 or (ratio >= 0.6 and gap <= 0.3 * height)
+    return same_size and -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])

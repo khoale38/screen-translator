@@ -165,3 +165,17 @@ async def test_a_line_that_comes_back_reuses_its_translation(store):
     finals = [e for e in events if e["type"] == "line" and e["final"]]
     assert [e["translation"] for e in finals] == ["EN(猫だ)", "EN(猫だ)"]
     assert len(translator.calls) == 1
+
+
+async def test_lines_already_in_the_target_language_are_left_alone(store):
+    store.update({"target_lang": "vi"})
+    translator = EchoTranslator()
+    events = []
+    script = ["cất súng luôn kia a"] * 4
+    app = create_app(store, make_pipeline_factory(script, translator), FakeCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: any(e["type"] == "clear" and e.get("area") == 0 for e in events))
+        await client.post("/api/stop", json={})
+    assert translator.calls == []
+    assert not any(e["type"] == "line" for e in events)
