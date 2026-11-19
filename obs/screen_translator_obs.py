@@ -52,6 +52,8 @@ def _find_command():
     for candidate in (
         "/Applications/Screen Translator.app/Contents/MacOS/screen-translator",
         os.path.expanduser("~/.local/bin/screen-translator"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Screen Translator\screen-translator.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Screen Translator\screen-translator.exe"),
     ):
         if os.path.exists(candidate):
             return candidate

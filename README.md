@@ -23,7 +23,29 @@ Translated without context, the third line comes out as *"Could **you** have gon
 
 Everything listens on `127.0.0.1` only and rejects requests from other websites.
 
-## Install (from source)
+## Install
+
+Download the latest build from the [Releases page](https://github.com/khoale38/screen-translator/releases/latest). Models aren't included; the app downloads the one you pick on first use.
+
+### macOS (Apple Silicon, macOS 13 or later)
+
+1. Download `ScreenTranslator-<version>-macos-arm64.dmg`, open it and drag **Screen Translator** into **Applications**.
+2. Open the app. It isn't notarized by Apple yet, so macOS blocks the first launch: go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to the Screen Translator message. On macOS 13 and 14 you can instead right-click the app and choose **Open**.
+3. When you press **Start**, allow Screen Recording (see [macOS permission](#macos-permission)).
+
+Translation runs on the GPU through Metal.
+
+### Windows (10 or 11, 64-bit)
+
+1. Download `ScreenTranslator-<version>-windows-x64-setup.exe` and run it. It installs for your user only and doesn't need admin rights.
+2. The installer isn't code-signed yet, so SmartScreen may say *Windows protected your PC*. Click **More info → Run anyway**.
+3. Start **Screen Translator** from the Start menu.
+
+There's also a portable `ScreenTranslator-<version>-windows-x64.zip`: extract it anywhere and run `screen-translator.exe`.
+
+The Windows build runs the model on the CPU, so translations take longer than on a Mac. If the 4B model is too slow, pick **Qwen3.5 2B**.
+
+### From source
 
 Requires Python 3.10+. On macOS, llama.cpp is built with Metal GPU support automatically.
 
@@ -47,13 +69,13 @@ The control panel opens in its own window. Pick a model and press **Download** (
 
 ### macOS permission
 
-macOS only lets an app see other windows after you allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**. Allow whichever app starts Screen Translator (OBS, your terminal, or the app itself), then restart that app. Without the permission, capture only sees the wallpaper, and the app shows a message saying so.
+macOS only lets an app see other windows after you allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**. Allow whichever app starts Screen Translator (the Screen Translator app, OBS, or your terminal), then restart that app. Without the permission, capture only sees the wallpaper, and the app shows a message saying so. After updating the app, macOS may ask again; if capture still only sees the wallpaper, remove Screen Translator from that list and add it back.
 
 ## Use with OBS
 
 1. In OBS, open **Tools → Scripts → +** and load `obs/screen_translator_obs.py`.
    - On macOS and Windows, OBS needs a Python install set under **Tools → Scripts → Python Settings**.
-2. Set **Screen Translator command** to the `screen-translator` executable, for example `…/screen-translator/.venv/bin/screen-translator`. The app then starts and stops with OBS.
+2. If you installed the app in its default location, the script finds it on its own. Otherwise set **Screen Translator command** to the `screen-translator` executable, for example `…/screen-translator/.venv/bin/screen-translator`. The app then starts and stops with OBS.
 3. Click **Open control panel**, then pick the languages and the capture area.
 4. Click **Add overlay to current scene**. It adds a 1920×1080 Browser Source called *Live Translation*.
 5. Optional: add the control panel as a dock via **Docks → Custom Browser Docks**, with URL `http://127.0.0.1:8765/panel`.
@@ -101,6 +123,8 @@ Models are stored in `~/Library/Application Support/ScreenTranslator/models` on 
 uv pip install pytest pytest-asyncio
 .venv/bin/python -m pytest
 ```
+
+To build the macOS app and DMG locally, run `uv pip install pyinstaller` and then `./packaging/build_macos.sh`. Pushing a `v*` tag that matches the version in `pyproject.toml` builds macOS and Windows packages in GitHub Actions and attaches them to a GitHub Release.
 
 `examples/dialogue-demo.html` plays a typewriter-style Japanese conversation. Open it in a browser window and point the capture area at it to try the whole pipeline.
 
