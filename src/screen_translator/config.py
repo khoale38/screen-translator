@@ -43,6 +43,9 @@ class Settings:
     capture_rect: dict | None = None
     area: list[int] | None = None
     overlay_mode: str = "cover"
+    scope: str = "area"
+    screen_name: str = ""
+    screen_interval_s: float = 1.0
     overlay_opacity: float = 0.92
     capture_interval_s: float = 0.4
     stable_ticks: int = 2

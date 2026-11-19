@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 import webbrowser
 
-from PySide6.QtCore import QObject, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QKeySequence, QPainter, QPen, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget,
@@ -156,17 +156,16 @@ class TranslationOverlay(QWidget):
         self.final = True
         self.opacity = 0.92
         self.anchor = QRect()
-        self._native_ready = False
+        self.window_number = 0
 
     def ensure_native(self) -> None:
-        if self._native_ready:
-            return
-        self.setGeometry(QRect(-10000, -10000, 10, 10))
-        self.show()
-        exclude_window_from_capture(float_above_everything(self))
-        hide_from_screen_capture(self)
-        self.hide()
-        self._native_ready = True
+        if not self.window_number:
+            self.setGeometry(QRect(-10000, -10000, 10, 10))
+            self.show()
+            self.window_number = float_above_everything(self)
+            hide_from_screen_capture(self)
+            self.hide()
+        exclude_window_from_capture(self.window_number)
 
     def show_text(self, text: str, final: bool, area: QRect, mode: str) -> None:
         self.text, self.final = text, final
@@ -215,6 +214,101 @@ class TranslationOverlay(QWidget):
         painter.drawText(self.rect().adjusted(12, 8, -12, -8), Qt.AlignCenter | Qt.TextWordWrap, self.text)
 
 
+class ScreenOverlay(QWidget):
+    """Whole-screen mode: one click-through layer that repaints each translated block over its original text."""
+
+    def __init__(self) -> None:
+        super().__init__(None, window_flags() | Qt.WindowTransparentForInput | Qt.WindowDoesNotAcceptFocus)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.blocks: list[dict] = []
+        self.translations: dict[str, tuple[str, bool]] = {}
+        self.skip = QRect()
+        self._layouts: dict[int, tuple[QRectF, int]] = {}
+        self.window_number = 0
+
+    def cover(self, geometry: QRect) -> None:
+        self.blocks, self._layouts = [], {}
+        self.setGeometry(geometry)
+        self.show()
+        if not self.window_number:
+            self.window_number = float_above_everything(self)
+            hide_from_screen_capture(self)
+        exclude_window_from_capture(self.window_number)
+
+    def set_blocks(self, blocks: list[dict]) -> None:
+        self.blocks = blocks
+        for block in blocks:
+            if block.get("translation"):
+                self.translations[block["text"]] = (block["translation"], True)
+        self._layouts = {i: self._layout(b) for i, b in enumerate(blocks) if b["text"] in self.translations}
+        self.update()
+
+    def set_translation(self, source: str, text: str, final: bool) -> None:
+        self.translations[source] = (text, final)
+        touched = False
+        for i, block in enumerate(self.blocks):
+            if block["text"] == source:
+                self._layouts[i] = self._layout(block)
+                touched = True
+        if touched:
+            self.update()
+
+    def forget(self) -> None:
+        self.translations.clear()
+        self.set_blocks([])
+
+    def _rect(self, block: dict) -> QRectF:
+        x, y, w, h = block["box"]
+        return QRectF(x * self.width(), y * self.height(), w * self.width(), h * self.height()).adjusted(-3, -2, 3, 2)
+
+    def _layout(self, block: dict) -> tuple[QRectF, int]:
+        rect = self._rect(block)
+        text = self.translations[block["text"]][0]
+        largest = max(9, min(48, round(block["line_height"] * self.height() * 0.8)))
+        flags = Qt.TextWordWrap
+        for size in range(largest, max(8, round(largest * 0.6)) - 1, -1):
+            needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
+                rect.toRect().adjusted(2, 0, -2, 0), flags, text)
+            if needed.height() <= rect.height() and needed.width() <= rect.width() - 4:
+                return rect, size
+        size = max(8, round(largest * 0.6))
+        needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
+            QRect(0, 0, int(rect.width()) - 4, 10_000), flags, text)
+        rect.setHeight(max(rect.height(), needed.height() + 4))
+        return rect, size
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        skip = QRectF(self.skip.translated(-self.geometry().topLeft()))
+        for i, block in enumerate(self.blocks):
+            rect = self._rect(block)
+            if not skip.isEmpty() and skip.intersects(rect):
+                continue
+            if i not in self._layouts:
+                painter.setPen(QPen(QColor(46, 204, 113, 140), 1, Qt.DashLine))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRoundedRect(rect, 3, 3)
+                continue
+            rect, size = self._layouts[i]
+            text, final = self.translations[block["text"]]
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(block["bg"]))
+            painter.drawRoundedRect(rect, 3, 3)
+            ink = QColor(block["fg"])
+            ink.setAlpha(255 if final else 170)
+            painter.setPen(ink)
+            painter.setFont(_pixel_font(self.font(), size))
+            painter.drawText(rect.adjusted(2, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap, text)
+
+
+def _pixel_font(base: QFont, size: int) -> QFont:
+    font = QFont(base.family())
+    font.setPixelSize(size)
+    return font
+
+
 class MainWindow(QWidget):
     def __init__(self, api: Api, store: SettingsStore, bridge: Bridge) -> None:
         super().__init__()
@@ -225,9 +319,17 @@ class MainWindow(QWidget):
 
         self.source = SourceFrame()
         self.overlay = TranslationOverlay()
+        self.screen_overlay = ScreenOverlay()
         self.source.moved.connect(self.save_area)
         bridge.event.connect(self.on_event)
 
+        self.scope = QComboBox()
+        self.scope.addItem("A selected area (subtitles, dialogue)", "area")
+        self.scope.addItem("The whole screen", "screen")
+        self.screen_pick = QComboBox()
+        for screen in QGuiApplication.screens():
+            size = screen.geometry()
+            self.screen_pick.addItem(f"{screen.name()} ({size.width()}×{size.height()})", screen.name())
         self.source_lang = QComboBox()
         self.target_lang = QComboBox()
         for code, label in languages.LANGUAGES.items():
@@ -257,15 +359,15 @@ class MainWindow(QWidget):
         self.last.setWordWrap(True)
         self.last.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
+        self.screen_label = QLabel("Screen")
+        self.mode_label = QLabel("Overlay")
         form = QGridLayout()
-        form.addWidget(QLabel("From"), 0, 0)
-        form.addWidget(self.source_lang, 0, 1)
-        form.addWidget(QLabel("To"), 1, 0)
-        form.addWidget(self.target_lang, 1, 1)
-        form.addWidget(QLabel("Model"), 2, 0)
-        form.addWidget(self.model, 2, 1)
-        form.addWidget(QLabel("Overlay"), 3, 0)
-        form.addWidget(self.mode, 3, 1)
+        rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
+                (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
+                (QLabel("Model"), self.model), (self.mode_label, self.mode))
+        for row, (label, field) in enumerate(rows):
+            form.addWidget(label, row, 0)
+            form.addWidget(field, row, 1)
         form.setColumnStretch(1, 1)
         download_row = QHBoxLayout()
         download_row.addWidget(self.download)
@@ -287,8 +389,10 @@ class MainWindow(QWidget):
         self.more.clicked.connect(lambda: webbrowser.open(f"{self.api.base_url}/panel"))
         self.download.clicked.connect(self.toggle_download)
         for combo, key in ((self.source_lang, "source_lang"), (self.target_lang, "target_lang"),
-                           (self.model, "model"), (self.mode, "overlay_mode")):
+                           (self.model, "model"), (self.mode, "overlay_mode"), (self.scope, "scope"),
+                           (self.screen_pick, "screen_name")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
+        self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
 
         self.load()
@@ -296,7 +400,8 @@ class MainWindow(QWidget):
     def load(self) -> None:
         s = self.store.settings
         for combo, value in ((self.source_lang, s.source_lang), (self.target_lang, s.target_lang),
-                             (self.model, s.model), (self.mode, s.overlay_mode)):
+                             (self.model, s.model), (self.mode, s.overlay_mode), (self.scope, s.scope),
+                             (self.screen_pick, s.screen_name)):
             combo.blockSignals(True)
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
@@ -307,7 +412,26 @@ class MainWindow(QWidget):
             screen = QGuiApplication.primaryScreen().availableGeometry()
             self.source.set_area(QRect(screen.center().x() - 400, screen.bottom() - 220, 800, 120))
         self.refresh_model()
+        self.show_scope()
         self.set_running(False)
+
+    def whole_screen(self) -> bool:
+        return self.scope.currentData() == "screen"
+
+    def show_scope(self) -> None:
+        screen = self.whole_screen()
+        for widget in (self.screen_label, self.screen_pick):
+            widget.setVisible(screen and self.screen_pick.count() > 1)
+        for widget in (self.mode_label, self.mode, self.select):
+            widget.setVisible(not screen)
+        if screen:
+            self.select.setChecked(False)
+        if not self.running:
+            self.set_running(False)
+
+    def chosen_screen(self):
+        name = self.screen_pick.currentData()
+        return next((s for s in QGuiApplication.screens() if s.name() == name), None) or QGuiApplication.primaryScreen()
 
     def refresh_model(self) -> None:
         state = self.api.call("/api/state")
@@ -343,8 +467,14 @@ class MainWindow(QWidget):
             self.set_running(False)
             return
         self.select.setChecked(False)
-        self.save_area(self.source.area())
-        self.overlay.ensure_native()
+        if self.whole_screen():
+            geometry = self.chosen_screen().geometry()
+            self.api.call("/api/settings", {"capture_rect": native_rect(geometry)})
+            self.screen_overlay.skip = self.frameGeometry()
+            self.screen_overlay.cover(geometry)
+        else:
+            self.save_area(self.source.area())
+            self.overlay.ensure_native()
         result = self.api.call("/api/start", {})
         if "error" in result:
             self.status.setText(result["error"])
@@ -357,9 +487,15 @@ class MainWindow(QWidget):
         color = "#d64545" if running else "#2ea44f"
         self.start.setStyleSheet(f"QPushButton {{ background: {color}; color: white; font-size: 18px; "
                                  f"font-weight: 600; border-radius: 8px; }}")
+        self.scope.setEnabled(not running)
+        self.screen_pick.setEnabled(not running)
         if not running:
             self.overlay.hide()
-            self.status.setText("Click “Select area”, drag the green box over the text, then Start (Ctrl+Enter).")
+            self.screen_overlay.hide()
+            if self.whole_screen():
+                self.status.setText("Start (Ctrl+Enter) to translate every piece of text on the screen in place.")
+            else:
+                self.status.setText("Click “Select area”, drag the green box over the text, then Start (Ctrl+Enter).")
 
     def on_event(self, event: dict) -> None:
         kind = event["type"]
@@ -370,14 +506,22 @@ class MainWindow(QWidget):
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
                                   f"{event['context_lines']} lines of context</span>")
+        elif kind == "screen" and self.running:
+            self.screen_overlay.skip = self.frameGeometry()
+            self.screen_overlay.set_blocks(event["blocks"])
+        elif kind == "screen_text" and self.running:
+            self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
         elif kind == "clear":
             self.overlay.hide()
+            self.screen_overlay.forget()
         elif kind == "status":
             if event["state"] == "error":
                 self.set_running(False)
                 self.status.setText(event["error"])
             elif event["state"] == "loading":
                 self.status.setText("Loading the model…")
+            elif event["state"] == "running" and self.whole_screen():
+                self.status.setText("Translating the whole screen. Text under this window is left alone.")
             elif event["state"] == "running":
                 self.status.setText("Translating. The box over the text shows the translation.")
         elif kind == "download":
@@ -390,6 +534,7 @@ class MainWindow(QWidget):
         self.api.call("/api/stop", {})
         self.source.close()
         self.overlay.close()
+        self.screen_overlay.close()
         super().closeEvent(event)
 
 

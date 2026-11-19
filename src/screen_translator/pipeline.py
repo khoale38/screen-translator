@@ -7,12 +7,12 @@ import time
 import traceback
 from typing import Callable
 
-from .capture import ScreenCapture, changed, ensure_screen_permission, thumbnail
+from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .context import ContextWindow
 from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
-from .text import Stabilizer, TextEvent, assemble, normalize, similar
+from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normalize, similar
 from .translator import LlamaTranslator, Translator, build_messages, label_speaker
 
 Emit = Callable[[dict], None]
@@ -58,6 +58,10 @@ class Pipeline:
         self._line_id = 0
         self._reset_stabilizer = threading.Event()
         self._translator_ready = threading.Event()
+        self._screen_lock = threading.Lock()
+        self._screen_blocks: list[Block] = []
+        self._screen_changed = threading.Event()
+        self._cache: dict[tuple[str, str, str], str] = {}
         self.state = "stopped"
         self.last_error = ""
 
@@ -77,9 +81,13 @@ class Pipeline:
         self._stop.clear()
         self._translator_ready.clear()
         self._events = queue.Queue()
+        if self.store.settings.scope == "screen":
+            loops = (self._screen_capture_loop, self._screen_translate_loop)
+        else:
+            loops = (self._capture_loop, self._translate_loop)
         self._threads = [
-            threading.Thread(target=self._guard, args=(self._capture_loop,), name="capture", daemon=True),
-            threading.Thread(target=self._guard, args=(self._translate_loop,), name="translate", daemon=True),
+            threading.Thread(target=self._guard, args=(loop,), name=name, daemon=True)
+            for loop, name in zip(loops, ("capture", "translate"))
         ]
         for thread in self._threads:
             thread.start()
@@ -101,6 +109,7 @@ class Pipeline:
 
     def clear_context(self) -> None:
         self.context.clear()
+        self._cache.clear()
         self._reset_stabilizer.set()
         self.emit({"type": "clear"})
 
@@ -116,10 +125,15 @@ class Pipeline:
             self._stop.set()
             self._set_state("error", f"{type(exc).__name__}: {exc}")
 
-    def _capture_loop(self) -> None:
+    def _wait_for_translator(self) -> bool:
         while not self._translator_ready.wait(0.2):
             if self._stop.is_set():
-                return
+                return False
+        return True
+
+    def _capture_loop(self) -> None:
+        if not self._wait_for_translator():
+            return
         capture = self.capture_factory()
         ocr = self.ocr_factory()
         settings = self.store.settings
@@ -172,10 +186,14 @@ class Pipeline:
             self._translator_key = key
         return self._translator
 
-    def _translate_loop(self) -> None:
+    def _ready_translator(self) -> Translator:
         translator = self._load_translator()
         self._translator_ready.set()
         self._set_state("running")
+        return translator
+
+    def _translate_loop(self) -> None:
+        translator = self._ready_translator()
         while not self._stop.is_set():
             try:
                 event = self._events.get(timeout=0.2)
@@ -212,3 +230,106 @@ class Pipeline:
             "type": "line", "id": line_id, "source": event.text, "translation": translation, "final": True,
             "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
         })
+
+    def _cache_key(self, text: str) -> tuple[str, str, str]:
+        settings = self.store.settings
+        return text, settings.source_lang, settings.target_lang
+
+    def _publish_screen(self, blocks: list[Block], ms: int) -> None:
+        with self._screen_lock:
+            self._screen_blocks = blocks
+        self._screen_changed.set()
+        self.emit({"type": "screen", "ms": ms, "blocks": [
+            {"text": b.text, "box": b.box, "line_height": b.line_height, "bg": b.bg, "fg": b.fg,
+             "translation": self._cache.get(self._cache_key(b.text))}
+            for b in blocks
+        ]})
+
+    def _screen_capture_loop(self) -> None:
+        if not self._wait_for_translator():
+            return
+        capture = self.capture_factory()
+        ocr = self.ocr_factory()
+        previous_thumb = None
+        blocks: list[Block] = []
+        candidate: frozenset = frozenset()
+        seen = 0
+        shown: list[Block] = []
+        ms = 0
+        try:
+            while not self._stop.is_set():
+                started = time.monotonic()
+                settings = self.store.settings
+                if self._reset_stabilizer.is_set():
+                    self._reset_stabilizer.clear()
+                    previous_thumb, candidate, seen, shown = None, frozenset(), 0, []
+                    self._publish_screen([], 0)
+
+                frame = capture.grab_rect(settings.capture_rect) if settings.capture_rect else capture.grab(settings.monitor, None)
+                thumb = thumbnail(frame)
+                if changed(previous_thumb, thumb):
+                    blocks = [
+                        b for b in group_blocks(ocr.recognize(frame, settings.source_lang), frame.width, frame.height)
+                        if len(b.text) >= settings.min_text_chars and any(ch.isalpha() for ch in b.text)
+                    ]
+                    for b in blocks:
+                        b.bg, b.fg = block_colors(frame, b.box)
+                    ms = round((time.monotonic() - started) * 1000)
+                previous_thumb = thumb
+
+                signature = _signature(blocks)
+                seen = seen + 1 if signature == candidate else 1
+                candidate = signature
+                if signature != _signature(shown):
+                    if seen >= settings.stable_ticks:
+                        shown = blocks
+                        self._publish_screen(shown, ms)
+                    else:
+                        # Hide what moved or changed straight away; show the new layout once it holds still.
+                        still = [b for b in shown if _key(b) in signature]
+                        if len(still) != len(shown):
+                            shown = still
+                            self._publish_screen(shown, ms)
+
+                self._stop.wait(max(0.0, settings.screen_interval_s - (time.monotonic() - started)))
+        finally:
+            capture.close()
+
+    def _screen_translate_loop(self) -> None:
+        translator = self._ready_translator()
+        while not self._stop.is_set():
+            self._screen_changed.clear()
+            with self._screen_lock:
+                blocks = list(self._screen_blocks)
+            pending = next((b for b in blocks if self._cache_key(b.text) not in self._cache), None)
+            if pending is None:
+                self._screen_changed.wait(0.2)
+                continue
+            self._translate_block(translator, pending.text)
+
+    def _translate_block(self, translator: Translator, text: str) -> None:
+        settings = self.store.settings
+        key = self._cache_key(text)
+        history = self.context.turns()
+        messages = build_messages(text, history, settings.source_lang, settings.target_lang,
+                                  settings.glossary, settings.notes)
+        started = time.monotonic()
+
+        def partial(translation: str) -> None:
+            self.emit({"type": "screen_text", "source": text, "translation": translation, "final": False})
+
+        translation = label_speaker(text, translator.translate(messages, partial))
+        if len(self._cache) >= 2000:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[key] = translation
+        self.context.add(text, translation)
+        self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
+                   "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})
+
+
+def _key(block: Block) -> tuple:
+    return block.text, tuple(round(v * 200) for v in block.box)
+
+
+def _signature(blocks: list[Block]) -> frozenset:
+    return frozenset(_key(b) for b in blocks)

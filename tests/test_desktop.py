@@ -48,3 +48,26 @@ def test_overlay_below_mode_sits_under_the_text(app):
 
 def test_native_rect_matches_logical_rect_at_scale_one(app):
     assert desktop.native_rect(QRect(10, 20, 300, 40)) == {"left": 10, "top": 20, "width": 300, "height": 40}
+
+
+def test_screen_overlay_fits_translations_inside_their_blocks(app):
+    overlay = desktop.ScreenOverlay()
+    overlay.setGeometry(QRect(0, 0, 1000, 800))
+    block = {"text": "こんにちは", "box": (0.1, 0.1, 0.4, 0.05), "line_height": 0.05, "bg": "#ffffff", "fg": "#000000"}
+    overlay.set_blocks([block, dict(block, text="pending", box=(0.1, 0.5, 0.4, 0.05))])
+    assert overlay._layouts == {}
+    overlay.set_translation("こんにちは", "Hello", True)
+    rect, size = overlay._layouts[0]
+    assert rect.top() < 80 + 1 and rect.bottom() > 120 - 1
+    assert 9 <= size <= 40
+    assert 1 not in overlay._layouts
+
+
+def test_screen_overlay_grows_a_block_down_when_the_translation_is_long(app):
+    overlay = desktop.ScreenOverlay()
+    overlay.setGeometry(QRect(0, 0, 1000, 800))
+    block = {"text": "短い", "box": (0.1, 0.1, 0.1, 0.02), "line_height": 0.02, "bg": "#000000", "fg": "#ffffff",
+             "translation": "A translation that is far longer than the original short label"}
+    overlay.set_blocks([block])
+    rect, _ = overlay._layouts[0]
+    assert rect.height() > 0.02 * 800 + 4

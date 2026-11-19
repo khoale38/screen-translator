@@ -48,7 +48,9 @@ class ScreenCapture:
 
     def grab_rect(self, rect: dict) -> Frame:
         if sys.platform == "darwin" and _excluded_window:
-            return _grab_below_window(rect, _excluded_window)
+            frame = _grab_below_window(rect, _excluded_window)
+            if frame is not None:
+                return frame
         shot = self._sct.grab({k: int(rect[k]) for k in ("left", "top", "width", "height")})
         return Frame(bytes(shot.bgra), shot.width, shot.height)
 
@@ -74,13 +76,15 @@ def exclude_window_from_capture(window_number: int) -> None:
     _excluded_window = window_number
 
 
-def _grab_below_window(rect: dict, window_number: int) -> Frame:
+def _grab_below_window(rect: dict, window_number: int) -> Frame | None:
     import Quartz
 
     bounds = Quartz.CGRectMake(rect["left"], rect["top"], rect["width"], rect["height"])
     image = Quartz.CGWindowListCreateImage(
         bounds, Quartz.kCGWindowListOptionOnScreenBelowWindow, window_number, Quartz.kCGWindowImageDefault,
     )
+    if image is None:
+        return None
     width, height = Quartz.CGImageGetWidth(image), Quartz.CGImageGetHeight(image)
     stride = Quartz.CGImageGetBytesPerRow(image)
     raw = bytes(Quartz.CGDataProviderCopyData(Quartz.CGImageGetDataProvider(image)))
@@ -114,3 +118,25 @@ def changed(previous: np.ndarray | None, current: np.ndarray, min_fraction: floa
         return True
     moved = np.count_nonzero(np.abs(previous - current) > 24)
     return moved / current.size > min_fraction
+
+
+def block_colors(frame: Frame, box: tuple[float, float, float, float]) -> tuple[str, str]:
+    """Background and text colour of a text box, so the translation can be painted to look like the original."""
+    pixels = frame.array()
+    x0 = max(0, int(box[0] * frame.width) - 2)
+    y0 = max(0, int(box[1] * frame.height) - 2)
+    x1 = min(frame.width, int((box[0] + box[2]) * frame.width) + 3)
+    y1 = min(frame.height, int((box[1] + box[3]) * frame.height) + 3)
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return "#000000", "#ffffff"
+    patch = pixels[y0:y1, x0:x1, 2::-1]
+    region = patch.reshape(-1, 3).astype(np.int32)
+    border = np.concatenate([patch[0], patch[-1], patch[:, 0], patch[:, -1]]).astype(np.int32)
+    background = np.median(border, axis=0)
+    distance = np.abs(region - background).sum(axis=1)
+    ink = region[distance > 0.5 * distance.max()] if distance.max() > 0 else region
+    text = np.median(ink, axis=0)
+    if np.abs(text - background).sum() < 120:
+        text = np.array([20, 20, 20]) if background @ [0.299, 0.587, 0.114] > 140 else np.array([245, 245, 245])
+    to_hex = lambda rgb: "#" + "".join(f"{int(c):02x}" for c in rgb)
+    return to_hex(background), to_hex(text)

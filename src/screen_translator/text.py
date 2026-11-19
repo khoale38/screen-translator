@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from statistics import median
 from difflib import SequenceMatcher
 
 from .ocr import OcrLine
@@ -118,3 +119,61 @@ class Stabilizer:
         extends = bool(self._emitted) and norm.startswith(self._emitted)
         self._emitted = norm
         return TextEvent("text", norm, extends)
+
+
+@dataclass
+class Block:
+    """A paragraph or label found anywhere on screen; box and line_height are fractions of the frame."""
+
+    text: str
+    box: tuple[float, float, float, float]
+    line_height: float
+    bg: str = "#000000"
+    fg: str = "#ffffff"
+
+
+def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_confidence: float = 0.3) -> list[Block]:
+    kept = [line for line in lines if line.confidence >= min_confidence and line.text.strip()]
+    pixels = [(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height) for l in kept]
+    parent = list(range(len(kept)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(kept)):
+        for j in range(i + 1, len(kept)):
+            if _same_block(pixels[i], pixels[j]):
+                parent[root(i)] = root(j)
+
+    groups: dict[int, list[int]] = {}
+    for i in range(len(kept)):
+        groups.setdefault(root(i), []).append(i)
+
+    blocks = []
+    for members in groups.values():
+        group = [kept[i] for i in members]
+        left = min(l.box[0] for l in group)
+        top = min(l.box[1] for l in group)
+        right = max(l.box[0] + l.box[2] for l in group)
+        bottom = max(l.box[1] + l.box[3] for l in group)
+        blocks.append(Block(normalize(assemble(group, min_confidence)), (left, top, right - left, bottom - top),
+                            median(l.box[3] for l in group)))
+    blocks.sort(key=lambda b: (round(b.box[1] * 50), b.box[0]))
+    return blocks
+
+
+def _same_block(a: tuple, b: tuple) -> bool:
+    """Words split on one row, or wrapped rows of one paragraph; never side-by-side columns or differently sized text."""
+    height = max(a[3], b[3])
+    if min(a[3], b[3]) / height < 0.7:
+        return False
+    if abs((a[1] + a[3] / 2) - (b[1] + b[3] / 2)) < height / 2:
+        gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
+        return gap < 0.8 * height
+    upper, lower = (a, b) if a[1] < b[1] else (b, a)
+    gap = lower[1] - (upper[1] + upper[3])
+    overlap = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+    return -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
