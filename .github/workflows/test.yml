@@ -13,6 +13,8 @@ jobs:
     env:
       SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\.st-home
       PYTHONUTF8: "1"
+      # Without NATIVE=OFF the cached llama.cpp build can crash (0xc000001d) on a runner with an older CPU.
+      CMAKE_ARGS: -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +22,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
+          cache-suffix: portable-avx2
 
       - name: Install
         run: |
