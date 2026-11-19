@@ -78,6 +78,7 @@ class TextEvent:
     kind: str
     text: str = ""
     extends_previous: bool = False
+    area: int = 0
 
 
 class Stabilizer:

@@ -66,7 +66,7 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
     first = ("こんにちは", (0.3, 0.4, 0.3, 0.05))
     second = ("さようなら", (0.3, 0.6, 0.3, 0.05))
     script = [[menu, first]] * 4 + [[menu, second]] * 4 + [[menu, first]] * 4
-    store.update({"scope": "screen", "capture_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
                   "screen_interval_s": 0.01})
     translator = EchoTranslator()
 
@@ -99,3 +99,39 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
     finals = [e for e in events if e["type"] == "screen_text" and e["final"]]
     assert [e["translation"] for e in finals] == ["EN(ファイル)", "EN(こんにちは)", "EN(さようなら)"]
     assert any(e["type"] == "screen" and [b["text"] for b in e["blocks"]] == ["ファイル"] for e in events)
+
+
+class TwoAreaCapture(FakeCapture):
+    def grab_rect(self, rect):
+        self.tick += 1
+        return Frame(bytes([self.tick * 60 % 256]) * (rect["width"] * 16 * 4), rect["width"], 16)
+
+
+class TwoAreaOcr:
+    name = "fake"
+
+    def recognize(self, frame, lang):
+        return [OcrLine({16: "カイ", 20: "行こう"}[frame.width], 0.99, (0.1, 0.1, 0.8, 0.8))]
+
+
+async def test_each_area_is_read_on_its_own_and_shares_one_context(store):
+    store.update({"capture_rects": [{"left": 0, "top": 0, "width": 16, "height": 16},
+                                    {"left": 0, "top": 50, "width": 20, "height": 16}]})
+    translator = EchoTranslator()
+
+    def factory(store, emit):
+        pipeline = make_pipeline_factory([""], translator)(store, emit)
+        pipeline.ocr_factory = TwoAreaOcr
+        pipeline.capture_factory = TwoAreaCapture
+        return pipeline
+
+    events = []
+    app = create_app(store, factory, TwoAreaCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: sum(1 for e in events if e["type"] == "line" and e["final"]) >= 2)
+        await client.post("/api/stop", json={})
+
+    finals = {e["area"]: e for e in events if e["type"] == "line" and e["final"]}
+    assert finals[0]["translation"] == "EN(カイ)" and finals[1]["translation"] == "EN(行こう)"
+    assert sorted(e["context_lines"] for e in finals.values()) == [0, 1]

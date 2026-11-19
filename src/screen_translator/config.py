@@ -42,6 +42,9 @@ class Settings:
     region: Region | None = None
     capture_rect: dict | None = None
     area: list[int] | None = None
+    areas: list[list[int]] = field(default_factory=list)
+    capture_rects: list[dict] = field(default_factory=list)
+    screen_rect: dict | None = None
     overlay_mode: str = "cover"
     scope: str = "area"
     screen_name: str = ""

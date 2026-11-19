@@ -22,6 +22,7 @@ from .server import serve
 GREEN = QColor(46, 204, 113)
 HEADER = 26
 EDGE = 10
+TAB = 330
 
 
 class Bridge(QObject):
@@ -47,7 +48,7 @@ class Api:
 
 def float_above_everything(widget: QWidget) -> int:
     """Keep a window over full-screen apps and every Space; returns the macOS window number (0 elsewhere)."""
-    if sys.platform == "darwin":
+    if QGuiApplication.platformName() == "cocoa":
         import objc
 
         window = objc.objc_object(c_void_p=int(widget.winId())).window()
@@ -59,7 +60,7 @@ def float_above_everything(widget: QWidget) -> int:
 
 
 def hide_from_screen_capture(widget: QWidget) -> None:
-    if sys.platform == "win32":
+    if QGuiApplication.platformName() == "windows":
         import ctypes
 
         ctypes.windll.user32.SetWindowDisplayAffinity(int(widget.winId()), 0x11)
@@ -75,6 +76,7 @@ class SourceFrame(QWidget):
     """The green box you drag over the text. The header strip sits above the captured area so it is never OCR'd."""
 
     moved = Signal(QRect)
+    removed = Signal()
 
     def __init__(self) -> None:
         super().__init__(None, window_flags())
@@ -82,6 +84,11 @@ class SourceFrame(QWidget):
         self.setMinimumSize(80, HEADER + 30)
         self.setMouseTracking(True)
         self._drag: tuple[str, QPoint, QRect] | None = None
+        self.number = 1
+        self.removable = False
+
+    def _close_box(self) -> QRect:
+        return QRect(TAB - HEADER, 0, HEADER, HEADER - 2) if self.removable else QRect()
 
     def area(self) -> QRect:
         return self.geometry().adjusted(0, HEADER, 0, 0)
@@ -96,17 +103,20 @@ class SourceFrame(QWidget):
         painter.fillRect(body, QColor(46, 204, 113, 28))
         painter.setPen(QPen(GREEN, 2))
         painter.drawRect(body)
-        tab = QRect(0, 0, min(self.width(), 300), HEADER - 2)
+        tab = QRect(0, 0, min(self.width(), TAB), HEADER - 2)
         painter.fillRect(tab, GREEN)
         painter.setPen(Qt.white)
         painter.setFont(QFont(self.font().family(), 11, QFont.DemiBold))
-        painter.drawText(tab.adjusted(8, 0, 0, 0), Qt.AlignVCenter, "Source · drag over the text, resize from edges")
+        painter.drawText(tab.adjusted(8, 0, -HEADER, 0), Qt.AlignVCenter,
+                         f"Area {self.number} · drag over the text, resize from edges")
+        if self.removable:
+            painter.drawText(self._close_box(), Qt.AlignCenter, "✕")
 
     def _zone(self, pos: QPoint) -> str:
         zone = ""
         if pos.y() >= self.height() - EDGE:
             zone += "b"
-        elif pos.y() <= EDGE and pos.x() > 300:
+        elif pos.y() <= EDGE and pos.x() > TAB:
             zone += "t"
         if pos.x() <= EDGE:
             zone += "l"
@@ -115,6 +125,9 @@ class SourceFrame(QWidget):
         return zone or "move"
 
     def mousePressEvent(self, event) -> None:
+        if self._close_box().contains(event.position().toPoint()):
+            self.removed.emit()
+            return
         self._drag = (self._zone(event.position().toPoint()), event.globalPosition().toPoint(), self.geometry())
 
     def mouseMoveEvent(self, event) -> None:
@@ -141,6 +154,8 @@ class SourceFrame(QWidget):
         self.setGeometry(rect)
 
     def mouseReleaseEvent(self, _event) -> None:
+        if self._drag is None:
+            return
         self._drag = None
         self.moved.emit(self.area())
 
@@ -317,10 +332,9 @@ class MainWindow(QWidget):
         self.setWindowTitle("Screen Translator")
         self.setMinimumWidth(460)
 
-        self.source = SourceFrame()
-        self.overlay = TranslationOverlay()
+        self.sources: list[SourceFrame] = []
+        self.overlays: list[TranslationOverlay] = []
         self.screen_overlay = ScreenOverlay()
-        self.source.moved.connect(self.save_area)
         bridge.event.connect(self.on_event)
 
         self.scope = QComboBox()
@@ -347,8 +361,9 @@ class MainWindow(QWidget):
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setMaximumHeight(8)
-        self.select = QPushButton("Select area")
+        self.select = QPushButton("Select areas")
         self.select.setCheckable(True)
+        self.add_area = QPushButton("+ Add area")
         self.forget = QPushButton("Forget context")
         self.more = QPushButton("Glossary && more…")
         self.start = QPushButton()
@@ -373,7 +388,7 @@ class MainWindow(QWidget):
         download_row.addWidget(self.download)
         download_row.addWidget(self.progress, 1)
         tools = QHBoxLayout()
-        for button in (self.select, self.forget, self.more):
+        for button in (self.select, self.add_area, self.forget, self.more):
             tools.addWidget(button)
         layout = QVBoxLayout(self)
         layout.addLayout(form)
@@ -384,6 +399,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.last)
 
         self.select.toggled.connect(self.toggle_source)
+        self.add_area.clicked.connect(self.new_area)
         self.start.clicked.connect(self.toggle_running)
         self.forget.clicked.connect(lambda: self.api.call("/api/context/clear", {}))
         self.more.clicked.connect(lambda: webbrowser.open(f"{self.api.base_url}/panel"))
@@ -405,12 +421,11 @@ class MainWindow(QWidget):
             combo.blockSignals(True)
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
-        self.overlay.opacity = s.overlay_opacity
-        if s.area:
-            self.source.set_area(QRect(*s.area))
-        else:
+        for area in s.areas or ([s.area] if s.area else []):
+            self.add_source(QRect(*area))
+        if not self.sources:
             screen = QGuiApplication.primaryScreen().availableGeometry()
-            self.source.set_area(QRect(screen.center().x() - 400, screen.bottom() - 220, 800, 120))
+            self.add_source(QRect(screen.center().x() - 400, screen.bottom() - 220, 800, 120))
         self.refresh_model()
         self.show_scope()
         self.set_running(False)
@@ -424,6 +439,7 @@ class MainWindow(QWidget):
             widget.setVisible(screen and self.screen_pick.count() > 1)
         for widget in (self.mode_label, self.mode, self.select):
             widget.setVisible(not screen)
+        self.add_area.setVisible(not screen and self.select.isChecked())
         if screen:
             self.select.setChecked(False)
         if not self.running:
@@ -450,16 +466,57 @@ class MainWindow(QWidget):
         else:
             self.api.call(f"/api/models/{self.model.currentData()}/download", {})
 
-    def toggle_source(self, visible: bool) -> None:
-        self.source.setVisible(visible)
-        if visible:
-            float_above_everything(self.source)
-            self.source.raise_()
-        self.select.setText("Done" if visible else "Select area")
+    def add_source(self, area: QRect) -> SourceFrame:
+        frame = SourceFrame()
+        frame.set_area(area)
+        frame.moved.connect(self.save_areas)
+        frame.removed.connect(lambda f=frame: self.remove_source(f))
+        self.sources.append(frame)
+        self.overlays.append(TranslationOverlay())
+        self.overlays[-1].opacity = self.store.settings.overlay_opacity
+        self.number_sources()
+        return frame
 
-    def save_area(self, area: QRect) -> None:
-        self.api.call("/api/settings", {"area": [area.x(), area.y(), area.width(), area.height()],
-                                        "capture_rect": native_rect(area)})
+    def new_area(self) -> None:
+        last = self.sources[-1].area()
+        above = last.translated(0, -(last.height() + HEADER + 20))
+        screen = (QGuiApplication.screenAt(last.center()) or QGuiApplication.primaryScreen()).availableGeometry()
+        frame = self.add_source(above if above.top() - HEADER >= screen.top() else last.translated(0, last.height() + HEADER + 20))
+        self.show_frame(frame)
+        self.save_areas()
+
+    def remove_source(self, frame: SourceFrame) -> None:
+        index = self.sources.index(frame)
+        self.sources.pop(index).close()
+        self.overlays.pop(index).close()
+        self.number_sources()
+        self.save_areas()
+
+    def number_sources(self) -> None:
+        for number, frame in enumerate(self.sources, 1):
+            frame.number, frame.removable = number, len(self.sources) > 1
+            frame.update()
+
+    def show_frame(self, frame: SourceFrame) -> None:
+        frame.show()
+        float_above_everything(frame)
+        frame.raise_()
+
+    def toggle_source(self, visible: bool) -> None:
+        for frame in self.sources:
+            if visible:
+                self.show_frame(frame)
+            else:
+                frame.hide()
+        self.add_area.setVisible(visible)
+        self.select.setText("Done" if visible else "Select areas")
+
+    def save_areas(self, *_args) -> None:
+        areas = [frame.area() for frame in self.sources]
+        self.api.call("/api/settings", {
+            "areas": [[a.x(), a.y(), a.width(), a.height()] for a in areas],
+            "capture_rects": [native_rect(a) for a in areas],
+        })
 
     def toggle_running(self) -> None:
         if self.running:
@@ -469,12 +526,13 @@ class MainWindow(QWidget):
         self.select.setChecked(False)
         if self.whole_screen():
             geometry = self.chosen_screen().geometry()
-            self.api.call("/api/settings", {"capture_rect": native_rect(geometry)})
+            self.api.call("/api/settings", {"screen_rect": native_rect(geometry)})
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.cover(geometry)
         else:
-            self.save_area(self.source.area())
-            self.overlay.ensure_native()
+            self.save_areas()
+            for overlay in self.overlays:
+                overlay.ensure_native()
         result = self.api.call("/api/start", {})
         if "error" in result:
             self.status.setText(result["error"])
@@ -490,18 +548,22 @@ class MainWindow(QWidget):
         self.scope.setEnabled(not running)
         self.screen_pick.setEnabled(not running)
         if not running:
-            self.overlay.hide()
+            for overlay in self.overlays:
+                overlay.hide()
             self.screen_overlay.hide()
             if self.whole_screen():
                 self.status.setText("Start (Ctrl+Enter) to translate every piece of text on the screen in place.")
             else:
-                self.status.setText("Click “Select area”, drag the green box over the text, then Start (Ctrl+Enter).")
+                self.status.setText("Click “Select areas”, drag the green box over the text (add more boxes if the "
+                                    "text is in several places), then Start (Ctrl+Enter).")
 
     def on_event(self, event: dict) -> None:
         kind = event["type"]
         if kind == "line" and self.running:
-            self.overlay.show_text(event["translation"], event["final"], self.source.area(),
-                                   self.store.settings.overlay_mode)
+            area = event.get("area", 0)
+            if area < len(self.overlays):
+                self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
+                                              self.store.settings.overlay_mode)
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -512,8 +574,12 @@ class MainWindow(QWidget):
         elif kind == "screen_text" and self.running:
             self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
         elif kind == "clear":
-            self.overlay.hide()
-            self.screen_overlay.forget()
+            area = event.get("area")
+            for index, overlay in enumerate(self.overlays):
+                if area is None or area == index:
+                    overlay.hide()
+            if area is None:
+                self.screen_overlay.forget()
         elif kind == "status":
             if event["state"] == "error":
                 self.set_running(False)
@@ -532,9 +598,8 @@ class MainWindow(QWidget):
 
     def closeEvent(self, event) -> None:
         self.api.call("/api/stop", {})
-        self.source.close()
-        self.overlay.close()
-        self.screen_overlay.close()
+        for widget in [*self.sources, *self.overlays, self.screen_overlay]:
+            widget.close()
         super().closeEvent(event)
 
 

@@ -47,8 +47,8 @@ class ScreenCapture:
         return Frame(bytes(shot.bgra), shot.width, shot.height)
 
     def grab_rect(self, rect: dict) -> Frame:
-        if sys.platform == "darwin" and _excluded_window:
-            frame = _grab_below_window(rect, _excluded_window)
+        if sys.platform == "darwin" and _excluded_windows:
+            frame = _grab_below_our_windows(rect)
             if frame is not None:
                 return frame
         shot = self._sct.grab({k: int(rect[k]) for k in ("left", "top", "width", "height")})
@@ -67,18 +67,24 @@ class ScreenCapture:
         self._sct.close()
 
 
-_excluded_window = 0
+_excluded_windows: set[int] = set()
 
 
 def exclude_window_from_capture(window_number: int) -> None:
-    """macOS only: capture what is underneath this window, so our overlay never reads its own text."""
-    global _excluded_window
-    _excluded_window = window_number
+    """macOS only: capture what is underneath our overlays, so they never read their own text."""
+    if window_number:
+        _excluded_windows.add(window_number)
 
 
-def _grab_below_window(rect: dict, window_number: int) -> Frame | None:
+def _grab_below_our_windows(rect: dict) -> Frame | None:
     import Quartz
 
+    # Our overlays all float at the same level, so capturing below the lowest visible one skips every one of them.
+    on_screen = Quartz.CGWindowListCopyWindowInfo(Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID)
+    ours = [int(w["kCGWindowNumber"]) for w in on_screen or [] if int(w["kCGWindowNumber"]) in _excluded_windows]
+    if not ours:
+        return None
+    window_number = ours[-1]
     bounds = Quartz.CGRectMake(rect["left"], rect["top"], rect["width"], rect["height"])
     image = Quartz.CGWindowListCreateImage(
         bounds, Quartz.kCGWindowListOptionOnScreenBelowWindow, window_number, Quartz.kCGWindowImageDefault,

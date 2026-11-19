@@ -71,3 +71,48 @@ def test_screen_overlay_grows_a_block_down_when_the_translation_is_long(app):
     overlay.set_blocks([block])
     rect, _ = overlay._layouts[0]
     assert rect.height() > 0.02 * 800 + 4
+
+
+class FakeApi:
+    base_url = "http://127.0.0.1:1"
+
+    def __init__(self):
+        self.posts = []
+
+    def call(self, path, body=None):
+        if body is not None:
+            self.posts.append((path, body))
+        return {}
+
+
+def make_window(tmp_path, **settings):
+    from screen_translator.config import SettingsStore
+
+    store = SettingsStore(tmp_path / "settings.json")
+    store.update(settings)
+    api = FakeApi()
+    return desktop.MainWindow(api, store, desktop.Bridge()), api
+
+
+def test_areas_can_be_added_removed_and_are_saved_together(app, tmp_path):
+    window, api = make_window(tmp_path, areas=[[100, 600, 800, 100]])
+    window.new_area()
+    assert len(window.sources) == len(window.overlays) == 2
+    assert [f.number for f in window.sources] == [1, 2]
+    assert all(f.removable for f in window.sources)
+    path, body = api.posts[-1]
+    assert path == "/api/settings" and len(body["areas"]) == len(body["capture_rects"]) == 2
+    window.remove_source(window.sources[0])
+    assert window.sources[0].number == 1 and not window.sources[0].removable
+    assert api.posts[-1][1]["areas"] == [[a.x(), a.y(), a.width(), a.height()] for a in [window.sources[0].area()]]
+
+
+def test_each_line_lands_on_the_overlay_of_its_own_area(app, tmp_path):
+    window, _ = make_window(tmp_path, areas=[[100, 100, 400, 60], [100, 600, 800, 100]])
+    window.running = True
+    window.on_event({"type": "line", "area": 1, "source": "犬", "translation": "Dog", "final": True,
+                     "ms": 5, "context_lines": 0})
+    assert window.overlays[1].isVisible() and window.overlays[1].text == "Dog"
+    assert not window.overlays[0].isVisible()
+    window.on_event({"type": "clear", "area": 1})
+    assert not window.overlays[1].isVisible()

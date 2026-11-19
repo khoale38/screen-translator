@@ -56,6 +56,7 @@ class Pipeline:
         self._translator: Translator | None = None
         self._translator_key: tuple | None = None
         self._line_id = 0
+        self._last_area: int | None = None
         self._reset_stabilizer = threading.Event()
         self._translator_ready = threading.Event()
         self._screen_lock = threading.Lock()
@@ -136,32 +137,33 @@ class Pipeline:
             return
         capture = self.capture_factory()
         ocr = self.ocr_factory()
-        settings = self.store.settings
-        stabilizer = Stabilizer(settings.stable_ticks, settings.min_text_chars)
-        previous_thumb = None
-        text = ""
+        stabilizers: list[Stabilizer] = []
+        thumbs: dict[int, object] = {}
+        texts: dict[int, str] = {}
         try:
             while not self._stop.is_set():
                 started = time.monotonic()
                 settings = self.store.settings
-                if self._reset_stabilizer.is_set():
+                rects = settings.capture_rects or [settings.capture_rect]
+                if self._reset_stabilizer.is_set() or len(stabilizers) != len(rects):
                     self._reset_stabilizer.clear()
-                    stabilizer = Stabilizer(settings.stable_ticks, settings.min_text_chars)
-                    previous_thumb = None
+                    stabilizers = [Stabilizer(settings.stable_ticks, settings.min_text_chars) for _ in rects]
+                    thumbs, texts = {}, {}
 
-                if settings.capture_rect:
-                    frame = capture.grab_rect(settings.capture_rect)
-                else:
-                    frame = capture.grab(settings.monitor, settings.region)
-                thumb = thumbnail(frame)
-                if changed(previous_thumb, thumb):
-                    text = assemble(ocr.recognize(frame, settings.source_lang))
-                    self.emit({"type": "ocr", "text": text, "ms": round((time.monotonic() - started) * 1000)})
-                previous_thumb = thumb
+                for area, rect in enumerate(rects):
+                    read_at = time.monotonic()
+                    frame = capture.grab_rect(rect) if rect else capture.grab(settings.monitor, settings.region)
+                    thumb = thumbnail(frame)
+                    if changed(thumbs.get(area), thumb):
+                        texts[area] = assemble(ocr.recognize(frame, settings.source_lang))
+                        self.emit({"type": "ocr", "area": area, "text": texts[area],
+                                   "ms": round((time.monotonic() - read_at) * 1000)})
+                    thumbs[area] = thumb
 
-                event = stabilizer.feed(text)
-                if event and not self._is_own_output(event):
-                    self._events.put(event)
+                    event = stabilizers[area].feed(texts.get(area, ""))
+                    if event and not self._is_own_output(event):
+                        event.area = area
+                        self._events.put(event)
 
                 self._stop.wait(max(0.0, settings.capture_interval_s - (time.monotonic() - started)))
         finally:
@@ -200,14 +202,15 @@ class Pipeline:
             except queue.Empty:
                 continue
             if event.kind == "clear":
-                self.emit({"type": "clear"})
+                self.emit({"type": "clear", "area": event.area})
                 continue
             self._translate(translator, event)
 
     def _translate(self, translator: Translator, event: TextEvent) -> None:
         settings = self.store.settings
         history = self.context.turns()
-        replace = event.extends_previous and bool(history)
+        replace = event.extends_previous and bool(history) and self._last_area == event.area
+        self._last_area = event.area
         if replace:
             history = history[:-1]
         else:
@@ -221,13 +224,15 @@ class Pipeline:
         started = time.monotonic()
 
         def partial(text: str) -> None:
-            self.emit({"type": "line", "id": line_id, "source": event.text, "translation": text, "final": False})
+            self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
+                       "translation": text, "final": False})
 
         partial("")
         translation = label_speaker(event.text, translator.translate(messages, partial))
         self.context.add(event.text, translation, replace_last=replace)
         self.emit({
-            "type": "line", "id": line_id, "source": event.text, "translation": translation, "final": True,
+            "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
+            "final": True,
             "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
         })
 
@@ -265,7 +270,7 @@ class Pipeline:
                     previous_thumb, candidate, seen, shown = None, frozenset(), 0, []
                     self._publish_screen([], 0)
 
-                frame = capture.grab_rect(settings.capture_rect) if settings.capture_rect else capture.grab(settings.monitor, None)
+                frame = capture.grab_rect(settings.screen_rect) if settings.screen_rect else capture.grab(settings.monitor, None)
                 thumb = thumbnail(frame)
                 if changed(previous_thumb, thumb):
                     blocks = [
