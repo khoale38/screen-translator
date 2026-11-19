@@ -8,9 +8,12 @@ import urllib.request
 import webbrowser
 
 from PySide6.QtCore import QObject, QPoint, QRect, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QKeySequence, QPainter, QPen, QShortcut
+from PySide6.QtGui import (
+    QAction, QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut,
+)
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget,
+    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
+    QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 from . import languages
@@ -182,21 +185,22 @@ class TranslationOverlay(QWidget):
             self.hide()
         exclude_window_from_capture(self.window_number)
 
-    def show_text(self, text: str, final: bool, area: QRect, mode: str) -> None:
+    def show_text(self, text: str, final: bool, area: QRect, mode: str, line_height: float = 0.0) -> None:
         self.text, self.final = text, final
         if not text:
             return
         rect = QRect(area)
         if mode == "below":
             rect.moveTop(area.bottom() + 6)
-        size = self._fit(rect)
+        sizes = _text_sizes(line_height * area.height(), rect.height())
+        size = self._fit(rect, sizes)
         if size is None:
-            needed = self._height_for(rect.width(), 16)
+            size = sizes[-1]
+            needed = self._height_for(rect.width(), size)
             if mode == "cover":
                 rect.setTop(rect.bottom() - needed)
             else:
                 rect.setHeight(needed)
-            size = 16
         self._font_size = size
         self.setGeometry(rect)
         self.show()
@@ -204,7 +208,7 @@ class TranslationOverlay(QWidget):
         self.update()
 
     def _font(self, size: int) -> QFont:
-        font = QFont(self.font().family(), size)
+        font = _pixel_font(self.font(), size)
         font.setWeight(QFont.DemiBold)
         return font
 
@@ -212,11 +216,8 @@ class TranslationOverlay(QWidget):
         bounds = QFontMetrics(self._font(size)).boundingRect(QRect(0, 0, width - 24, 10_000), Qt.TextWordWrap, self.text)
         return bounds.height() + 16
 
-    def _fit(self, rect: QRect) -> int | None:
-        for size in range(min(40, max(16, int(rect.height() * 0.55))), 15, -1):
-            if self._height_for(rect.width(), size) <= rect.height():
-                return size
-        return None
+    def _fit(self, rect: QRect, sizes: list[int]) -> int | None:
+        return next((size for size in sizes if self._height_for(rect.width(), size) <= rect.height()), None)
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -280,14 +281,14 @@ class ScreenOverlay(QWidget):
     def _layout(self, block: dict) -> tuple[QRectF, int]:
         rect = self._rect(block)
         text = self.translations[block["text"]][0]
-        largest = max(9, min(48, round(block["line_height"] * self.height() * 0.8)))
+        sizes = _text_sizes(block["line_height"] * self.height(), rect.height())
         flags = Qt.TextWordWrap
-        for size in range(largest, max(8, round(largest * 0.6)) - 1, -1):
+        for size in sizes:
             needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
                 rect.toRect().adjusted(2, 0, -2, 0), flags, text)
             if needed.height() <= rect.height() and needed.width() <= rect.width() - 4:
                 return rect, size
-        size = max(8, round(largest * 0.6))
+        size = sizes[-1]
         needed = QFontMetrics(_pixel_font(self.font(), size)).boundingRect(
             QRect(0, 0, int(rect.width()) - 4, 10_000), flags, text)
         rect.setHeight(max(rect.height(), needed.height() + 4))
@@ -354,6 +355,13 @@ class ScreenFlash(QWidget):
         painter.drawText(badge, Qt.AlignCenter, self.label)
 
 
+def _text_sizes(original_px: float, box_px: int) -> list[int]:
+    """Pixel sizes to try, largest first: start from the original text's size and shrink at most to 60% of it."""
+    start = round(original_px * 0.85) if original_px >= 6 else min(40, max(16, round(box_px * 0.55)))
+    start = max(9, min(96, start))
+    return list(range(start, max(8, round(start * 0.6)) - 1, -1))
+
+
 def _pixel_font(base: QFont, size: int) -> QFont:
     font = QFont(base.family())
     font.setPixelSize(size)
@@ -392,6 +400,9 @@ class MainWindow(QWidget):
         self.mode.addItem("Cover the original text", "cover")
         self.mode.addItem("Show below the original text", "below")
 
+        self.notes = QLineEdit()
+        self.notes.setPlaceholderText("e.g. GTA V gameplay, a Korean drama, a Japanese visual novel")
+        self.notes.setToolTip("Telling the model what you are watching makes slang and idioms translate properly.")
         self.download = QPushButton("Download model")
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
@@ -414,7 +425,7 @@ class MainWindow(QWidget):
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (self.mode_label, self.mode))
+                (QLabel("Model"), self.model), (self.mode_label, self.mode), (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
             form.addWidget(field, row, 1)
@@ -444,6 +455,7 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
+        self.notes.editingFinished.connect(lambda: self.api.call("/api/settings", {"notes": self.notes.text().strip()}))
         self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
         for number in range(1, 10):
@@ -462,6 +474,7 @@ class MainWindow(QWidget):
             combo.blockSignals(True)
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
+        self.notes.setText(s.notes)
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
         if not self.sources:
@@ -635,7 +648,7 @@ class MainWindow(QWidget):
             area = event.get("area", 0)
             if area < len(self.overlays):
                 self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
-                                              self.store.settings.overlay_mode)
+                                              self.store.settings.overlay_mode, event.get("line_height", 0.0))
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -688,6 +701,50 @@ def native_rect(area: QRect) -> dict:
     }
 
 
+def bring_to_front(window: QWidget) -> None:
+    window.showNormal()
+    window.raise_()
+    window.activateWindow()
+    if QGuiApplication.platformName() == "cocoa":
+        import AppKit
+
+        AppKit.NSApp.activateIgnoringOtherApps_(True)
+
+
+def tray_icon() -> QIcon:
+    pixmap = QPixmap(44, 44)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setPen(QPen(Qt.black, 3))
+    painter.drawRoundedRect(3, 5, 38, 34, 7, 7)
+    painter.setFont(_pixel_font(QFont(), 22))
+    painter.drawText(QRect(3, 5, 38, 34), Qt.AlignCenter, "文A")
+    painter.end()
+    icon = QIcon(pixmap)
+    icon.setIsMask(True)
+    return icon
+
+
+def make_tray(window: "MainWindow") -> QSystemTrayIcon:
+    tray = QSystemTrayIcon(tray_icon(), window)
+    tray.setToolTip("Screen Translator")
+    menu = QMenu()
+    show = QAction("Show Screen Translator", menu)
+    toggle = QAction("Start", menu)
+    quit_app = QAction("Quit", menu)
+    show.triggered.connect(lambda: bring_to_front(window))
+    toggle.triggered.connect(window.toggle_running)
+    quit_app.triggered.connect(window.close)
+    menu.aboutToShow.connect(lambda: toggle.setText("Stop" if window.running else "Start"))
+    for action in (show, toggle, quit_app):
+        menu.addAction(action)
+    tray.setContextMenu(menu)
+    tray.show()
+    window.tray_menu = menu
+    return tray
+
+
 def run(store: SettingsStore) -> None:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("Screen Translator")
@@ -698,8 +755,17 @@ def run(store: SettingsStore) -> None:
     if not ready.wait(15):
         raise SystemExit(f"Could not start the local server on port {store.settings.port}; is it already in use?")
 
+    if QGuiApplication.platformName() == "cocoa":
+        import AppKit
+
+        # Only a background (accessory) app may put windows over another app's full-screen Space, e.g. full-screen
+        # YouTube; it must be set before any window exists, and the menu-bar icon stands in for the Dock icon.
+        AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
     window = MainWindow(Api(f"http://127.0.0.1:{store.settings.port}"), store, bridge)
+    tray = make_tray(window)
     window.show()
+    bring_to_front(window)
     app.exec()
+    tray.hide()
     stop.set()
     server.join(10)

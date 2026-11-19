@@ -132,3 +132,20 @@ def test_screens_are_numbered_and_switching_moves_a_running_translation(app, tmp
     assert window.screen_overlay.geometry() == geometry
     window.choose_screen(9)
     assert len(api.posts) == 1
+
+
+def test_translation_text_is_sized_like_the_original(app):
+    overlay = desktop.TranslationOverlay()
+    area = QRect(100, 500, 900, 160)
+    overlay.show_text("Chạy trốn khỏi cảnh sát.", True, area, "cover", line_height=0.15)
+    assert 16 <= overlay._font_size <= round(0.15 * 160 * 0.85)
+    assert desktop._text_sizes(30, 200)[0] == 26
+    assert desktop._text_sizes(0, 100)[0] == 40
+
+
+def test_what_you_are_watching_is_saved_as_notes(app, tmp_path):
+    window, api = make_window(tmp_path, notes="GTA V gameplay")
+    assert window.notes.text() == "GTA V gameplay"
+    window.notes.setText("  A Korean drama ")
+    window.notes.editingFinished.emit()
+    assert api.posts[-1] == ("/api/settings", {"notes": "A Korean drama"})

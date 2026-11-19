@@ -79,6 +79,7 @@ class TextEvent:
     text: str = ""
     extends_previous: bool = False
     area: int = 0
+    line_height: float = 0.0
 
 
 class Stabilizer:

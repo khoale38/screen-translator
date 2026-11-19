@@ -5,6 +5,7 @@ import queue
 import threading
 import time
 import traceback
+from statistics import median
 from typing import Callable
 
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
@@ -140,6 +141,7 @@ class Pipeline:
         stabilizers: list[Stabilizer] = []
         thumbs: dict[int, object] = {}
         texts: dict[int, str] = {}
+        heights: dict[int, float] = {}
         try:
             while not self._stop.is_set():
                 started = time.monotonic()
@@ -148,21 +150,23 @@ class Pipeline:
                 if self._reset_stabilizer.is_set() or len(stabilizers) != len(rects):
                     self._reset_stabilizer.clear()
                     stabilizers = [Stabilizer(settings.stable_ticks, settings.min_text_chars) for _ in rects]
-                    thumbs, texts = {}, {}
+                    thumbs, texts, heights = {}, {}, {}
 
                 for area, rect in enumerate(rects):
                     read_at = time.monotonic()
                     frame = capture.grab_rect(rect) if rect else capture.grab(settings.monitor, settings.region)
                     thumb = thumbnail(frame)
                     if changed(thumbs.get(area), thumb):
-                        texts[area] = assemble(ocr.recognize(frame, settings.source_lang))
+                        lines = ocr.recognize(frame, settings.source_lang)
+                        texts[area] = assemble(lines)
+                        heights[area] = median(line.box[3] for line in lines) if lines else 0.0
                         self.emit({"type": "ocr", "area": area, "text": texts[area],
                                    "ms": round((time.monotonic() - read_at) * 1000)})
                     thumbs[area] = thumb
 
                     event = stabilizers[area].feed(texts.get(area, ""))
                     if event and not self._is_own_output(event):
-                        event.area = area
+                        event.area, event.line_height = area, heights.get(area, 0.0)
                         self._events.put(event)
 
                 self._stop.wait(max(0.0, settings.capture_interval_s - (time.monotonic() - started)))
@@ -225,14 +229,14 @@ class Pipeline:
 
         def partial(text: str) -> None:
             self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
-                       "translation": text, "final": False})
+                       "translation": text, "final": False, "line_height": event.line_height})
 
         partial("")
         translation = label_speaker(event.text, translator.translate(messages, partial))
         self.context.add(event.text, translation, replace_last=replace)
         self.emit({
             "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
-            "final": True,
+            "final": True, "line_height": event.line_height,
             "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
         })
 

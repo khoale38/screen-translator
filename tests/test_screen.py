@@ -135,3 +135,4 @@ async def test_each_area_is_read_on_its_own_and_shares_one_context(store):
     finals = {e["area"]: e for e in events if e["type"] == "line" and e["final"]}
     assert finals[0]["translation"] == "EN(カイ)" and finals[1]["translation"] == "EN(行こう)"
     assert sorted(e["context_lines"] for e in finals.values()) == [0, 1]
+    assert finals[0]["line_height"] == pytest.approx(0.8)
