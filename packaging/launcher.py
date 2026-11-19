@@ -34,6 +34,17 @@ def _ggml():
     return llama_cpp._lib
 
 
+def _ggml_base():
+    """Device names live in ggml-base; Windows' GetProcAddress, unlike dlsym, does not search dependent DLLs."""
+    if sys.platform != "win32":
+        return _ggml()
+    import ctypes
+
+    from llama_cpp import _ggml as bindings
+
+    return ctypes.CDLL(str(bindings.libggml_base_path / "ggml-base.dll"))
+
+
 def _load_llama_backends() -> None:
     # GGML_BACKEND_DL builds only search next to the executable, but the backend libraries live in llama_cpp/lib.
     import ctypes
@@ -50,18 +61,18 @@ def _load_llama_backends() -> None:
 def _llama_devices() -> list[tuple[str, str, int]]:
     import ctypes
 
-    ggml = _ggml()
+    ggml, base = _ggml(), _ggml_base()
     ggml.ggml_backend_dev_count.restype = ctypes.c_size_t
     ggml.ggml_backend_dev_get.argtypes = [ctypes.c_size_t]
     ggml.ggml_backend_dev_get.restype = ctypes.c_void_p
-    for fn in (ggml.ggml_backend_dev_name, ggml.ggml_backend_dev_description):
+    for fn in (base.ggml_backend_dev_name, base.ggml_backend_dev_description):
         fn.argtypes, fn.restype = [ctypes.c_void_p], ctypes.c_char_p
-    ggml.ggml_backend_dev_type.argtypes, ggml.ggml_backend_dev_type.restype = [ctypes.c_void_p], ctypes.c_int
+    base.ggml_backend_dev_type.argtypes, base.ggml_backend_dev_type.restype = [ctypes.c_void_p], ctypes.c_int
     devices = []
     for i in range(ggml.ggml_backend_dev_count()):
         dev = ggml.ggml_backend_dev_get(i)
-        name, desc = ggml.ggml_backend_dev_name(dev), ggml.ggml_backend_dev_description(dev)
-        devices.append((name.decode(), desc.decode(errors="replace"), ggml.ggml_backend_dev_type(dev)))
+        name, desc = base.ggml_backend_dev_name(dev), base.ggml_backend_dev_description(dev)
+        devices.append((name.decode(), desc.decode(errors="replace"), base.ggml_backend_dev_type(dev)))
     return devices
 
 
@@ -115,12 +126,31 @@ def _self_test() -> int:
     return 0
 
 
+def _exit_now(code: int) -> None:
+    """Skip interpreter teardown: on Windows a GPU driver's DLL shutdown can hang it, leaving an invisible process."""
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.flush()
+    os._exit(code)
+
+
 if __name__ == "__main__":
     _ensure_std_streams()
     _no_error_dialogs()
     _load_llama_backends()
     if sys.argv[1:] == ["--self-test"]:
-        sys.exit(_self_test())
+        try:
+            code = _self_test()
+        except BaseException:
+            import traceback
+
+            traceback.print_exc()
+            code = 1
+        _exit_now(code)
     from screen_translator.__main__ import main
 
-    main()
+    try:
+        main()
+    except SystemExit as stop:
+        _exit_now(stop.code if isinstance(stop.code, int) else 1)
+    _exit_now(0)
