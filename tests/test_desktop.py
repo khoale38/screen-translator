@@ -251,3 +251,104 @@ def test_the_preview_follows_the_mode_and_hides_area_only_controls(app, tmp_path
     assert panel.size.isVisibleTo(panel)
     image = panel.preview.grab().toImage()
     assert image.width() > 100 and image.pixelColor(image.width() // 2, 5).alpha() == 255
+
+
+def test_the_preview_crop_keeps_the_area_in_view_and_stays_on_screen(app):
+    screen = QRect(0, 0, 1920, 1080)
+    area = QRect(560, 960, 800, 100)
+    crop = desktop.preview_crop(area, screen)
+    assert crop.contains(area) and screen.contains(crop)
+    assert abs(crop.width() / crop.height() - 2.75) < 0.05
+
+
+class PreviewCapture:
+    def __init__(self):
+        from screen_translator.capture import Frame
+
+        self.frame = Frame(bytes([40, 40, 40, 255]) * (400 * 200), 400, 200)
+
+    def grab_rect(self, rect):
+        return self.frame
+
+    def close(self):
+        pass
+
+
+def preview_ocr(lines):
+    from screen_translator.ocr import OcrLine
+
+    class Ocr:
+        def recognize(self, frame, lang):
+            return [OcrLine(text, 0.99, box) for text, box in lines]
+
+    return Ocr
+
+
+def test_the_area_preview_uses_the_real_screen_and_the_text_size_found_there(app, tmp_path, monkeypatch):
+    screen = QtWidgets.QApplication.primaryScreen().geometry()
+    area = QRect(screen.left() + 50, screen.bottom() - 150, screen.width() - 100, 100)
+    window, _ = make_window(tmp_path, areas=[[area.x(), area.y(), area.width(), area.height()]], target_lang="vi")
+    job = window.preview_job()
+    seen = []
+    monkeypatch.setattr(window, "preview_capture", PreviewCapture)
+    monkeypatch.setattr(window, "preview_ocr_factory", preview_ocr([("Hold L1 to open your loadout", (0.1, 0.35, 0.8, 0.3))]))
+    recognize = window.preview_ocr_factory.recognize
+    monkeypatch.setattr(window.preview_ocr_factory, "recognize",
+                        lambda self, frame, lang: seen.append((frame.width, frame.height)) or recognize(self, frame, lang))
+    window.show_preview(window.build_preview(job))
+    shot = window.appearance.preview.snapshot
+    assert shot is not None and shot.area == area
+    assert abs(shot.line_height - 0.3) < 0.01
+    crop = job["crop"]
+    assert seen == [(round(400 * area.width() / crop.width()), round(200 * area.height() / crop.height()))]
+    assert "sized like the text" in window.appearance.caption.text()
+    image = window.appearance.preview.grab().toImage()
+    assert image.pixelColor(image.width() // 2, 3).red() < 60
+
+
+def test_the_screen_preview_patches_real_text_and_skips_what_the_pipeline_would(app, tmp_path, monkeypatch):
+    window, _ = make_window(tmp_path, scope="screen", target_lang="vi", min_text_px=12)
+    lines = [("Collect the cash", (0.1, 0.1, 0.3, 0.05)), ("tiny chat", (0.1, 0.5, 0.1, 0.002)),
+             ("cất súng luôn kia a", (0.1, 0.7, 0.3, 0.05))]
+    monkeypatch.setattr(window, "preview_capture", PreviewCapture)
+    monkeypatch.setattr(window, "preview_ocr_factory", preview_ocr(lines))
+    window.show_preview(window.build_preview(window.preview_job()))
+    blocks = window.appearance.preview.snapshot.blocks
+    assert [b["text"] for b in blocks] == ["Collect the cash"]
+    window.running = True
+    window.on_event({"type": "screen_text", "source": "Collect the cash", "translation": "Lấy tiền", "final": True})
+    assert window.appearance.preview.translations["Collect the cash"] == "Lấy tiền"
+    window.appearance.preview.grab()
+
+
+def test_without_screen_access_the_preview_falls_back_to_the_sample_scene(app, tmp_path, monkeypatch):
+    window, _ = make_window(tmp_path)
+
+    class Denied:
+        def __init__(self):
+            raise PermissionError("blocked")
+
+    monkeypatch.setattr(window, "preview_capture", Denied)
+    window.show_preview(window.build_preview(window.preview_job()))
+    assert window.appearance.preview.snapshot is None
+    assert "Allow screen recording" in window.appearance.caption.text()
+
+
+def test_the_area_preview_shows_the_last_real_translation(app, tmp_path):
+    window, _ = make_window(tmp_path, areas=[[100, 500, 900, 200]])
+    window.running = True
+    window.on_event({"type": "line", "area": 0, "source": "Lose the cops", "translation": "Cắt đuôi cảnh sát",
+                     "final": True, "ms": 1, "context_lines": 0})
+    assert window.appearance.preview.area_translation == "Cắt đuôi cảnh sát"
+
+
+def test_below_mode_flips_above_the_area_at_the_bottom_of_the_screen(app):
+    from screen_translator.appearance import place_translation
+
+    screen = QRect(0, 0, 1920, 1080)
+    low = QRect(600, 1010, 700, 50)
+    rect, _ = place_translation("Giữ L1 để mở trang bị", low, Style(mode="below"), 0.6, screen)
+    assert rect.bottom() < low.top() and screen.contains(rect)
+    high = QRect(600, 400, 700, 50)
+    rect, _ = place_translation("Giữ L1 để mở trang bị", high, Style(mode="below"), 0.6, screen)
+    assert rect.top() > high.bottom()

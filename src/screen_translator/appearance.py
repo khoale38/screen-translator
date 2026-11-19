@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from PySide6.QtCore import QPointF, QRect, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import (
+    QColor, QFont, QFontMetrics, QIcon, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap,
+)
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton, QSlider,
     QToolButton, QWidget,
@@ -59,8 +61,12 @@ def _wrapped(text: str, width: int, size: int, flags=Qt.TextWordWrap) -> QRect:
                                                                   flags, text)
 
 
-def place_translation(text: str, area: QRect, style: Style, line_height: float = 0.0) -> tuple[QRect, int]:
-    """Where an area translation goes and its pixel size: sized like the original, fitted, and hugged by its box."""
+def place_translation(text: str, area: QRect, style: Style, line_height: float = 0.0,
+                      bounds: QRect | None = None) -> tuple[QRect, int]:
+    """Where an area translation goes and its pixel size: sized like the original, fitted, and hugged by its box.
+
+    In "below" mode it flips above the area when the screen (`bounds`) has no room underneath.
+    """
     rect = QRect(area)
     if style.mode == "below":
         rect.moveTop(area.bottom() + 6)
@@ -74,13 +80,15 @@ def place_translation(text: str, area: QRect, style: Style, line_height: float =
         else:
             rect.setHeight(needed)
     if style.box:
-        bounds = _wrapped(text, rect.width(), size, Qt.AlignCenter | Qt.TextWordWrap)
-        snug = QRect(0, 0, min(rect.width(), bounds.width() + 2 * PAD_X),
-                     min(rect.height(), bounds.height() + 2 * PAD_Y))
+        wrapped = _wrapped(text, rect.width(), size, Qt.AlignCenter | Qt.TextWordWrap)
+        snug = QRect(0, 0, min(rect.width(), wrapped.width() + 2 * PAD_X),
+                     min(rect.height(), wrapped.height() + 2 * PAD_Y))
         snug.moveCenter(rect.center())
         if style.mode == "below":
             snug.moveTop(rect.top())
         rect = snug
+    if style.mode == "below" and bounds is not None and rect.bottom() > bounds.bottom():
+        rect.moveBottom(area.top() - 6)
     return rect, size
 
 
@@ -183,19 +191,52 @@ def paint_screen_scene(painter: QPainter, rect: QRect, style: Style, target: str
         paint_patch(painter, box.adjusted(-3, -2, 3, 2), translated, size, bg, fg)
 
 
+@dataclass
+class Snapshot:
+    """A capture of the real screen for the preview; rects are in screen (logical) coordinates."""
+
+    image: QImage
+    crop: QRect
+    area: QRect | None = None
+    line_height: float = 0.0
+    blocks: list[dict] = field(default_factory=list)
+    bounds: QRect | None = None
+
+
+def _scaled_style(style: Style, scale: float) -> Style:
+    if not style.text_size.startswith("px"):
+        return style
+    return Style(style.box, style.opacity, style.mode, f"px{max(6, round(int(style.text_size[2:]) * scale))}")
+
+
 class OverlayPreview(QWidget):
-    """Live sample of the current appearance settings, drawn with the same code as the real overlay."""
+    """Live sample of the current appearance settings, drawn with the same code as the real overlay.
+
+    With a Snapshot it draws on a capture of the user's own screen; without one, on a made-up scene.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self.style = Style()
         self.scope = "area"
         self.target = "vi"
+        self.snapshot: Snapshot | None = None
+        self.area_translation = ""
+        self.translations: dict[str, str] = {}
         self.setMinimumHeight(150)
         self.setToolTip("A preview of how translations will look. It updates as you change the settings below.")
 
     def sizeHint(self) -> QSize:
         return QSize(440, 160)
+
+    def set_snapshot(self, snapshot: Snapshot | None) -> None:
+        self.snapshot = snapshot
+        if snapshot and snapshot.crop.height():
+            aspect = snapshot.crop.width() / snapshot.crop.height()
+            self.setMinimumHeight(max(150, min(300, round(440 / aspect))))
+        else:
+            self.setMinimumHeight(150)
+        self.update()
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -203,7 +244,9 @@ class OverlayPreview(QWidget):
         clip = QPainterPath()
         clip.addRoundedRect(QRectF(frame), 8, 8)
         painter.setClipPath(clip)
-        if self.scope == "screen":
+        if self.snapshot is not None:
+            self._paint_real(painter, frame)
+        elif self.scope == "screen":
             paint_screen_scene(painter, frame, self.style, self.target)
         else:
             paint_area_scene(painter, frame, self.style, self.target)
@@ -211,6 +254,39 @@ class OverlayPreview(QWidget):
         painter.setPen(QPen(QColor(0, 0, 0, 60), 1))
         painter.setBrush(Qt.NoBrush)
         painter.drawRoundedRect(QRectF(frame), 8, 8)
+
+    def _paint_real(self, painter: QPainter, frame: QRect) -> None:
+        shot = self.snapshot
+        painter.fillRect(frame, QColor(18, 20, 26))
+        scale = min(frame.width() / shot.crop.width(), frame.height() / shot.crop.height())
+        target = QRect(0, 0, round(shot.crop.width() * scale), round(shot.crop.height() * scale))
+        target.moveCenter(frame.center())
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter.drawImage(target, shot.image)
+
+        def to_preview(rect: QRect) -> QRect:
+            return QRect(target.x() + round((rect.x() - shot.crop.x()) * scale),
+                         target.y() + round((rect.y() - shot.crop.y()) * scale),
+                         max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)))
+
+        style = _scaled_style(self.style, scale)
+        if self.scope == "screen":
+            for block in shot.blocks:
+                rect = QRectF(to_preview(block["rect"])).adjusted(-2, -1, 2, 1)
+                text = self.translations.get(block["text"], block["text"])
+                size = text_sizes(block["line_px"] * scale, round(rect.height()), style.text_size)[0]
+                paint_patch(painter, rect, text, size, block["bg"], block["fg"])
+        elif shot.area is not None:
+            area = to_preview(shot.area)
+            painter.save()
+            painter.setPen(QPen(QColor(46, 204, 113), 1.5, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(area)
+            painter.restore()
+            text = self.area_translation or SAMPLES.get(self.target, "Lose the cops.")
+            bounds = to_preview(shot.bounds) if shot.bounds is not None else None
+            placed, size = place_translation(text, area, style, shot.line_height, bounds)
+            paint_translation(painter, placed, text, size, style)
 
 
 ICON_SIZE = QSize(156, 54)
@@ -238,10 +314,18 @@ class AppearancePanel(QGroupBox):
     """Visual controls for how translations look, with a live preview; emits settings patches."""
 
     changed = Signal(dict)
+    refresh = Signal()
 
     def __init__(self) -> None:
         super().__init__("Appearance")
         self.preview = OverlayPreview()
+        self.caption = QLabel()
+        self.caption.setStyleSheet("color: gray; font-size: 11px;")
+        self.caption.setWordWrap(True)
+        self.refresh_button = QToolButton()
+        self.refresh_button.setText("↻ Refresh")
+        self.refresh_button.setToolTip("Capture the screen again for the preview")
+        self.refresh_button.clicked.connect(self.refresh.emit)
         self.style_box = self._choice("Dark box")
         self.style_outline = self._choice("Outlined text")
         self.cover = self._segment("Over the original")
@@ -284,10 +368,14 @@ class AppearancePanel(QGroupBox):
         size_row.addWidget(self.size_value)
         size_row.addWidget(self.fixed)
 
+        caption_row = QHBoxLayout()
+        caption_row.addWidget(self.caption, 1)
+        caption_row.addWidget(self.refresh_button)
         grid = QGridLayout(self)
         grid.addWidget(self.preview, 0, 0, 1, 2)
+        grid.addLayout(caption_row, 1, 0, 1, 2)
         for row, (label, content) in enumerate(((self.style_label, style_row), (self.position_label, position_row),
-                                                (self.opacity_label, opacity_row), (QLabel("Text size"), size_row)), 1):
+                                                (self.opacity_label, opacity_row), (QLabel("Text size"), size_row)), 2):
             grid.addWidget(label, row, 0)
             grid.addLayout(content, row, 1)
         grid.setColumnStretch(1, 1)
@@ -340,6 +428,10 @@ class AppearancePanel(QGroupBox):
         for widget in widgets:
             widget.blockSignals(False)
         self._refresh()
+
+    def set_snapshot(self, snapshot: Snapshot | None, caption: str) -> None:
+        self.preview.set_snapshot(snapshot)
+        self.caption.setText(caption)
 
     def set_scope(self, scope: str) -> None:
         self.preview.scope = scope
