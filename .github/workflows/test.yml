@@ -40,6 +40,7 @@ jobs:
           ST_E2E: "1"
           ST_E2E_MODEL: qwen3.5-2b
           ST_E2E_TIMEOUT: "600"
+          ST_E2E_HOLD: "30"
         run: .venv\Scripts\python -m pytest -q -s tests/test_e2e.py
 
       - name: Screen capture smoke test

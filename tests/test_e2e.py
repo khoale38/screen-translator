@@ -30,7 +30,8 @@ CJK_FONTS = [
 
 
 class DialogueScreen:
-    char_s, hold_s = 0.07, 3.0
+    char_s = 0.07
+    hold_s = float(os.environ.get("ST_E2E_HOLD", "3.0"))
 
     def __init__(self):
         self.font = ImageFont.truetype(next(f for f in CJK_FONTS if Path(f).exists()), 34)
@@ -79,7 +80,8 @@ def test_translates_a_dialogue_with_context_end_to_end():
     pipeline.shutdown()
 
     lines = finals()
-    print(f"OCR: {ocr.name}")
+    ocr_ms = sorted(e["ms"] for e in events if e["type"] == "ocr")
+    print(f"OCR: {ocr.name}, {len(ocr_ms)} reads, median {ocr_ms[len(ocr_ms) // 2] if ocr_ms else '-'} ms, max {ocr_ms[-1] if ocr_ms else '-'} ms")
     for line in lines:
         print(f"{line['ms']:5}ms ctx={line['context_lines']}  {line['source']!r} -> {line['translation']!r}")
     assert len(lines) == len(SCRIPT)
