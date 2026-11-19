@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import threading
 from collections import deque
 from importlib import resources
@@ -13,7 +14,7 @@ from . import languages
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
 from .models import MODELS, DownloadCancelled, download
-from .ocr import default_engine
+from .ocr import RapidOcr, default_engine
 from .pipeline import Pipeline
 
 WEB = resources.files("screen_translator") / "web"
@@ -59,6 +60,7 @@ def create_app(
     hub = Hub()
     pipeline = pipeline_factory(store, hub.emit)
     cancel_download = threading.Event()
+    ocr_hint = "" if sys.platform == "darwin" else RapidOcr.hint
     allowed_hosts = {f"127.0.0.1:{store.settings.port}", f"localhost:{store.settings.port}"}
 
     @web.middleware
@@ -101,6 +103,7 @@ def create_app(
             "status": hub.status,
             "running": pipeline.running,
             "languages": languages.LANGUAGES,
+            "ocr_hint": ocr_hint,
             "models": [
                 {"key": m.key, "label": m.label, "size": m.size_bytes, "downloaded": m.downloaded}
                 for m in MODELS.values()

@@ -64,6 +64,8 @@ function render() {
   $("glossary").value = Object.entries(s.glossary).map(([a, b]) => `${a} = ${b}`).join("\n");
   $("custom_model_path").value = s.custom_model_path;
   $("region-label").textContent = regionText(s.region);
+  $("ocr-hint").textContent = state.ocr_hint;
+  $("ocr-hint").hidden = !state.ocr_hint;
   $("overlay-url").value = `http://127.0.0.1:${s.port}/overlay`;
   renderModels();
   setStatus(state.status, state.running);

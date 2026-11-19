@@ -6,6 +6,7 @@ const root = document.documentElement.style;
 if (params.get("size")) root.setProperty("--size", `${Number(params.get("size"))}px`);
 if (params.get("bg")) root.setProperty("--bg", `rgba(0,0,0,${Number(params.get("bg"))})`);
 if (params.get("color")) root.setProperty("--fg", `#${params.get("color").replace(/[^0-9a-f]/gi, "")}`);
+if (params.get("pagebg")) document.body.style.background = `#${params.get("pagebg").replace(/[^0-9a-f]/gi, "")}`;
 if (params.get("position") === "top") document.body.classList.add("top");
 if (params.get("align") === "left") document.body.classList.add("left");
 

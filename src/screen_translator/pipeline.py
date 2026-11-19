@@ -13,7 +13,7 @@ from .context import ContextWindow
 from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
 from .text import Stabilizer, TextEvent, assemble, normalize, similar
-from .translator import LlamaTranslator, Translator, build_messages
+from .translator import LlamaTranslator, Translator, build_messages, label_speaker
 
 Emit = Callable[[dict], None]
 
@@ -57,6 +57,7 @@ class Pipeline:
         self._translator_key: tuple | None = None
         self._line_id = 0
         self._reset_stabilizer = threading.Event()
+        self._translator_ready = threading.Event()
         self.state = "stopped"
         self.last_error = ""
 
@@ -74,6 +75,7 @@ class Pipeline:
         resolve_model(self.store.settings)
         self.permission_check()
         self._stop.clear()
+        self._translator_ready.clear()
         self._events = queue.Queue()
         self._threads = [
             threading.Thread(target=self._guard, args=(self._capture_loop,), name="capture", daemon=True),
@@ -115,6 +117,9 @@ class Pipeline:
             self._set_state("error", f"{type(exc).__name__}: {exc}")
 
     def _capture_loop(self) -> None:
+        while not self._translator_ready.wait(0.2):
+            if self._stop.is_set():
+                return
         capture = self.capture_factory()
         ocr = self.ocr_factory()
         settings = self.store.settings
@@ -166,6 +171,7 @@ class Pipeline:
 
     def _translate_loop(self) -> None:
         translator = self._load_translator()
+        self._translator_ready.set()
         self._set_state("running")
         while not self._stop.is_set():
             try:
@@ -197,7 +203,7 @@ class Pipeline:
             self.emit({"type": "line", "id": line_id, "source": event.text, "translation": text, "final": False})
 
         partial("")
-        translation = translator.translate(messages, partial)
+        translation = label_speaker(event.text, translator.translate(messages, partial))
         self.context.add(event.text, translation, replace_last=replace)
         self.emit({
             "type": "line", "id": line_id, "source": event.text, "translation": translation, "final": True,

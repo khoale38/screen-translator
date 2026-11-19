@@ -1,5 +1,5 @@
 from screen_translator.context import ContextWindow
-from screen_translator.translator import build_messages, clean_output
+from screen_translator.translator import build_messages, clean_output, label_speaker
 
 
 class Clock:
@@ -50,3 +50,10 @@ def test_clean_output_strips_thinking_and_wrapping_quotes():
     assert clean_output("<think>\nhmm\n</think>\n\n\"She went.\"") == "She went."
     assert clean_output("<think>still thinking") == ""
     assert clean_output("「行こう」") == "「行こう」"
+
+
+def test_label_speaker_joins_a_name_line_onto_the_translation():
+    assert label_speaker("カイ\nまさか…", "Kai\nNo way...\nyou went?") == "Kai: No way... you went?"
+    assert label_speaker("カイ\nまさか…", "Kai: No way...") == "Kai: No way..."
+    assert label_speaker("まさか…", "No way...\nreally?") == "No way...\nreally?"
+    assert label_speaker("長い一行目のテキストがここにあります。\n二行目", "A long first sentence.\nSecond") == "A long first sentence.\nSecond"

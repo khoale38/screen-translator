@@ -16,7 +16,7 @@ Translated without context, the third line comes out as *"Could **you** have gon
 ## How it works
 
 1. **Capture**: grabs the screen area you select a few times per second, and skips OCR when nothing changed.
-2. **OCR**: Apple Vision on macOS (fast and accurate, 30 languages including CJK). RapidOCR on Windows and Linux.
+2. **OCR**: Apple Vision on macOS (fast and accurate, 30 languages including CJK). On Windows and Linux, RapidOCR (PP-OCRv6) reads Chinese, Japanese, English and other Latin-script languages out of the box; Korean, Russian/Ukrainian, Thai, Arabic and Hindi use extra models that download the first time you pick that language. Vietnamese text sometimes loses stacked accents on Windows.
 3. **Stabilize**: waits until the text stops changing, so typewriter-style dialogue is translated once and complete. Speaker-name labels are kept on their own line.
 4. **Translate with context**: a local model (Qwen3.5 by default) gets your glossary, background notes and the recent lines as conversation history. Context expires after a configurable time (5 minutes by default), and you can clear it at any time, for example on a scene change.
 5. **Show**: tokens stream over a local WebSocket to the OBS overlay, the control panel and the optional floating subtitle window.

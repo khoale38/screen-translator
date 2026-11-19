@@ -55,6 +55,18 @@ def clean_output(raw: str) -> str:
     return text
 
 
+def label_speaker(source: str, translation: str) -> str:
+    """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line"."""
+    label, _, rest = source.partition("\n")
+    if not rest or len(label) > 12:
+        return translation
+    head, _, body = translation.partition("\n")
+    head = head.strip().rstrip(":：")
+    if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
+        return f"{head}: {' '.join(body.split())}"
+    return translation
+
+
 class Translator(Protocol):
     def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str: ...
 

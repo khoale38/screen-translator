@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import os
+import shutil
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from .capture import Frame
+from .config import data_dir
 
 
 @dataclass
@@ -16,12 +20,14 @@ class OcrLine:
 
 class OcrEngine(Protocol):
     name: str
+    hint: str
 
     def recognize(self, frame: Frame, lang: str) -> list[OcrLine]: ...
 
 
 class AppleVisionOcr:
     name = "Apple Vision"
+    hint = ""
 
     def __init__(self) -> None:
         import Vision
@@ -88,25 +94,72 @@ def _cgimage(frame: Frame):
 
 class RapidOcr:
     name = "RapidOCR"
+    hint = "Auto-detect reads Chinese, Japanese and Latin-script text. Pick Korean, Russian, Ukrainian, Thai, Arabic or Hindi explicitly."
 
-    def __init__(self) -> None:
-        from rapidocr_onnxruntime import RapidOCR
+    def __init__(self, model_dir: Path | None = None) -> None:
+        self._model_dir = model_dir or ocr_models_dir()
+        self._engines: dict[str, object] = {}
 
-        self._engine = RapidOCR()
+    def _engine(self, lang: str):
+        group = RAPID_GROUPS.get(lang, "multi")
+        if group not in self._engines:
+            from rapidocr import LangDet, LangRec, ModelType, OCRVersion, RapidOCR
+
+            if group == "multi":
+                rec = {"Rec.ocr_version": OCRVersion.PPOCRV6, "Rec.model_type": ModelType.SMALL, "Rec.lang_type": LangRec.JAPAN}
+            else:
+                rec = {"Rec.ocr_version": OCRVersion.PPOCRV5, "Rec.model_type": ModelType.MOBILE, "Rec.lang_type": LangRec(group)}
+            self._engines[group] = RapidOCR(params={
+                "Global.model_root_dir": str(self._model_dir),
+                "Global.log_level": "error",
+                "Global.use_cls": False,
+                "EngineConfig.onnxruntime.intra_op_num_threads": max(1, (os.cpu_count() or 2) // 2),
+                "Det.ocr_version": OCRVersion.PPOCRV6,
+                "Det.model_type": ModelType.SMALL,
+                "Det.lang_type": LangDet.CH,
+                **rec,
+            })
+        return self._engines[group]
 
     def recognize(self, frame: Frame, lang: str) -> list[OcrLine]:
-        bgr = frame.array()[:, :, :3]
-        result, _ = self._engine(bgr)
+        result = self._engine(lang)(frame.array()[:, :, :3])
+        if result.boxes is None or result.txts is None:
+            return []
         lines = []
-        for box, text, score in result or []:
-            xs = [p[0] for p in box]
-            ys = [p[1] for p in box]
-            x0, y0 = min(xs) / frame.width, min(ys) / frame.height
-            lines.append(OcrLine(text, float(score), (x0, y0, max(xs) / frame.width - x0, max(ys) / frame.height - y0)))
+        for box, text, score in zip(result.boxes, result.txts, result.scores):
+            xs, ys = box[:, 0], box[:, 1]
+            x0, y0 = float(xs.min()) / frame.width, float(ys.min()) / frame.height
+            w, h = float(xs.max()) / frame.width - x0, float(ys.max()) / frame.height - y0
+            lines.append(OcrLine(text, float(score), (x0, y0, w, h)))
         return lines
 
 
+RAPID_GROUPS = {"ko": "korean", "ru": "eslav", "uk": "eslav", "th": "th", "ar": "arabic", "hi": "devanagari"}
+
+
+def ocr_models_dir() -> Path:
+    """RapidOCR downloads missing models next to the ones it has, so they must live somewhere writable."""
+    target = data_dir() / "ocr-models"
+    target.mkdir(parents=True, exist_ok=True)
+    bundled = Path(getattr(sys, "_MEIPASS", "")) / "ocr_models"
+    if getattr(sys, "frozen", False) and bundled.is_dir():
+        for model in bundled.iterdir():
+            if not (target / model.name).exists():
+                shutil.copy2(model, target / model.name)
+    return target
+
+
+def prefetch_rapid_models(target: Path) -> list[str]:
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", (480, 80), (0, 0, 0))
+    ImageDraw.Draw(image).text((20, 25), "Screen Translator 123", fill=(255, 255, 255), font_size=28)
+    raw = image.convert("RGBA").tobytes("raw", "BGRA")
+    RapidOcr(target).recognize(Frame(raw, image.width, image.height), "auto")
+    return sorted(p.name for p in target.glob("*.onnx"))
+
+
 def default_engine() -> OcrEngine:
-    if sys.platform == "darwin":
+    if sys.platform == "darwin" and os.environ.get("SCREEN_TRANSLATOR_OCR") != "rapidocr":
         return AppleVisionOcr()
     return RapidOcr()

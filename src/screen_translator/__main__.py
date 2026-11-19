@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import threading
 import webbrowser
+from pathlib import Path
 
 from .config import SettingsStore
 from .server import serve
@@ -18,9 +20,11 @@ class DesktopApi:
 
         if self._floating is not None:
             return
+        transparent = sys.platform != "win32"
+        url = f"{self._base_url}/overlay?lines=2&size=28" + ("" if transparent else "&pagebg=101218")
         self._floating = webview.create_window(
-            "Subtitles", f"{self._base_url}/overlay?lines=2&size=28",
-            width=900, height=180, frameless=True, easy_drag=True, on_top=True, transparent=True,
+            "Subtitles", url, width=900, height=180, frameless=True, easy_drag=True, on_top=True,
+            transparent=transparent, background_color="#101218",
         )
         self._floating.events.closed += lambda: setattr(self, "_floating", None)
 
@@ -43,7 +47,15 @@ def main() -> None:
     parser.add_argument("--port", type=int, help="port for the control panel and OBS overlay (default 8765)")
     parser.add_argument("--headless", action="store_true", help="run only the server, e.g. when started from OBS")
     parser.add_argument("--browser", action="store_true", help="open the control panel in your web browser")
+    parser.add_argument("--prefetch-ocr", metavar="DIR", type=Path, help="download the default RapidOCR models into DIR and exit")
     args = parser.parse_args()
+
+    if args.prefetch_ocr:
+        from .ocr import prefetch_rapid_models
+
+        args.prefetch_ocr.mkdir(parents=True, exist_ok=True)
+        print("\n".join(prefetch_rapid_models(args.prefetch_ocr)))
+        return
 
     store = SettingsStore()
     if args.port:

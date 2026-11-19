@@ -1,0 +1,47 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\.st-home
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Install
+        run: |
+          uv venv --python 3.12
+          uv pip install -e ".[desktop]" pytest pytest-asyncio
+
+      - name: Unit tests
+        run: .venv\Scripts\python -m pytest -q
+
+      - name: Cache translation model
+        uses: actions/cache@v4
+        with:
+          path: .st-home\models
+          key: model-qwen3.5-2b-q8
+
+      - name: End-to-end (real OCR and model)
+        env:
+          ST_E2E: "1"
+          ST_E2E_MODEL: qwen3.5-2b
+        run: .venv\Scripts\python -m pytest -q -s tests/test_e2e.py
+
+      - name: Screen capture smoke test
+        run: >
+          .venv\Scripts\python -c "from screen_translator.capture import ScreenCapture;
+          c = ScreenCapture(); f = c.grab(1, None); a = f.array();
+          print('monitors', [(m['width'], m['height']) for m in c.monitors()], 'grab', f.width, f.height, 'mean', a[:, :, :3].mean())"
