@@ -23,11 +23,11 @@ def test_source_frame_area_excludes_its_label_strip(app):
     assert frame.geometry().top() == 600 - desktop.HEADER
 
 
-def test_overlay_covers_the_area_and_shrinks_text_to_fit(app):
+def test_overlay_stays_inside_the_area_and_shrinks_text_to_fit(app):
     overlay = desktop.TranslationOverlay()
     area = QRect(100, 500, 800, 100)
     overlay.show_text("Tối qua bạn đã ở đâu vậy?", True, area, "cover")
-    assert overlay.geometry() == area
+    assert area.contains(overlay.geometry())
     assert 16 <= overlay._font_size <= 40
 
 
@@ -169,3 +169,14 @@ def test_without_the_box_only_the_outlined_text_is_painted(app):
         corners[box] = image.pixelColor(3, image.height() // 2).alpha()
         assert any(image.pixelColor(x, image.height() // 2).alpha() > 200 for x in range(image.width()))
     assert corners[True] > 200 and corners[False] == 0
+
+
+def test_the_box_hugs_the_text_instead_of_filling_the_area(app):
+    overlay = desktop.TranslationOverlay()
+    area = QRect(100, 500, 900, 200)
+    overlay.show_text("Vào xe.", True, area, "cover", line_height=0.2)
+    box = overlay.geometry()
+    assert box.width() < area.width() / 2 and box.height() < area.height() / 2
+    assert abs(box.center().x() - area.center().x()) <= 1 and abs(box.center().y() - area.center().y()) <= 1
+    overlay.show_text("Vào xe.", True, area, "below", line_height=0.2)
+    assert overlay.geometry().top() == area.bottom() + 6

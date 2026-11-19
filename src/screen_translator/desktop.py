@@ -27,6 +27,8 @@ GREEN = QColor(46, 204, 113)
 HEADER = 26
 EDGE = 10
 TAB = 330
+PAD_X = 10
+PAD_Y = 4
 
 
 class Bridge(QObject):
@@ -204,6 +206,8 @@ class TranslationOverlay(QWidget):
             else:
                 rect.setHeight(needed)
         self._font_size = size
+        if self.box:
+            rect = self._hug(rect, size, mode)
         self.setGeometry(rect)
         self.show()
         self.raise_()
@@ -215,8 +219,19 @@ class TranslationOverlay(QWidget):
         return font
 
     def _height_for(self, width: int, size: int) -> int:
-        bounds = QFontMetrics(self._font(size)).boundingRect(QRect(0, 0, width - 24, 10_000), Qt.TextWordWrap, self.text)
-        return bounds.height() + 16
+        bounds = QFontMetrics(self._font(size)).boundingRect(
+            QRect(0, 0, width - 2 * PAD_X, 10_000), Qt.TextWordWrap, self.text)
+        return bounds.height() + 2 * PAD_Y
+
+    def _hug(self, rect: QRect, size: int, mode: str) -> QRect:
+        """Shrink the box to the wrapped text, centred on the area (or just under it in "below" mode)."""
+        bounds = QFontMetrics(self._font(size)).boundingRect(
+            QRect(0, 0, rect.width() - 2 * PAD_X, 10_000), Qt.AlignCenter | Qt.TextWordWrap, self.text)
+        snug = QRect(0, 0, min(rect.width(), bounds.width() + 2 * PAD_X), min(rect.height(), bounds.height() + 2 * PAD_Y))
+        snug.moveCenter(rect.center())
+        if mode == "below":
+            snug.moveTop(rect.top())
+        return snug
 
     def _fit(self, rect: QRect, sizes: list[int]) -> int | None:
         return next((size for size in sizes if self._height_for(rect.width(), size) <= rect.height()), None)
@@ -226,7 +241,7 @@ class TranslationOverlay(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         size = getattr(self, "_font_size", 20)
         painter.setFont(self._font(size))
-        rect = self.rect().adjusted(12, 8, -12, -8)
+        rect = self.rect().adjusted(PAD_X, PAD_Y, -PAD_X, -PAD_Y)
         flags = Qt.AlignCenter | Qt.TextWordWrap
         if self.box:
             painter.setBrush(QColor(14, 20, 32, int(255 * self.opacity)))
