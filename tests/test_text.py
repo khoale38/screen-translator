@@ -57,3 +57,14 @@ def test_assemble_joins_tightly_wrapped_lines_of_one_sentence():
 def test_assemble_splits_a_name_label_even_when_it_sits_close_to_the_dialogue():
     lines = [line("アオイ", 0.033, 0.133, w=0.111, h=0.24), line("彼女、昨日から連絡がないんだ。", 0.031, 0.533, w=0.553, h=0.28)]
     assert assemble(lines) == "アオイ\n彼女、昨日から連絡がないんだ。"
+
+
+def test_hud_symbols_and_lone_characters_are_not_text():
+    lines = [line("• . • •", 0.1, 0.30), line("Hold L1 to open your loadout", 0.1, 0.36),
+             line("$", 0.6, 0.10), line("5,46.43", 0.6, 0.20), line("N", 0.8, 0.60)]
+    assert assemble(lines) == "Hold L1 to open your loadout"
+
+
+def test_bullets_are_trimmed_but_dialogue_ellipses_stay():
+    assert assemble([line("• Press R1 to access your items", 0.1, 0.4)]) == "Press R1 to access your items"
+    assert assemble([line("…行ったよ。", 0.1, 0.4)]) == "…行ったよ。"

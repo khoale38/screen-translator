@@ -11,6 +11,7 @@ from .ocr import OcrLine
 _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
+_DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
 
 
 def normalize(text: str) -> str:
@@ -31,8 +32,18 @@ def _join(left: str, right: str) -> str:
     return f"{left} {right}"
 
 
+def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3) -> list[OcrLine]:
+    """Drop HUD icons and dot rows that OCR reads as text: keep lines with at least two letters, minus edge symbols."""
+    kept = []
+    for line in lines:
+        text = line.text.strip().strip(_DECORATION + " ")
+        if line.confidence >= min_confidence and sum(ch.isalpha() for ch in text) >= 2:
+            kept.append(OcrLine(text, line.confidence, line.box))
+    return kept
+
+
 def assemble(lines: list[OcrLine], min_confidence: float = 0.3) -> str:
-    kept = [line for line in lines if line.confidence >= min_confidence and line.text.strip()]
+    kept = clean_lines(lines, min_confidence)
     if not kept:
         return ""
 
@@ -135,7 +146,7 @@ class Block:
 
 
 def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_confidence: float = 0.3) -> list[Block]:
-    kept = [line for line in lines if line.confidence >= min_confidence and line.text.strip()]
+    kept = clean_lines(lines, min_confidence)
     pixels = [(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height) for l in kept]
     parent = list(range(len(kept)))
 

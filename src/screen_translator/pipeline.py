@@ -221,6 +221,14 @@ class Pipeline:
             self._line_id += 1
         line_id = self._line_id
 
+        known = None if replace else self._cache.get(self._cache_key(event.text))
+        if known is not None:
+            self.emit({
+                "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": known,
+                "final": True, "line_height": event.line_height, "ms": 0, "context_lines": len(history),
+            })
+            return
+
         messages = build_messages(
             event.text, history, settings.source_lang, settings.target_lang,
             settings.glossary, settings.notes,
@@ -233,12 +241,18 @@ class Pipeline:
 
         partial("")
         translation = label_speaker(event.text, translator.translate(messages, partial))
+        self._remember(event.text, translation)
         self.context.add(event.text, translation, replace_last=replace)
         self.emit({
             "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
             "final": True, "line_height": event.line_height,
             "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
         })
+
+    def _remember(self, text: str, translation: str) -> None:
+        if len(self._cache) >= 2000:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[self._cache_key(text)] = translation
 
     def _cache_key(self, text: str) -> tuple[str, str, str]:
         settings = self.store.settings
@@ -318,7 +332,6 @@ class Pipeline:
 
     def _translate_block(self, translator: Translator, text: str) -> None:
         settings = self.store.settings
-        key = self._cache_key(text)
         history = self.context.turns()
         messages = build_messages(text, history, settings.source_lang, settings.target_lang,
                                   settings.glossary, settings.notes)
@@ -328,9 +341,7 @@ class Pipeline:
             self.emit({"type": "screen_text", "source": text, "translation": translation, "final": False})
 
         translation = label_speaker(text, translator.translate(messages, partial))
-        if len(self._cache) >= 2000:
-            self._cache.pop(next(iter(self._cache)))
-        self._cache[key] = translation
+        self._remember(text, translation)
         self.context.add(text, translation)
         self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
                    "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})

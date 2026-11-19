@@ -151,3 +151,17 @@ async def test_pages_are_served(store):
         for path in ("/panel", "/overlay", "/static/panel.js", "/static/overlay.js", "/static/app.css"):
             assert (await client.get(path)).status == 200, path
         assert (await client.get("/static/../config.py")).status == 404
+
+
+async def test_a_line_that_comes_back_reuses_its_translation(store):
+    translator = EchoTranslator()
+    script = ["猫だ"] * 3 + [""] * 3 + ["猫だ"] * 3
+    events = []
+    app = create_app(store, make_pipeline_factory(script, translator), FakeCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: sum(1 for e in events if e["type"] == "line" and e["final"]) >= 2)
+        await client.post("/api/stop", json={})
+    finals = [e for e in events if e["type"] == "line" and e["final"]]
+    assert [e["translation"] for e in finals] == ["EN(猫だ)", "EN(猫だ)"]
+    assert len(translator.calls) == 1
