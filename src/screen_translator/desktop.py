@@ -13,7 +13,7 @@ from PySide6.QtGui import (
     QAction, QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut,
 )
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
+    QApplication, QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
@@ -174,6 +174,7 @@ class TranslationOverlay(QWidget):
         self.text = ""
         self.final = True
         self.opacity = 0.92
+        self.box = True
         self.anchor = QRect()
         self.window_number = 0
 
@@ -223,12 +224,23 @@ class TranslationOverlay(QWidget):
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(QColor(14, 20, 32, int(255 * self.opacity)))
-        painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(self.rect(), 6, 6)
-        painter.setFont(self._font(getattr(self, "_font_size", 20)))
+        size = getattr(self, "_font_size", 20)
+        painter.setFont(self._font(size))
+        rect = self.rect().adjusted(12, 8, -12, -8)
+        flags = Qt.AlignCenter | Qt.TextWordWrap
+        if self.box:
+            painter.setBrush(QColor(14, 20, 32, int(255 * self.opacity)))
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(self.rect(), 6, 6)
+        else:
+            painter.setPen(QColor(0, 0, 0, 230 if self.final else 160))
+            reach = max(1, round(size / 12))
+            for dx in range(-reach, reach + 1):
+                for dy in range(-reach, reach + 1):
+                    if dx or dy:
+                        painter.drawText(rect.translated(dx, dy), flags, self.text)
         painter.setPen(QColor(255, 255, 255, 255 if self.final else 190))
-        painter.drawText(self.rect().adjusted(12, 8, -12, -8), Qt.AlignCenter | Qt.TextWordWrap, self.text)
+        painter.drawText(rect, flags, self.text)
 
 
 class ScreenOverlay(QWidget):
@@ -397,6 +409,8 @@ class MainWindow(QWidget):
         self.model = QComboBox()
         for spec in MODELS.values():
             self.model.addItem(spec.label, spec.key)
+        self.box = QCheckBox("Box behind text")
+        self.box.setToolTip("Off: draw only the outlined translation, without the dark box.")
         self.mode = QComboBox()
         self.mode.addItem("Cover the original text", "cover")
         self.mode.addItem("Show below the original text", "below")
@@ -421,12 +435,17 @@ class MainWindow(QWidget):
         self.last.setWordWrap(True)
         self.last.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
+        self.mode_row = QWidget()
+        mode_layout = QHBoxLayout(self.mode_row)
+        mode_layout.setContentsMargins(0, 0, 0, 0)
+        mode_layout.addWidget(self.mode, 1)
+        mode_layout.addWidget(self.box)
         self.screen_label = QLabel("Screen")
         self.mode_label = QLabel("Overlay")
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (self.mode_label, self.mode), (QLabel("Watching"), self.notes))
+                (QLabel("Model"), self.model), (self.mode_label, self.mode_row), (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
             form.addWidget(field, row, 1)
@@ -456,6 +475,7 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
+        self.box.toggled.connect(self.set_box)
         self.notes.editingFinished.connect(lambda: self.api.call("/api/settings", {"notes": self.notes.text().strip()}))
         self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
@@ -476,6 +496,9 @@ class MainWindow(QWidget):
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
         self.notes.setText(s.notes)
+        self.box.blockSignals(True)
+        self.box.setChecked(s.overlay_box)
+        self.box.blockSignals(False)
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
         if not self.sources:
@@ -492,7 +515,7 @@ class MainWindow(QWidget):
         screen = self.whole_screen()
         for widget in (self.screen_label, self.screen_pick):
             widget.setVisible(screen and self.screen_pick.count() > 1)
-        for widget in (self.mode_label, self.mode, self.select):
+        for widget in (self.mode_label, self.mode_row, self.select):
             widget.setVisible(not screen)
         self.add_area.setVisible(not screen and self.select.isChecked())
         if screen:
@@ -561,8 +584,15 @@ class MainWindow(QWidget):
         self.sources.append(frame)
         self.overlays.append(TranslationOverlay())
         self.overlays[-1].opacity = self.store.settings.overlay_opacity
+        self.overlays[-1].box = self.store.settings.overlay_box
         self.number_sources()
         return frame
+
+    def set_box(self, on: bool) -> None:
+        for overlay in self.overlays:
+            overlay.box = on
+            overlay.update()
+        self.api.call("/api/settings", {"overlay_box": on})
 
     def new_area(self) -> None:
         last = self.sources[-1].area()

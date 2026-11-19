@@ -149,3 +149,23 @@ def test_what_you_are_watching_is_saved_as_notes(app, tmp_path):
     window.notes.setText("  A Korean drama ")
     window.notes.editingFinished.emit()
     assert api.posts[-1] == ("/api/settings", {"notes": "A Korean drama"})
+
+
+def test_the_box_behind_the_text_can_be_turned_off(app, tmp_path):
+    window, api = make_window(tmp_path, overlay_box=False)
+    assert not window.box.isChecked() and not window.overlays[0].box
+    window.box.setChecked(True)
+    assert all(overlay.box for overlay in window.overlays)
+    assert api.posts[-1] == ("/api/settings", {"overlay_box": True})
+
+
+def test_without_the_box_only_the_outlined_text_is_painted(app):
+    overlay = desktop.TranslationOverlay()
+    corners = {}
+    for box in (True, False):
+        overlay.box = box
+        overlay.show_text("Chạy trốn khỏi cảnh sát.", True, QRect(100, 500, 800, 100), "cover", line_height=0.3)
+        image = overlay.grab().toImage()
+        corners[box] = image.pixelColor(3, image.height() // 2).alpha()
+        assert any(image.pixelColor(x, image.height() // 2).alpha() > 200 for x in range(image.width()))
+    assert corners[True] > 200 and corners[False] == 0

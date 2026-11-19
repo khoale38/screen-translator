@@ -50,6 +50,7 @@ class Settings:
     screen_name: str = ""
     screen_interval_s: float = 1.0
     overlay_opacity: float = 0.92
+    overlay_box: bool = True
     capture_interval_s: float = 0.4
     stable_ticks: int = 2
     min_text_chars: int = 2
