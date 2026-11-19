@@ -299,9 +299,12 @@ class Pipeline:
                 thumb = thumbnail(frame)
                 settled = False
                 if changed(previous_thumb, thumb):
+                    screen_height = settings.screen_height or frame.height
                     blocks = [
                         b for b in group_blocks(ocr.recognize(frame, settings.source_lang), frame.width, frame.height)
-                        if len(b.text) >= settings.min_text_chars and not already_in(settings.target_lang, b.text)
+                        if len(b.text) >= settings.min_text_chars
+                        and b.line_height * screen_height >= settings.min_text_px
+                        and not already_in(settings.target_lang, b.text)
                     ]
                     for b in blocks:
                         b.bg, b.fg = block_colors(frame, b.box)

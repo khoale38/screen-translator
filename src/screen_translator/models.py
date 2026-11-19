@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import errno
 import hashlib
+import shutil
 import threading
 import time
 import urllib.request
@@ -67,7 +69,28 @@ class DownloadCancelled(Exception):
     pass
 
 
+class NotEnoughSpace(OSError):
+    pass
+
+
+SPACE_MARGIN = 512 * 1024 * 1024
+
+
+def check_space(spec: ModelSpec) -> None:
+    """Refuse a download that would fill the disk; a full disk breaks other apps, not just this one."""
+    part = spec.path.with_suffix(spec.path.suffix + ".part")
+    remaining = spec.size_bytes - (part.stat().st_size if part.exists() else 0)
+    free = shutil.disk_usage(spec.path.parent).free
+    if free < remaining + SPACE_MARGIN:
+        short = remaining + SPACE_MARGIN - free
+        raise NotEnoughSpace(
+            f"Not enough disk space for {spec.label.split(' · ')[0]}: it needs {(remaining + SPACE_MARGIN) / 1e9:.1f} GB free and "
+            f"only {free / 1e9:.1f} GB is free. Free up {short / 1e9:.1f} GB and try again."
+        )
+
+
 def download(spec: ModelSpec, progress: ProgressFn, cancel: threading.Event, chunk: int = 1 << 20) -> Path:
+    check_space(spec)
     part = spec.path.with_suffix(spec.path.suffix + ".part")
     done = part.stat().st_size if part.exists() else 0
     request = urllib.request.Request(spec.url, headers={"User-Agent": "screen-translator"})
@@ -82,7 +105,15 @@ def download(spec: ModelSpec, progress: ProgressFn, cancel: threading.Event, chu
             while block := response.read(chunk):
                 if cancel.is_set():
                     raise DownloadCancelled()
-                out.write(block)
+                try:
+                    out.write(block)
+                except OSError as exc:
+                    if exc.errno != errno.ENOSPC:
+                        raise
+                    out.close()
+                    part.unlink(missing_ok=True)
+                    raise NotEnoughSpace(f"The disk filled up while downloading {spec.label.split(' · ')[0]}; the partial file "
+                                         f"was removed. Free up space and try again.") from exc
                 done += len(block)
                 now = time.monotonic()
                 if now - last_report > 0.5:

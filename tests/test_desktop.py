@@ -128,7 +128,8 @@ def test_screens_are_numbered_and_switching_moves_a_running_translation(app, tmp
     api.posts.clear()
     window.choose_screen(1)
     geometry = window.chosen_screen().geometry()
-    assert api.posts[-1] == ("/api/settings", {"screen_rect": desktop.native_rect(geometry)})
+    assert api.posts[-1] == ("/api/settings", {"screen_rect": desktop.native_rect(geometry),
+                                               "screen_height": geometry.height()})
     assert window.screen_overlay.geometry() == geometry
     window.choose_screen(9)
     assert len(api.posts) == 1

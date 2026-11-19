@@ -13,7 +13,7 @@ from aiohttp import WSMsgType, web
 from . import languages
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
-from .models import MODELS, DownloadCancelled, download
+from .models import MODELS, DownloadCancelled, NotEnoughSpace, check_space, download
 from .ocr import RapidOcr, default_engine
 from .pipeline import Pipeline
 
@@ -183,6 +183,11 @@ def create_app(
             raise web.HTTPNotFound()
         if hub.download and hub.download.get("active"):
             return web.json_response({"error": "A download is already running."}, status=409)
+        try:
+            check_space(spec)
+        except NotEnoughSpace as exc:
+            hub.emit({"type": "download", "key": spec.key, "active": False, "error": str(exc)})
+            return web.json_response({"error": str(exc)}, status=409)
         cancel_download.clear()
 
         def run() -> None:

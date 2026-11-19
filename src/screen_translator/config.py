@@ -45,6 +45,8 @@ class Settings:
     areas: list[list[int]] = field(default_factory=list)
     capture_rects: list[dict] = field(default_factory=list)
     screen_rect: dict | None = None
+    screen_height: int = 0
+    min_text_px: int = 12
     overlay_mode: str = "cover"
     scope: str = "area"
     screen_name: str = ""

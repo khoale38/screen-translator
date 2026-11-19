@@ -81,7 +81,7 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
     first = ("こんにちは", (0.3, 0.4, 0.3, 0.05))
     second = ("さようなら", (0.3, 0.6, 0.3, 0.05))
     script = [[menu, first]] * 4 + [[menu, second]] * 4 + [[menu, first]] * 4
-    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+    store.update({"scope": "screen", "min_text_px": 0, "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
                   "screen_interval_s": 0.01})
     translator = BatchEchoTranslator()
 
@@ -173,7 +173,7 @@ def test_batches_are_capped_by_count_and_length():
 
 async def test_blocks_the_model_skips_in_a_batch_are_translated_one_by_one(store):
     lines = [(f"line {i}", (0.1, 0.1 * i, 0.5, 0.04)) for i in range(1, 4)] + [("skip me", (0.1, 0.6, 0.5, 0.04))]
-    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+    store.update({"scope": "screen", "min_text_px": 0, "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
                   "screen_interval_s": 0.01})
     translator = BatchEchoTranslator()
 
@@ -211,7 +211,7 @@ class CountingOcr(ScriptedScreenOcr):
 
 
 async def test_a_still_screen_is_published_after_a_single_read(store):
-    store.update({"scope": "screen", "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+    store.update({"scope": "screen", "min_text_px": 0, "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
                   "screen_interval_s": 0.3})
     CountingOcr.reads = 0
 
@@ -228,3 +228,24 @@ async def test_a_still_screen_is_published_after_a_single_read(store):
         await wait_for(lambda: any(e["type"] == "screen" and e["blocks"] for e in events), timeout=0.25)
         await client.post("/api/stop", json={})
     assert CountingOcr.reads == 1
+
+
+async def test_text_smaller_than_the_chosen_size_is_skipped(store):
+    store.update({"scope": "screen", "min_text_px": 12, "screen_height": 1080, "screen_interval_s": 0.01,
+                  "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16}})
+    lines = [("Hold L1 to open your loadout", (0.4, 0.9, 0.2, 31 / 1080)), ("cat sina nia", (0.0, 0.6, 0.1, 9 / 1080))]
+
+    def factory(store, emit):
+        pipeline = make_pipeline_factory([""], BatchEchoTranslator())(store, emit)
+        pipeline.ocr_factory = lambda: ScriptedScreenOcr([lines])
+        pipeline.capture_factory = StillCapture
+        return pipeline
+
+    events = []
+    app = create_app(store, factory, StillCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        await wait_for(lambda: any(e["type"] == "screen" and e["blocks"] for e in events))
+        await client.post("/api/stop", json={})
+    shown = next(e for e in events if e["type"] == "screen" and e["blocks"])
+    assert [b["text"] for b in shown["blocks"]] == ["Hold L1 to open your loadout"]

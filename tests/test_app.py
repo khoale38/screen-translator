@@ -179,3 +179,19 @@ async def test_lines_already_in_the_target_language_are_left_alone(store):
         await client.post("/api/stop", json={})
     assert translator.calls == []
     assert not any(e["type"] == "line" for e in events)
+
+
+async def test_the_server_refuses_a_download_the_disk_cannot_hold(store, monkeypatch):
+    from collections import namedtuple
+
+    from screen_translator import models
+
+    monkeypatch.setattr(models.shutil, "disk_usage", lambda path: namedtuple("U", "total used free")(1, 1, 1000))
+    events = []
+    app = create_app(store, make_pipeline_factory([""], EchoTranslator()), FakeCapture, on_event=events.append)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        resp = await client.post("/api/models/qwen3.5-9b/download", json={})
+        body = await resp.json()
+    assert resp.status == 409 and "Not enough disk space" in body["error"]
+    downloads = [e for e in events if e["type"] == "download"]
+    assert downloads and not downloads[-1]["active"] and "Not enough disk space" in downloads[-1]["error"]

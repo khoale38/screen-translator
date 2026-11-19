@@ -456,6 +456,12 @@ class MainWindow(QWidget):
         self.text_size = QComboBox()
         for key, label in TEXT_SIZES.items():
             self.text_size.addItem(label, key)
+        self.min_text = QComboBox()
+        for px, label in ((0, "Off: translate all text"), (12, "Smaller than 12 px (tiny print)"),
+                          (16, "Smaller than 16 px (chat, captions)"), (20, "Smaller than 20 px")):
+            self.min_text.addItem(label, px)
+        self.min_text.setToolTip("Tiny text such as stream chat is often misread, which gives nonsense translations.")
+        self.min_text_label = QLabel("Skip text")
         self.notes = QLineEdit()
         self.notes.setPlaceholderText("e.g. GTA V gameplay, a Korean drama, a Japanese visual novel")
         self.notes.setToolTip("Telling the model what you are watching makes slang and idioms translate properly.")
@@ -487,6 +493,7 @@ class MainWindow(QWidget):
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
                 (QLabel("Model"), self.model), (self.mode_label, self.mode_row), (QLabel("Text size"), self.text_size),
+                (self.min_text_label, self.min_text),
                 (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
@@ -514,7 +521,7 @@ class MainWindow(QWidget):
         self.download.clicked.connect(self.toggle_download)
         for combo, key in ((self.source_lang, "source_lang"), (self.target_lang, "target_lang"),
                            (self.model, "model"), (self.mode, "overlay_mode"), (self.scope, "scope"),
-                           (self.screen_pick, "screen_name")):
+                           (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
         self.box.toggled.connect(self.set_box)
@@ -534,7 +541,7 @@ class MainWindow(QWidget):
         s = self.store.settings
         for combo, value in ((self.source_lang, s.source_lang), (self.target_lang, s.target_lang),
                              (self.model, s.model), (self.mode, s.overlay_mode), (self.scope, s.scope),
-                             (self.screen_pick, s.screen_name)):
+                             (self.screen_pick, s.screen_name), (self.min_text, s.min_text_px)):
             combo.blockSignals(True)
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
@@ -562,6 +569,8 @@ class MainWindow(QWidget):
         screen = self.whole_screen()
         for widget in (self.screen_label, self.screen_pick):
             widget.setVisible(screen and self.screen_pick.count() > 1)
+        for widget in (self.min_text_label, self.min_text):
+            widget.setVisible(screen)
         for widget in (self.mode_label, self.mode_row, self.select):
             widget.setVisible(not screen)
         self.add_area.setVisible(not screen and self.select.isChecked())
@@ -599,7 +608,8 @@ class MainWindow(QWidget):
         screen = self.chosen_screen()
         self.flash.show_on(screen, self.screen_pick.currentIndex() + 1)
         if self.running and self.whole_screen():
-            self.api.call("/api/settings", {"screen_rect": native_rect(screen.geometry())})
+            self.api.call("/api/settings", {"screen_rect": native_rect(screen.geometry()),
+                                            "screen_height": screen.geometry().height()})
             self.screen_overlay.cover(screen.geometry())
 
     def chosen_screen(self):
@@ -621,7 +631,9 @@ class MainWindow(QWidget):
         if (state.get("download") or {}).get("active"):
             self.api.call("/api/models/download/cancel", {})
         else:
-            self.api.call(f"/api/models/{self.model.currentData()}/download", {})
+            result = self.api.call(f"/api/models/{self.model.currentData()}/download", {})
+            if "error" in result:
+                self.status.setText(result["error"])
 
     def add_source(self, area: QRect) -> SourceFrame:
         frame = SourceFrame()
@@ -700,7 +712,7 @@ class MainWindow(QWidget):
         self.select.setChecked(False)
         if self.whole_screen():
             geometry = self.chosen_screen().geometry()
-            self.api.call("/api/settings", {"screen_rect": native_rect(geometry)})
+            self.api.call("/api/settings", {"screen_rect": native_rect(geometry), "screen_height": geometry.height()})
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.cover(geometry)
         else:
@@ -764,6 +776,8 @@ class MainWindow(QWidget):
             elif event["state"] == "running":
                 self.status.setText("Translating. The box over the text shows the translation.")
         elif kind == "download":
+            if event.get("error") and event["error"] != "Cancelled":
+                self.status.setText(event["error"])
             if event.get("active"):
                 self.progress.setMaximum(1000)
                 self.progress.setValue(int(1000 * event["done"] / max(1, event["total"])))
