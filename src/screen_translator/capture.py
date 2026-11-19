@@ -21,11 +21,6 @@ class Frame:
         return np.frombuffer(self.bgra, dtype=np.uint8).reshape(self.height, self.width, 4)
 
 
-def sub_frame(frame: Frame, left: int, top: int, right: int, bottom: int) -> Frame:
-    pixels = frame.array()[max(0, top):max(0, bottom), max(0, left):max(0, right)]
-    return Frame(pixels.tobytes(), pixels.shape[1], pixels.shape[0])
-
-
 class ScreenCapture:
     """Wraps one mss instance; create it on the thread that grabs, since mss handles are not thread-safe."""
 

@@ -7,26 +7,20 @@ import threading
 import urllib.error
 import urllib.request
 import webbrowser
-from statistics import median
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
-    QAction, QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QImage, QKeySequence, QPainter, QPen, QPixmap,
+    QAction, QColor, QFont, QFontMetrics, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap,
     QShortcut,
 )
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
+    QApplication, QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMenu, QProgressBar, QPushButton,
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 from . import languages
-from .appearance import (
-    AppearancePanel, Snapshot, Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes,
-)
-from .capture import Frame, ScreenCapture, block_colors, exclude_window_from_capture, sub_frame
-from .languages import already_in
-from .ocr import default_engine
-from .text import clean_lines, group_blocks
+from .appearance import Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes
+from .capture import exclude_window_from_capture
 from .config import SettingsStore
 from .models import MODELS
 from .server import serve
@@ -339,21 +333,10 @@ class ScreenFlash(QWidget):
         painter.drawText(badge, Qt.AlignCenter, self.label)
 
 
-def preview_crop(area: QRect, bounds: QRect, aspect: float = 2.75, context: float = 3.0) -> QRect:
-    """The bit of screen around an area that the preview shows: the area plus context, kept on its screen."""
-    width = min(bounds.width(), round(max(area.width() * 1.25, area.height() * context * aspect)))
-    height = min(bounds.height(), round(width / aspect))
-    crop = QRect(0, 0, width, height)
-    crop.moveCenter(area.center())
-    crop.moveLeft(max(bounds.left(), min(crop.left(), bounds.right() - width + 1)))
-    crop.moveTop(max(bounds.top(), min(crop.top(), bounds.bottom() - height + 1)))
-    return crop
+TEXT_SIZES = {"x0.75": "Smaller text", "x1": "Normal text", "x1.25": "Larger text", "x1.5": "Largest text"}
 
 
 class MainWindow(QWidget):
-    preview_ready = Signal(object)
-    preview_capture = ScreenCapture
-    preview_ocr_factory = staticmethod(default_engine)
 
     def __init__(self, api: Api, store: SettingsStore, bridge: Bridge) -> None:
         super().__init__()
@@ -382,7 +365,20 @@ class MainWindow(QWidget):
         self.model = QComboBox()
         for spec in MODELS.values():
             self.model.addItem(spec.label, spec.key)
-        self.appearance = AppearancePanel()
+        self.position = QComboBox()
+        self.position.addItem("Over the text", "cover")
+        self.position.addItem("Below the text", "below")
+        self.text_size = QComboBox()
+        self.text_size.setToolTip("Normal draws the translation about the size of the original text.")
+        for key, label in TEXT_SIZES.items():
+            self.text_size.addItem(label, key)
+        self.box = QCheckBox("Dark box")
+        self.overlay_row = QWidget()
+        overlay_layout = QHBoxLayout(self.overlay_row)
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_layout.addWidget(self.position, 1)
+        overlay_layout.addWidget(self.text_size, 1)
+        overlay_layout.addWidget(self.box)
         self.min_text = QComboBox()
         for px, label in ((0, "Off: translate all text"), (12, "Smaller than 12 px (tiny print)"),
                           (16, "Smaller than 16 px (chat, captions)"), (20, "Smaller than 20 px")):
@@ -413,7 +409,8 @@ class MainWindow(QWidget):
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (self.min_text_label, self.min_text),
+                (QLabel("Model"), self.model), (QLabel("Overlay"), self.overlay_row),
+                (self.min_text_label, self.min_text),
                 (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
             form.addWidget(label, row, 0)
@@ -428,7 +425,6 @@ class MainWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addLayout(download_row)
-        layout.addWidget(self.appearance)
         layout.addLayout(tools)
         layout.addWidget(self.start)
         layout.addWidget(self.status)
@@ -445,15 +441,9 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
-        self.appearance.changed.connect(self.apply_appearance)
-        self.appearance.refresh.connect(self.refresh_preview)
-        self.preview_ready.connect(self.show_preview)
-        self._preview_ocr = None
-        self._preview_busy = False
-        self._preview_again = False
-        self._preview_timer = QTimer(self, singleShot=True, interval=300)
-        self._preview_timer.timeout.connect(self._start_preview)
-        self.target_lang.currentIndexChanged.connect(lambda _i: self.appearance.set_target(self.target_lang.currentData()))
+        self.position.currentIndexChanged.connect(lambda _i: self.apply_style({"overlay_mode": self.position.currentData()}))
+        self.text_size.currentIndexChanged.connect(lambda _i: self.apply_style({"text_size": self.text_size.currentData()}))
+        self.box.toggled.connect(lambda on: self.apply_style({"overlay_box": on}))
         self.notes.editingFinished.connect(lambda: self.api.call("/api/settings", {"notes": self.notes.text().strip()}))
         self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
@@ -474,9 +464,14 @@ class MainWindow(QWidget):
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
         self.notes.setText(s.notes)
-        self.appearance.set_values(Style(s.overlay_box, s.overlay_opacity, s.overlay_mode, s.text_size))
-        self.appearance.set_target(s.target_lang)
-        self.screen_overlay.text_size = s.text_size
+        for widget, value, fallback in ((self.position, s.overlay_mode, "cover"), (self.text_size, s.text_size, "x1")):
+            widget.blockSignals(True)
+            widget.setCurrentIndex(widget.findData(value if widget.findData(value) >= 0 else fallback))
+            widget.blockSignals(False)
+        self.box.blockSignals(True)
+        self.box.setChecked(s.overlay_box)
+        self.box.blockSignals(False)
+        self.screen_overlay.text_size = self.text_size.currentData()
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
         if not self.sources:
@@ -489,106 +484,14 @@ class MainWindow(QWidget):
     def whole_screen(self) -> bool:
         return self.scope.currentData() == "screen"
 
-    def refresh_preview(self, *_args) -> None:
-        """Re-capture the screen for the Appearance preview, shortly, so bursts of changes cost one capture."""
-        self._preview_timer.start()
-
-    def preview_job(self) -> dict:
-        if self.whole_screen():
-            screen = self.chosen_screen()
-            crop, area = screen.geometry(), None
-        else:
-            area = self.sources[0].area()
-            screen = QGuiApplication.screenAt(area.center()) or QGuiApplication.primaryScreen()
-            crop = preview_crop(area, screen.geometry())
-        return {"screen": not area, "crop": crop, "area": area, "bounds": screen.geometry(), "native": native_rect(crop),
-                "lang": self.source_lang.currentData(), "target": self.target_lang.currentData(),
-                "min_px": self.min_text.currentData() or 0, "min_chars": self.store.settings.min_text_chars}
-
-    def _start_preview(self) -> None:
-        if self._preview_busy:
-            self._preview_again = True
-            return
-        self._preview_busy = True
-        job = self.preview_job()
-        threading.Thread(target=lambda: self.preview_ready.emit(self.build_preview(job)), name="preview",
-                         daemon=True).start()
-
-    def build_preview(self, job: dict) -> dict:
-        """Capture and read the screen for the preview; runs off the GUI thread."""
-        try:
-            capture = self.preview_capture()
-            try:
-                frame = capture.grab_rect(job["native"])
-            finally:
-                capture.close()
-            if self._preview_ocr is None:
-                self._preview_ocr = self.preview_ocr_factory()
-            # Read what the translator would read: the area alone, or the whole screen.
-            read = frame if job["screen"] else sub_frame(frame, *_pixels(job["area"], job["crop"], frame))
-            return {"job": job, "frame": frame, "lines": self._preview_ocr.recognize(read, job["lang"])}
-        except Exception as exc:
-            return {"job": job, "error": f"{type(exc).__name__}: {exc}"}
-
-    def show_preview(self, result: dict) -> None:
-        self._preview_busy = False
-        if self._preview_again:
-            self._preview_again = False
-            self._preview_timer.start()
-        if "error" in result:
-            self.appearance.set_snapshot(None, "Sample scene. Allow screen recording to preview on your real screen.")
-            return
-        job, frame = result["job"], result["frame"]
-        crop = job["crop"]
-        if job["screen"]:
-            blocks = []
-            for block in group_blocks(result["lines"], frame.width, frame.height):
-                line_px = block.line_height * crop.height()
-                if (len(block.text) < job["min_chars"] or line_px < job["min_px"]
-                        or already_in(job["target"], block.text)):
-                    continue
-                x, y, w, h = block.box
-                bg, fg = block_colors(frame, block.box)
-                blocks.append({"text": block.text, "line_px": line_px, "bg": bg, "fg": fg,
-                               "rect": QRect(crop.x() + round(x * crop.width()), crop.y() + round(y * crop.height()),
-                                             round(w * crop.width()), round(h * crop.height()))})
-            number = self.screen_pick.currentIndex() + 1
-            if blocks:
-                largest = max(blocks, key=lambda b: b["rect"].width() * b["rect"].height())
-                view = preview_crop(largest["rect"], crop, context=2.0)
-                snapshot = Snapshot(_image(sub_frame(frame, *_pixels(view, crop, frame))), view,
-                                    blocks=[b for b in blocks if view.intersects(b["rect"])])
-                caption = (f"Screen {number}, zoomed to its largest text. {len(blocks)} pieces of text found; "
-                           "ones not translated yet show their original text.")
-            else:
-                snapshot = Snapshot(_image(frame), crop)
-                caption = f"Screen {number}: no text to translate on it right now."
-        else:
-            area = job["area"]
-            heights = [line.box[3] for line in clean_lines(result["lines"])]
-            snapshot = Snapshot(_image(frame), crop, area=area, line_height=median(heights) if heights else 0.0,
-                                bounds=job["bounds"])
-            caption = ("Area 1 on your screen now, sized like the text in it." if heights else
-                       "Area 1 on your screen now. No text in it at the moment, so the size is a guess.")
-        self.appearance.set_snapshot(snapshot, caption)
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self.refresh_preview()
-
-    def changeEvent(self, event) -> None:
-        super().changeEvent(event)
-        if event.type() == QEvent.ActivationChange and self.isActiveWindow():
-            self.refresh_preview()
-
     def show_scope(self) -> None:
         screen = self.whole_screen()
         for widget in (self.screen_label, self.screen_pick):
             widget.setVisible(screen and self.screen_pick.count() > 1)
         for widget in (self.min_text_label, self.min_text):
             widget.setVisible(screen)
-        self.appearance.set_scope("screen" if screen else "area")
-        self.refresh_preview()
+        for widget in (self.position, self.box):
+            widget.setVisible(not screen)
         self.select.setVisible(not screen)
         self.add_area.setVisible(not screen and self.select.isChecked())
         if screen:
@@ -624,7 +527,6 @@ class MainWindow(QWidget):
         """Flash the picked screen so it is obvious which one it is, and move a running translation onto it."""
         screen = self.chosen_screen()
         self.flash.show_on(screen, self.screen_pick.currentIndex() + 1)
-        self.refresh_preview()
         if self.running and self.whole_screen():
             self.api.call("/api/settings", {"screen_rect": native_rect(screen.geometry()),
                                             "screen_height": screen.geometry().height()})
@@ -660,12 +562,16 @@ class MainWindow(QWidget):
         frame.removed.connect(lambda f=frame: self.remove_source(f))
         self.sources.append(frame)
         self.overlays.append(TranslationOverlay())
-        self.overlays[-1].style = self.appearance.style()
+        self.overlays[-1].style = self.style()
         self.number_sources()
         return frame
 
-    def apply_appearance(self, patch: dict) -> None:
-        style = self.appearance.style()
+    def style(self) -> Style:
+        return Style(self.box.isChecked(), self.store.settings.overlay_opacity, self.position.currentData(),
+                     self.text_size.currentData())
+
+    def apply_style(self, patch: dict) -> None:
+        style = self.style()
         for overlay in self.overlays:
             overlay.restyle(style)
         if "text_size" in patch:
@@ -708,7 +614,6 @@ class MainWindow(QWidget):
         self.select.setText("Done" if visible else "Select areas")
 
     def save_areas(self, *_args) -> None:
-        self.refresh_preview()
         areas = [frame.area() for frame in self.sources]
         self.api.call("/api/settings", {
             "areas": [[a.x(), a.y(), a.width(), a.height()] for a in areas],
@@ -760,8 +665,6 @@ class MainWindow(QWidget):
             if area < len(self.overlays):
                 self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
                                               event.get("line_height", 0.0))
-            if event["final"] and area == 0:
-                self.appearance.preview.area_translation = event["translation"]
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -771,11 +674,7 @@ class MainWindow(QWidget):
             self.screen_overlay.set_blocks(event["blocks"])
         elif kind == "screen_text" and self.running:
             self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
-            if event["final"]:
-                remembered = self.appearance.preview.translations
-                remembered[event["source"]] = event["translation"]
-                if len(remembered) > 500:
-                    remembered.pop(next(iter(remembered)))
+
         elif kind == "clear":
             area = event.get("area")
             for index, overlay in enumerate(self.overlays):
@@ -806,17 +705,6 @@ class MainWindow(QWidget):
         for widget in [*self.sources, *self.overlays, self.screen_overlay, self.flash]:
             widget.close()
         super().closeEvent(event)
-
-
-def _pixels(rect: QRect, crop: QRect, frame: Frame) -> tuple[int, int, int, int]:
-    """A screen rect inside a captured crop, in the capture's pixels (Retina captures have more than one per point)."""
-    sx, sy = frame.width / crop.width(), frame.height / crop.height()
-    return (round((rect.left() - crop.left()) * sx), round((rect.top() - crop.top()) * sy),
-            round((rect.left() + rect.width() - crop.left()) * sx), round((rect.top() + rect.height() - crop.top()) * sy))
-
-
-def _image(frame: Frame) -> QImage:
-    return QImage(frame.bgra, frame.width, frame.height, frame.width * 4, QImage.Format_ARGB32).copy()
 
 
 def native_rect(area: QRect) -> dict:
