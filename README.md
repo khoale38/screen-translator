@@ -43,7 +43,7 @@ Translation runs on the GPU through Metal.
 
 There's also a portable `ScreenTranslator-<version>-windows-x64.zip`: extract it anywhere and run `screen-translator.exe`.
 
-The Windows build runs the model on the CPU, so translations take longer than on a Mac. If the 4B model is too slow, pick **Qwen3.5 2B**.
+The Windows build runs the model on your graphics card through Vulkan (NVIDIA, AMD or Intel; keep the graphics driver up to date). Without a Vulkan driver it falls back to the CPU, which is several times slower; if the 4B model is too slow there, pick **Qwen3.5 2B**. The default OCR models are included, so the first run works offline.
 
 ### From source
 

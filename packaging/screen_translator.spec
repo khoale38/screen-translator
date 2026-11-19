@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
+import glob
 import os
+import subprocess
 import sys
 from importlib.metadata import version
 
@@ -16,12 +18,19 @@ hiddenimports = collect_submodules("screen_translator") + collect_submodules(
     "llama_cpp", filter=lambda name: not name.startswith("llama_cpp.server")
 )
 
+excludes = ["tkinter", "pytest", "IPython", "matplotlib", "PyQt5", "PyQt6", "PySide2", "PySide6", "gi"]
+
 if sys.platform == "darwin":
     hiddenimports += ["objc", "Vision", "Quartz"]
+if sys.platform == "darwin" and os.environ.get("SCREEN_TRANSLATOR_OCR") != "rapidocr":
+    excludes += ["rapidocr", "onnxruntime", "cv2"]
 else:
-    datas += collect_data_files("rapidocr_onnxruntime")
+    ocr_models = os.path.join(SPECPATH, os.pardir, "build", "ocr_models")
+    if not glob.glob(os.path.join(ocr_models, "*.onnx")):
+        subprocess.run([sys.executable, "-m", "screen_translator", "--prefetch-ocr", ocr_models], check=True)
+    datas += collect_data_files("rapidocr", excludes=["models/*.onnx"]) + [(ocr_models, "ocr_models")]
     binaries += collect_dynamic_libs("onnxruntime")
-    hiddenimports += collect_submodules("rapidocr_onnxruntime")
+    hiddenimports += collect_submodules("rapidocr")
 
 a = Analysis(
     [os.path.join(SPECPATH, "launcher.py")],
@@ -29,7 +38,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["tkinter", "pytest", "IPython", "matplotlib", "PyQt5", "PyQt6", "PySide2", "PySide6", "gi"],
+    excludes=excludes,
     noarchive=False,
 )
 # The Vulkan loader ships with GPU drivers; a bundled copy would shadow the system one.

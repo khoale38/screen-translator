@@ -57,7 +57,7 @@ jobs:
     env:
       # BACKEND_DL loads ggml-vulkan.dll at runtime, so PCs without a Vulkan driver fall back to the CPU backend.
       CMAKE_ARGS: -DGGML_VULKAN=on -DGGML_BACKEND_DL=on -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON
-      SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\ci-home
+      SCREEN_TRANSLATOR_HOME: ${{ github.workspace }}\.st-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,9 +65,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: jakoch/install-vulkan-sdk-action@v1
         with:
-          vulkan_version: 1.4.309.0
+          vulkan_version: 1.4.357.0
           cache: true
-          stripdown: true
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -83,13 +82,13 @@ jobs:
         id: model
         uses: actions/cache@v4
         with:
-          path: ci-home/models
+          path: .st-home/models
           key: model-Qwen3.5-4B-Q4_K_M
       - name: Download test model
         if: steps.model.outputs.cache-hit != 'true'
         run: |
-          New-Item -ItemType Directory -Force ci-home\models | Out-Null
-          curl.exe -fL --retry 3 -o ci-home\models\Qwen3.5-4B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
+          New-Item -ItemType Directory -Force .st-home\models | Out-Null
+          curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-4B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
       - name: Self-test without a Vulkan loader
         run: |
           $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and -not $_.StartsWith($env:VULKAN_SDK) }) -join ';'
@@ -97,7 +96,7 @@ jobs:
       - name: Install the Vulkan runtime
         uses: jakoch/install-vulkan-sdk-action@v1
         with:
-          vulkan_version: 1.4.309.0
+          vulkan_version: 1.4.357.0
           install_runtime: true
           install_runtime_only: true
       - name: Self-test with a Vulkan loader but no GPU
