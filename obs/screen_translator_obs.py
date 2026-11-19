@@ -12,7 +12,8 @@ import obspython as obs
 
 SOURCE_NAME = "Live Translation"
 
-_settings = {"command": "", "port": 8765, "autostart": True, "lines": 2, "size": 40, "show_source": False}
+_settings = {"command": "", "port": 8765, "autostart": True, "headless": False, "lines": 2, "size": 40,
+             "show_source": False}
 _process = None
 _hotkeys = {}
 
@@ -69,8 +70,9 @@ def start_app(*_):
         obs.script_log(obs.LOG_WARNING, "Set 'Screen Translator command' to the screen-translator executable.")
         return True
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    args = [command, "--port", str(int(_settings["port"]))] + (["--headless"] if _settings["headless"] else [])
     _process = subprocess.Popen(
-        [command, "--headless", "--port", str(int(_settings["port"]))],
+        args,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags,
     )
     obs.script_log(obs.LOG_INFO, f"Started Screen Translator (pid {_process.pid}).")
@@ -151,8 +153,9 @@ def _refresh_existing_overlay():
 def script_description():
     return (
         "<b>Screen Translator</b><br>Real-time OCR translation of anything on screen, with context, "
-        "running fully on this computer.<br>Start the app, open the control panel to pick the capture area, "
-        "then add the overlay to your scene."
+        "running fully on this computer.<br>Start the app, click <i>Select areas</i> in its window and drag the "
+        "green box over the subtitles, then add the overlay to your scene. The overlay shows translations of "
+        "selected areas (not whole-screen mode)."
     )
 
 
@@ -161,6 +164,7 @@ def script_properties():
     obs.obs_properties_add_path(props, "command", "Screen Translator command", obs.OBS_PATH_FILE, "", None)
     obs.obs_properties_add_int(props, "port", "Port", 1024, 65535, 1)
     obs.obs_properties_add_bool(props, "autostart", "Start with OBS")
+    obs.obs_properties_add_bool(props, "headless", "Run without a window (pick the area in the control panel)")
     obs.obs_properties_add_int_slider(props, "lines", "Lines on screen", 1, 5, 1)
     obs.obs_properties_add_int_slider(props, "size", "Font size", 16, 96, 2)
     obs.obs_properties_add_bool(props, "show_source", "Show original text above translation")
@@ -185,6 +189,7 @@ def script_update(settings):
         command=obs.obs_data_get_string(settings, "command"),
         port=obs.obs_data_get_int(settings, "port"),
         autostart=obs.obs_data_get_bool(settings, "autostart"),
+        headless=obs.obs_data_get_bool(settings, "headless"),
         lines=obs.obs_data_get_int(settings, "lines"),
         size=obs.obs_data_get_int(settings, "size"),
         show_source=obs.obs_data_get_bool(settings, "show_source"),

@@ -124,6 +124,9 @@ def create_app(
     async def update_settings(request: web.Request) -> web.Response:
         patch = await request.json()
         patch.pop("port", None)
+        if "region" in patch:
+            # The browser panel picks one area as a fraction of a monitor; it replaces the app window's areas.
+            patch.update(capture_rects=[], capture_rect=None, scope="area")
         settings = store.update(patch)
         pipeline.apply_settings(settings)
         return web.json_response(state())

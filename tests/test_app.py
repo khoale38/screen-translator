@@ -195,3 +195,12 @@ async def test_the_server_refuses_a_download_the_disk_cannot_hold(store, monkeyp
     assert resp.status == 409 and "Not enough disk space" in body["error"]
     downloads = [e for e in events if e["type"] == "download"]
     assert downloads and not downloads[-1]["active"] and "Not enough disk space" in downloads[-1]["error"]
+
+
+async def test_an_area_picked_in_the_browser_panel_replaces_the_app_windows_areas(store):
+    store.update({"scope": "screen", "capture_rects": [{"left": 0, "top": 0, "width": 10, "height": 10}]})
+    app = create_app(store, make_pipeline_factory([""], EchoTranslator()), FakeCapture)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/settings", json={"region": {"left": 0.1, "top": 0.7, "width": 0.8, "height": 0.2}})
+    assert store.settings.capture_rects == [] and store.settings.capture_rect is None
+    assert store.settings.scope == "area" and store.settings.region.top == 0.7
