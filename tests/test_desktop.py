@@ -116,3 +116,19 @@ def test_each_line_lands_on_the_overlay_of_its_own_area(app, tmp_path):
     assert not window.overlays[0].isVisible()
     window.on_event({"type": "clear", "area": 1})
     assert not window.overlays[1].isVisible()
+
+
+def test_screens_are_numbered_and_switching_moves_a_running_translation(app, tmp_path):
+    window, api = make_window(tmp_path, scope="area")
+    assert window.screen_pick.itemText(0).startswith("1 · ")
+    window.choose_screen(1)
+    assert window.whole_screen()
+    assert window.flash.isVisible() and window.flash.label == "Screen 1"
+    window.running = True
+    api.posts.clear()
+    window.choose_screen(1)
+    geometry = window.chosen_screen().geometry()
+    assert api.posts[-1] == ("/api/settings", {"screen_rect": desktop.native_rect(geometry)})
+    assert window.screen_overlay.geometry() == geometry
+    window.choose_screen(9)
+    assert len(api.posts) == 1

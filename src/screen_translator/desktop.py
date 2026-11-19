@@ -318,6 +318,42 @@ class ScreenOverlay(QWidget):
             painter.drawText(rect.adjusted(2, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap, text)
 
 
+class ScreenFlash(QWidget):
+    """A brief green frame with the screen's number, so you can see which monitor you just picked."""
+
+    def __init__(self) -> None:
+        super().__init__(None, window_flags() | Qt.WindowTransparentForInput | Qt.WindowDoesNotAcceptFocus)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.label = ""
+        self._timer = QTimer(self, singleShot=True, interval=1200)
+        self._timer.timeout.connect(self.hide)
+
+    def show_on(self, screen, number: int) -> None:
+        self.label = f"Screen {number}"
+        self.setGeometry(screen.geometry())
+        self.show()
+        float_above_everything(self)
+        hide_from_screen_capture(self)
+        self.raise_()
+        self.update()
+        self._timer.start()
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QPen(GREEN, 8))
+        painter.drawRect(self.rect().adjusted(4, 4, -4, -4))
+        badge = QRect(0, 0, 260, 90)
+        badge.moveCenter(self.rect().center())
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(GREEN)
+        painter.drawRoundedRect(badge, 14, 14)
+        painter.setPen(Qt.white)
+        painter.setFont(_pixel_font(self.font(), 40))
+        painter.drawText(badge, Qt.AlignCenter, self.label)
+
+
 def _pixel_font(base: QFont, size: int) -> QFont:
     font = QFont(base.family())
     font.setPixelSize(size)
@@ -341,9 +377,8 @@ class MainWindow(QWidget):
         self.scope.addItem("A selected area (subtitles, dialogue)", "area")
         self.scope.addItem("The whole screen", "screen")
         self.screen_pick = QComboBox()
-        for screen in QGuiApplication.screens():
-            size = screen.geometry()
-            self.screen_pick.addItem(f"{screen.name()} ({size.width()}×{size.height()})", screen.name())
+        self.flash = ScreenFlash()
+        self.refresh_screens()
         self.source_lang = QComboBox()
         self.target_lang = QComboBox()
         for code, label in languages.LANGUAGES.items():
@@ -409,7 +444,13 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
+        self.screen_pick.activated.connect(lambda _i: self.use_screen())
         QShortcut(QKeySequence("Ctrl+Return"), self, self.toggle_running)
+        for number in range(1, 10):
+            QShortcut(QKeySequence(f"Ctrl+{number}"), self, lambda n=number: self.choose_screen(n))
+        app = QGuiApplication.instance()
+        app.screenAdded.connect(lambda _s: self.refresh_screens())
+        app.screenRemoved.connect(lambda _s: QTimer.singleShot(0, self.refresh_screens))
 
         self.load()
 
@@ -444,6 +485,38 @@ class MainWindow(QWidget):
             self.select.setChecked(False)
         if not self.running:
             self.set_running(False)
+
+    def refresh_screens(self) -> None:
+        current = self.screen_pick.currentData() or self.store.settings.screen_name
+        screens = sorted(QGuiApplication.screens(), key=lambda s: (s.geometry().x(), s.geometry().y()))
+        self.screen_pick.blockSignals(True)
+        self.screen_pick.clear()
+        for number, screen in enumerate(screens, 1):
+            size = screen.geometry()
+            laptop = " (laptop)" if "built-in" in screen.name().lower() else ""
+            shortcut = f"   Ctrl+{number}" if number < 10 else ""
+            self.screen_pick.addItem(f"{number} · {screen.name()}{laptop} · {size.width()}×{size.height()}{shortcut}",
+                                     screen.name())
+        self.screen_pick.setCurrentIndex(max(0, self.screen_pick.findData(current)))
+        self.screen_pick.blockSignals(False)
+        if hasattr(self, "screen_label"):
+            self.show_scope()
+
+    def choose_screen(self, number: int) -> None:
+        if number > self.screen_pick.count():
+            return
+        if not self.running:
+            self.scope.setCurrentIndex(self.scope.findData("screen"))
+        self.screen_pick.setCurrentIndex(number - 1)
+        self.use_screen()
+
+    def use_screen(self) -> None:
+        """Flash the picked screen so it is obvious which one it is, and move a running translation onto it."""
+        screen = self.chosen_screen()
+        self.flash.show_on(screen, self.screen_pick.currentIndex() + 1)
+        if self.running and self.whole_screen():
+            self.api.call("/api/settings", {"screen_rect": native_rect(screen.geometry())})
+            self.screen_overlay.cover(screen.geometry())
 
     def chosen_screen(self):
         name = self.screen_pick.currentData()
@@ -546,7 +619,6 @@ class MainWindow(QWidget):
         self.start.setStyleSheet(f"QPushButton {{ background: {color}; color: white; font-size: 18px; "
                                  f"font-weight: 600; border-radius: 8px; }}")
         self.scope.setEnabled(not running)
-        self.screen_pick.setEnabled(not running)
         if not running:
             for overlay in self.overlays:
                 overlay.hide()
@@ -598,7 +670,7 @@ class MainWindow(QWidget):
 
     def closeEvent(self, event) -> None:
         self.api.call("/api/stop", {})
-        for widget in [*self.sources, *self.overlays, self.screen_overlay]:
+        for widget in [*self.sources, *self.overlays, self.screen_overlay, self.flash]:
             widget.close()
         super().closeEvent(event)
 
