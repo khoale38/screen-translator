@@ -80,11 +80,12 @@ class FakeApi:
 
     def __init__(self):
         self.posts = []
+        self.state = {}
 
     def call(self, path, body=None):
         if body is not None:
             self.posts.append((path, body))
-        return {}
+        return self.state if path == "/api/state" else {}
 
 
 def make_window(tmp_path, **settings):
@@ -311,3 +312,17 @@ def test_the_window_says_where_the_model_runs_and_how_long_each_step_takes(app, 
 
     window.on_event({"type": "devices", "model": "CPU", "ocr": "CPU"})
     assert "Updating the graphics driver" in window.speed.text()
+
+
+def test_speech_mode_offers_the_speech_download_and_shows_subtitles_in_the_first_box(app, tmp_path):
+    window, api = make_window(tmp_path, scope="speech", areas=[[100, 600, 800, 100]])
+    api.state["speech"] = {"label": "Speech recognition", "size": 240_000_000, "downloaded": False}
+    window.refresh_model()
+    assert window.download.isVisibleTo(window) and "speech recognition (0.2 GB)" in window.download.text()
+    assert window.select.text() == "Move subtitles"
+
+    window.running = True
+    window.on_event({"type": "line", "id": 1, "area": 0, "source": "待って", "translation": "Wait", "final": True,
+                     "ms": 300, "context_lines": 0})
+    assert window.overlays[0].text == "Wait"
+    assert "Translating 0.3 s" in window.speed.text()

@@ -1,0 +1,211 @@
+"""Speech to text, fully local: Silero VAD finds where speech starts and stops, SenseVoice-Small writes it down.
+
+Both run on the onnxruntime the app already ships for OCR; a second copy of onnxruntime.dll in the same process
+breaks on Windows.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+
+import numpy as np
+
+RATE = 16000
+CHUNK = 512  # 32 ms, the block size Silero VAD expects at 16 kHz
+
+SENSEVOICE_LANGS = {"zh": "zh", "zh-Hant": "zh", "en": "en", "ja": "ja", "ko": "ko", "yue": "yue"}
+_SPECIAL = re.compile(r"<\|[^|]*\|>")
+_CJK = "\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff00-\uffef"
+_CJK_GAP = re.compile(f"(?<=[{_CJK}]) (?=[{_CJK}0-9])|(?<=[0-9]) (?=[{_CJK}])")
+
+
+@lru_cache(maxsize=1)
+def _mel_banks(n_fft: int = 512, n_mels: int = 80, low: float = 20.0, high: float = RATE / 2) -> np.ndarray:
+    """Kaldi's triangular mel filters (what SenseVoice was trained with), shape (n_mels, n_fft // 2)."""
+    mel = lambda f: 1127.0 * np.log(1.0 + f / 700.0)
+    lo, hi = mel(low), mel(high)
+    step = (hi - lo) / (n_mels + 1)
+    bin_mel = mel(np.arange(n_fft // 2) * RATE / n_fft)
+    banks = np.zeros((n_mels, n_fft // 2), np.float32)
+    for m in range(n_mels):
+        left, center, right = lo + m * step, lo + (m + 1) * step, lo + (m + 2) * step
+        up = (bin_mel - left) / (center - left)
+        down = (right - bin_mel) / (right - center)
+        banks[m] = np.maximum(0.0, np.minimum(up, down))
+    return banks
+
+
+def fbank(samples: np.ndarray) -> np.ndarray:
+    """80-dim log mel filterbank matching kaldi.fbank(dither=0, energy_floor=0, window=hamming, snip_edges=True)."""
+    wave = samples.astype(np.float64) * 32768.0
+    length, shift = 400, 160
+    if len(wave) < length:
+        return np.zeros((0, 80), np.float32)
+    count = 1 + (len(wave) - length) // shift
+    frames = np.lib.stride_tricks.sliding_window_view(wave, length)[::shift][:count].copy()
+    frames -= frames.mean(axis=1, keepdims=True)
+    frames[:, 1:] -= 0.97 * frames[:, :-1]
+    frames[:, 0] *= 1.0 - 0.97
+    frames *= np.hamming(length)
+    power = np.abs(np.fft.rfft(frames, 512)) ** 2
+    energies = power[:, :256] @ _mel_banks().T.astype(np.float64)
+    return np.log(np.maximum(energies, np.finfo(np.float32).eps)).astype(np.float32)
+
+
+def stack_frames(features: np.ndarray, window: int = 7, shift: int = 6) -> np.ndarray:
+    """SenseVoice's low frame rate input: 7 frames side by side every 6 frames, padded at the start like FunASR."""
+    if len(features) == 0:
+        return np.zeros((0, features.shape[1] * window), np.float32)
+    padded = np.concatenate([np.repeat(features[:1], (window - 1) // 2, axis=0), features])
+    count = (len(features) + shift - 1) // shift
+    need = (count - 1) * shift + window
+    if len(padded) < need:
+        padded = np.concatenate([padded, np.repeat(padded[-1:], need - len(padded), axis=0)])
+    return np.stack([padded[i * shift:i * shift + window].reshape(-1) for i in range(count)])
+
+
+def _session(path: Path):
+    import onnxruntime as ort
+
+    options = ort.SessionOptions()
+    options.log_severity_level = 4
+    options.intra_op_num_threads = 2
+    return ort.InferenceSession(str(path), sess_options=options, providers=["CPUExecutionProvider"])
+
+
+class SenseVoice:
+    """SenseVoice-Small: Chinese, English, Japanese, Korean and Cantonese, about 70 ms for 10 s of speech."""
+
+    def __init__(self, model: Path, tokens: Path) -> None:
+        self._session = _session(model)
+        meta = self._session.get_modelmeta().custom_metadata_map
+        self._neg_mean = np.array([float(v) for v in meta["neg_mean"].split(",")], np.float32)
+        self._inv_std = np.array([float(v) for v in meta["inv_stddev"].split(",")], np.float32)
+        self._window, self._shift = int(meta["lfr_window_size"]), int(meta["lfr_window_shift"])
+        self._langs = {k[5:]: int(v) for k, v in meta.items() if k.startswith("lang_")}
+        self._with_itn = int(meta["with_itn"])
+        self._tokens = {}
+        for line in tokens.read_text(encoding="utf-8").splitlines():
+            piece, _, index = line.rpartition(" ")
+            if index.isdigit():
+                self._tokens[int(index)] = piece
+
+    def transcribe(self, samples: np.ndarray, lang: str = "auto") -> str:
+        return self.recognize(samples, lang)[0]
+
+    def recognize(self, samples: np.ndarray, lang: str = "auto") -> tuple[str, str]:
+        """The words and the language they were spoken in, e.g. ("ちょっと待って", "ja")."""
+        features = stack_frames(fbank(samples), self._window, self._shift)
+        if len(features) == 0:
+            return "", ""
+        features = (features + self._neg_mean) * self._inv_std
+        language = self._langs.get(SENSEVOICE_LANGS.get(lang, "auto"), self._langs["auto"])
+        (logits,) = self._session.run(None, {
+            "x": features[None].astype(np.float32),
+            "x_length": np.array([len(features)], np.int32),
+            "language": np.array([language], np.int32),
+            "text_norm": np.array([self._with_itn], np.int32),
+        })
+        best = logits[0].argmax(axis=-1)
+        pieces, previous = [], -1
+        for index in best:
+            if index != previous and index != 0:
+                pieces.append(self._tokens.get(int(index), ""))
+            previous = index
+        raw = "".join(pieces)
+        spoken = next((tag for tag in _SPECIAL.findall(raw) if tag[2:-2] in self._langs), "<||>")[2:-2]
+        text = " ".join(_SPECIAL.sub("", raw).replace("▁", " ").split())
+        return _CJK_GAP.sub("", text), spoken
+
+
+class Vad:
+    """Silero VAD v4: the chance that a 32 ms block is speech."""
+
+    def __init__(self, model: Path) -> None:
+        self._session = _session(model)
+        self.reset()
+
+    def reset(self) -> None:
+        self._h = np.zeros((2, 1, 64), np.float32)
+        self._c = np.zeros((2, 1, 64), np.float32)
+
+    def __call__(self, chunk: np.ndarray) -> float:
+        prob, self._h, self._c = self._session.run(None, {
+            "x": chunk.reshape(1, CHUNK).astype(np.float32), "h": self._h, "c": self._c,
+        })
+        return float(prob.reshape(-1)[0])
+
+
+@dataclass
+class Utterance:
+    samples: np.ndarray
+    final: bool
+
+
+class Segmenter:
+    """Cuts a stream of 32 ms blocks into utterances.
+
+    An utterance ends after `silence_s` without speech, or at `max_s`. While someone is still talking it also hands
+    out the speech so far every `partial_s`, and once more the moment the voice drops, so its translation is usually
+    done by the time the utterance is confirmed finished.
+    """
+
+    def __init__(self, vad, threshold: float = 0.5, silence_s: float = 0.25, max_s: float = 8.0,
+                 partial_s: float = 0.5, pad_s: float = 0.2) -> None:
+        self.vad = vad
+        self.threshold = threshold
+        self.silence_blocks = max(1, round(silence_s * RATE / CHUNK))
+        self.max_blocks = round(max_s * RATE / CHUNK)
+        self.partial_blocks = max(1, round(partial_s * RATE / CHUNK))
+        self.pad_blocks = round(pad_s * RATE / CHUNK)
+        self._before: list[np.ndarray] = []
+        self._speech: list[np.ndarray] = []
+        self._quiet = 0
+        self._since_partial = 0
+
+    @property
+    def speaking(self) -> bool:
+        return bool(self._speech)
+
+    def feed(self, chunk: np.ndarray) -> Utterance | None:
+        voiced = self.vad(chunk) >= self.threshold
+        if not self._speech:
+            if not voiced:
+                self._before = (self._before + [chunk])[-self.pad_blocks:] if self.pad_blocks else []
+                return None
+            self._speech, self._before = self._before + [chunk], []
+            self._quiet = self._since_partial = 0
+            return None
+        self._speech.append(chunk)
+        self._quiet = 0 if voiced else self._quiet + 1
+        if self._quiet >= self.silence_blocks or len(self._speech) >= self.max_blocks:
+            return self._finish()
+        self._since_partial += 1
+        if self._since_partial >= self.partial_blocks or self._quiet == 1:
+            self._since_partial = 0
+            return Utterance(np.concatenate(self._speech), final=False)
+        return None
+
+    def flush(self) -> Utterance | None:
+        return self._finish() if self._speech else None
+
+    def _finish(self) -> Utterance:
+        keep = len(self._speech) - max(0, self._quiet - self.pad_blocks)
+        samples = np.concatenate(self._speech[:keep])
+        self._speech, self._quiet, self._since_partial = [], 0, 0
+        self.vad.reset()
+        return Utterance(samples, final=True)
+
+
+def default_recognizer() -> tuple[SenseVoice, Vad]:
+    from .models import SPEECH
+
+    if not SPEECH.downloaded:
+        raise FileNotFoundError("Speech recognition is not downloaded yet.")
+    vad, tokens, model = (part.path for part in SPEECH.parts)
+    recognizer = SenseVoice(model, tokens)
+    recognizer.transcribe(np.zeros(RATE, np.float32))
+    return recognizer, Vad(vad)

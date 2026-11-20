@@ -136,6 +136,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force .st-home\models | Out-Null
           curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-2B-Q8_0.gguf https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q8_0.gguf
+      - name: Restore speech model
+        if: env.WARM_CACHE_ONLY != 'true'
+        id: speech
+        uses: actions/cache@v4
+        with:
+          path: .st-home/models/speech
+          key: speech-sensevoice-2024-07-17
+      - name: Download speech model
+        if: env.WARM_CACHE_ONLY != 'true' && steps.speech.outputs.cache-hit != 'true'
+        run: |
+          New-Item -ItemType Directory -Force .st-home\models\speech | Out-Null
+          $hf = "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main"
+          curl.exe -fL --retry 3 -o .st-home\models\speech\model.int8.onnx "$hf/model.int8.onnx"
+          curl.exe -fL --retry 3 -o .st-home\models\speech\tokens.txt "$hf/tokens.txt"
+          curl.exe -fL --retry 3 -o .st-home\models\speech\silero_vad.onnx https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
       # The runner has no GPU but ships vulkan-1.dll, so this proves the Vulkan backend loads and falls back to the CPU.
       - name: Self-test
         if: env.WARM_CACHE_ONLY != 'true'

@@ -10,6 +10,16 @@ $loader = Get-Command vulkan-1.dll -ErrorAction SilentlyContinue
 $env:HTTP_PROXY = "http://127.0.0.1:9"
 $env:HTTPS_PROXY = "http://127.0.0.1:9"
 Remove-Item -Recurse -Force (Join-Path $env:SCREEN_TRANSLATOR_HOME "ocr-models") -ErrorAction SilentlyContinue
+# Windows' built-in voice reads a line, so speech recognition is checked on real speech.
+Add-Type -AssemblyName System.Speech
+$sample = Join-Path $env:RUNNER_TEMP "speech-sample.wav"
+$voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+$voice.SetOutputToWaveFile($sample, $format)
+$voice.Speak("Get in the car before the police arrive.")
+$voice.Dispose()
+$env:ST_SPEECH_SAMPLE = $sample
+
 $log = Join-Path $env:SCREEN_TRANSLATOR_HOME "screen-translator.log"
 $test = Start-Process dist\screen-translator\screen-translator.exe -ArgumentList "--self-test" -PassThru
 $null = $test.Handle  # without this, ExitCode stays empty once the process exits
@@ -20,6 +30,9 @@ if (-not $test.WaitForExit(20 * 60 * 1000)) {
 }
 Get-Content $log
 if ($test.ExitCode -ne 0) { exit $test.ExitCode }
+if (-not (Select-String -Path $log -Pattern "^Speech \(" -Quiet)) {
+    Write-Error "The self-test did not recognize speech; is the speech model in $env:SCREEN_TRANSLATOR_HOME\models\speech?"
+}
 if (-not (Select-String -Path $log -Pattern "^Translation:" -Quiet)) {
     Write-Error "The self-test did not translate anything; is the test model in $env:SCREEN_TRANSLATOR_HOME\models?"
 }

@@ -85,8 +85,48 @@ def _self_test() -> int:
         result = translator.translate(build_messages(line, [], "ja", "en"))
         print(f"Translation: {line} -> {result!r} in {time.perf_counter() - started:.2f} s", flush=True)
         translator.close()
+    if not _speech_self_test():
+        return 1
     print("Self-test passed", flush=True)
     return 0
+
+
+def _speech_self_test() -> bool:
+    import time
+    import wave
+
+    import numpy as np
+
+    from screen_translator.models import SPEECH
+
+    if not SPEECH.downloaded:
+        print("No speech model downloaded; skipping speech", flush=True)
+        return True
+    from screen_translator.speech import RATE, default_recognizer
+
+    recognizer, _vad = default_recognizer()
+    sample = os.environ.get("ST_SPEECH_SAMPLE")
+    if sample:
+        with wave.open(sample) as clip:
+            if clip.getframerate() != RATE or clip.getnchannels() != 1:
+                print(f"Self-test failed: {sample} is not 16 kHz mono", flush=True)
+                return False
+            audio = np.frombuffer(clip.readframes(clip.getnframes()), np.int16).astype(np.float32) / 32768
+        started = time.perf_counter()
+        text, spoken = recognizer.recognize(audio, "auto")
+        print(f"Speech ({spoken}): {text!r} in {time.perf_counter() - started:.2f} s", flush=True)
+        if "police" not in text.lower():
+            print("Self-test failed: the speech sample was not recognized", flush=True)
+            return False
+    try:
+        from screen_translator.audio import AudioSource
+
+        source = AudioSource()
+        print(f"Listening to: {source.name}", flush=True)
+        source.close()
+    except Exception as exc:
+        print(f"No sound device to listen to here: {exc}", flush=True)
+    return True
 
 
 def _exit_now(code: int) -> None:

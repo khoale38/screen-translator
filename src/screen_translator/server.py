@@ -13,7 +13,7 @@ from aiohttp import WSMsgType, web
 from . import languages
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
-from .models import MODELS, DownloadCancelled, NotEnoughSpace, check_space, download
+from .models import DOWNLOADS, MODELS, SPEECH, DownloadCancelled, NotEnoughSpace, check_space, download_all
 from .ocr import RapidOcr, default_engine
 from .pipeline import Pipeline
 
@@ -134,6 +134,7 @@ def create_app(
                 {"key": m.key, "label": m.label, "size": m.size_bytes, "downloaded": m.downloaded}
                 for m in MODELS.values()
             ],
+            "speech": {"label": SPEECH.label, "size": SPEECH.size_bytes, "downloaded": SPEECH.downloaded},
             "download": hub.download,
             "lines": list(hub.lines),
         }
@@ -201,7 +202,7 @@ def create_app(
             return web.json_response({"error": str(exc)}, status=409)
 
     async def start_download(request: web.Request) -> web.Response:
-        spec = MODELS.get(request.match_info["key"])
+        spec = DOWNLOADS.get(request.match_info["key"])
         if spec is None:
             raise web.HTTPNotFound()
         if hub.download and hub.download.get("active"):
@@ -218,7 +219,7 @@ def create_app(
                 hub.emit({"type": "download", "key": spec.key, "done": done, "total": total, "active": True})
 
             try:
-                download(spec, progress, cancel_download)
+                download_all(spec, progress, cancel_download)
                 hub.emit({"type": "download", "key": spec.key, "done": spec.size_bytes,
                           "total": spec.size_bytes, "active": False, "finished": True})
             except DownloadCancelled:

@@ -45,7 +45,7 @@ class OcrEngine(Protocol):
 class AppleVisionOcr:
     name = "Apple Vision"
     hint = ""
-    device = "Apple Vision"
+    device = "macOS"
 
     def __init__(self) -> None:
         import Vision

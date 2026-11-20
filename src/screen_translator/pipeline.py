@@ -6,7 +6,7 @@ import threading
 import time
 import traceback
 from statistics import median
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
@@ -18,6 +18,9 @@ from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normaliz
 from .translator import (
     LlamaTranslator, Translator, build_batch_messages, build_messages, label_speaker, parse_numbered,
 )
+
+if TYPE_CHECKING:
+    from .audio import AudioSource
 
 Emit = Callable[[dict], None]
 
@@ -33,6 +36,22 @@ def resolve_model(settings: Settings) -> str:
     return str(spec.path)
 
 
+def default_audio() -> "AudioSource":
+    from .audio import AudioSource
+
+    return AudioSource()
+
+
+def default_recognizer():
+    from .speech import default_recognizer
+
+    return default_recognizer()
+
+
+class Superseded(Exception):
+    """A newer piece of speech arrived while an older one was still being translated."""
+
+
 def default_translator(settings: Settings) -> Translator:
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
@@ -46,6 +65,8 @@ class Pipeline:
         translator_factory: Callable[[Settings], Translator] = default_translator,
         capture_factory: Callable[[], ScreenCapture] = ScreenCapture,
         permission_check: Callable[[], None] = ensure_screen_permission,
+        audio_factory: Callable[[], object] = default_audio,
+        recognizer_factory: Callable[[], tuple] = default_recognizer,
     ) -> None:
         self.store = store
         self.emit = emit
@@ -53,6 +74,8 @@ class Pipeline:
         self.translator_factory = translator_factory
         self.capture_factory = capture_factory
         self.permission_check = permission_check
+        self.audio_factory = audio_factory
+        self.recognizer_factory = recognizer_factory
         self.context = ContextWindow(store.settings.context_lines, store.settings.context_ttl_s)
         self._events: queue.Queue[TextEvent] = queue.Queue()
         self._stop = threading.Event()
@@ -68,6 +91,9 @@ class Pipeline:
         self._screen_changed = threading.Event()
         self._cache: dict[tuple[str, str, str], str] = {}
         self.devices: dict[str, str] = {}
+        self._heard_lock = threading.Lock()
+        self._heard: dict | None = None
+        self._heard_changed = threading.Event()
         self.state = "stopped"
         self.last_error = ""
 
@@ -83,11 +109,21 @@ class Pipeline:
         if self.running:
             return
         resolve_model(self.store.settings)
-        self.permission_check()
+        speech = self.store.settings.scope == "speech"
+        if speech:
+            from .models import SPEECH
+
+            if not SPEECH.downloaded:
+                raise FileNotFoundError("Speech recognition is not downloaded yet.")
+        else:
+            self.permission_check()
         self._stop.clear()
         self._translator_ready.clear()
         self._events = queue.Queue()
-        if self.store.settings.scope == "screen":
+        self._heard = None
+        if speech:
+            loops = (self._listen_loop, self._speech_translate_loop)
+        elif self.store.settings.scope == "screen":
             loops = (self._screen_capture_loop, self._screen_translate_loop)
         else:
             loops = (self._capture_loop, self._translate_loop)
@@ -178,7 +214,7 @@ class Pipeline:
         finally:
             capture.close()
 
-    def _report_devices(self, ocr: OcrEngine) -> None:
+    def _report_devices(self, ocr: OcrEngine | None) -> None:
         devices = {"model": getattr(self._translator, "device", ""), "ocr": getattr(ocr, "device", "")}
         if devices != self.devices:
             self.devices = devices
@@ -402,6 +438,109 @@ class Pipeline:
         self.context.add(text, translation)
         self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
                    "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})
+
+
+    def _listen_loop(self) -> None:
+        from .speech import Segmenter
+
+        if not self._wait_for_translator():
+            return
+        recognizer, vad = self.recognizer_factory()
+        source = self.audio_factory()
+        self._report_devices(None)
+        segmenter = Segmenter(vad)
+        utterance = 1
+        try:
+            while not self._stop.is_set():
+                block = source.read()
+                if block is None:
+                    continue
+                heard = segmenter.feed(block)
+                if heard is None:
+                    continue
+                started = time.monotonic()
+                text, spoken = recognizer.recognize(heard.samples, self.store.settings.source_lang)
+                text = normalize(text)
+                self.emit({"type": "heard", "id": utterance, "text": text, "final": heard.final, "lang": spoken,
+                           "ms": round((time.monotonic() - started) * 1000)})
+                with self._heard_lock:
+                    self._heard = {"id": utterance, "text": text, "final": heard.final, "lang": spoken,
+                                   "at": time.monotonic()}
+                self._heard_changed.set()
+                if heard.final:
+                    utterance += 1
+        finally:
+            source.close()
+
+    def _take_heard(self) -> dict | None:
+        with self._heard_lock:
+            heard, self._heard = self._heard, None
+            self._heard_changed.clear()
+            return heard
+
+    def _speech_translate_loop(self) -> None:
+        """Translates the newest speech: live captions while someone talks, then the finished sentence at once."""
+        translator = self._ready_translator()
+        done: tuple[int, str, str] | None = None
+        while not self._stop.is_set():
+            if not self._heard_changed.wait(0.2):
+                continue
+            heard = self._take_heard()
+            if heard is None:
+                continue
+            settings = self.store.settings
+            text = heard["text"]
+            if not text:
+                continue
+            if _spoken_in(settings.target_lang, heard.get("lang", "")) or already_in(settings.target_lang, text):
+                self.emit({"type": "line", "id": heard["id"], "area": 0, "source": text, "translation": text,
+                           "final": heard["final"], "ms": 0, "context_lines": 0})
+                continue
+            if done and done[:2] == (heard["id"], _bare(text)):
+                translation = done[2]
+            else:
+                try:
+                    translation = self._translate_speech(translator, heard)
+                except Superseded:
+                    continue
+                done = (heard["id"], _bare(text), translation)
+            if heard["final"]:
+                self._remember(text, translation)
+                self.context.add(text, translation)
+                self.emit({"type": "line", "id": heard["id"], "area": 0, "source": text, "translation": translation,
+                           "final": True, "ms": round((time.monotonic() - heard["at"]) * 1000),
+                           "context_lines": len(self.context.turns()) - 1})
+
+    def _translate_speech(self, translator: Translator, heard: dict) -> str:
+        settings = self.store.settings
+        known = self._cache.get(self._cache_key(heard["text"]))
+        if known is not None:
+            return known
+        messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
+                                  settings.glossary, settings.notes)
+
+        def partial(translation: str) -> None:
+            if self._stop.is_set():
+                raise Superseded()
+            with self._heard_lock:
+                newer = self._heard
+            if heard["final"] or not newer:
+                pass
+            elif newer["id"] != heard["id"] or (newer["final"] and _bare(newer["text"]) != _bare(heard["text"])):
+                raise Superseded()
+            self.emit({"type": "line", "id": heard["id"], "area": 0, "source": heard["text"],
+                       "translation": translation, "final": False})
+
+        return label_speaker(heard["text"], translator.translate(messages, partial))
+
+
+def _spoken_in(target: str, spoken: str) -> bool:
+    return bool(spoken) and spoken == {"zh-Hant": "zh"}.get(target, target).split("-")[0]
+
+
+def _bare(text: str) -> str:
+    """Text without spaces and punctuation; recognizers often only add a comma once a sentence is finished."""
+    return "".join(ch for ch in text if ch.isalnum())
 
 
 def _take_batch(texts: list[str], max_items: int = 12, max_chars: int = 1200) -> list[str]:

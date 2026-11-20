@@ -361,6 +361,7 @@ class MainWindow(QWidget):
         self.scope = QComboBox()
         self.scope.addItem("A selected area (subtitles, dialogue)", "area")
         self.scope.addItem("The whole screen", "screen")
+        self.scope.addItem("What you hear (speech, voice acting)", "speech")
         self.screen_pick = QComboBox()
         self.flash = ScreenFlash()
         self.refresh_screens()
@@ -512,18 +513,22 @@ class MainWindow(QWidget):
     def whole_screen(self) -> bool:
         return self.scope.currentData() == "screen"
 
+    def listening(self) -> bool:
+        return self.scope.currentData() == "speech"
+
     def show_scope(self) -> None:
-        screen = self.whole_screen()
+        screen, speech = self.whole_screen(), self.listening()
         for widget in (self.screen_label, self.screen_pick):
             widget.setVisible(screen and self.screen_pick.count() > 1)
         for widget in (self.min_text_label, self.min_text):
             widget.setVisible(screen)
-        for widget in (self.position, self.box):
-            widget.setVisible(not screen)
+        self.position.setVisible(not screen and not speech)
+        self.box.setVisible(not screen)
         self.select.setVisible(not screen)
-        self.add_area.setVisible(not screen and self.select.isChecked())
-        if screen:
-            self.select.setChecked(False)
+        self.select.setChecked(False)
+        self.select.setText("Move subtitles" if speech else "Select areas")
+        self.add_area.setVisible(False)
+        self.refresh_model()
         if not self.running:
             self.set_running(False)
 
@@ -564,22 +569,34 @@ class MainWindow(QWidget):
         name = self.screen_pick.currentData()
         return next((s for s in QGuiApplication.screens() if s.name() == name), None) or QGuiApplication.primaryScreen()
 
-    def refresh_model(self) -> None:
+    def missing_download(self) -> tuple[str, str, int] | None:
+        """(key, label, size) of the next file Start needs, if any."""
         state = self.api.call("/api/state")
         model = next((m for m in state.get("models", []) if m["key"] == self.model.currentData()), None)
-        download = state.get("download") or {}
+        if model and not model["downloaded"] and not self.store.settings.custom_model_path:
+            return model["key"], "model", model["size"]
+        speech = state.get("speech")
+        if hasattr(self, "scope") and self.listening() and speech and not speech["downloaded"]:
+            return "speech", "speech recognition", speech["size"]
+        return None
+
+    def refresh_model(self) -> None:
+        if not hasattr(self, "download"):
+            return
+        download = self.api.call("/api/state").get("download") or {}
         active = bool(download.get("active"))
-        missing = bool(model) and not model["downloaded"] and not self.store.settings.custom_model_path
-        self.download.setVisible(missing or active)
+        missing = self.missing_download()
+        self.download.setVisible(bool(missing) or active)
         self.progress.setVisible(active)
-        self.download.setText("Cancel download" if active else f"Download model ({model['size'] / 1e9:.1f} GB)" if model else "")
+        self.download.setText("Cancel download" if active else
+                              f"Download {missing[1]} ({missing[2] / 1e9:.1f} GB)" if missing else "")
 
     def toggle_download(self) -> None:
         state = self.api.call("/api/state")
         if (state.get("download") or {}).get("active"):
             self.api.call("/api/models/download/cancel", {})
-        else:
-            result = self.api.call(f"/api/models/{self.model.currentData()}/download", {})
+        elif missing := self.missing_download():
+            result = self.api.call(f"/api/models/{missing[0]}/download", {})
             if "error" in result:
                 self.status.setText(result["error"])
 
@@ -633,13 +650,17 @@ class MainWindow(QWidget):
         frame.raise_()
 
     def toggle_source(self, visible: bool) -> None:
-        for frame in self.sources:
+        speech = self.listening()
+        for frame in self.sources[:1] if speech else self.sources:
             if visible:
                 self.show_frame(frame)
             else:
                 frame.hide()
-        self.add_area.setVisible(visible)
-        self.select.setText("Done" if visible else "Select areas")
+        if not visible:
+            for frame in self.sources:
+                frame.hide()
+        self.add_area.setVisible(visible and not speech)
+        self.select.setText("Done" if visible else "Move subtitles" if speech else "Select areas")
 
     def save_areas(self, *_args) -> None:
         areas = [frame.area() for frame in self.sources]
@@ -691,6 +712,9 @@ class MainWindow(QWidget):
             self.api.call("/api/settings", {"screen_rect": native_rect(geometry), "screen_height": geometry.height()})
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.cover(geometry)
+        elif self.listening():
+            self.save_areas()
+            self.overlays[0].ensure_native()
         else:
             self.save_areas()
             for overlay in self.overlays:
@@ -718,6 +742,9 @@ class MainWindow(QWidget):
             self.screen_overlay.hide()
             if self.whole_screen():
                 self.status.setText("Start to translate every piece of text on the screen in place.")
+            elif self.listening():
+                self.status.setText("Start to translate what's being said in whatever is playing. Use "
+                                    "“Move subtitles” to place the subtitle box.")
             else:
                 self.status.setText("Click “Select areas”, drag the green box over the text (add more boxes if the "
                                     "text is in several places), then Start.")
@@ -741,6 +768,8 @@ class MainWindow(QWidget):
             if area < len(self.overlays):
                 self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
                                               event.get("line_height", 0.0))
+            if event["final"] and self.listening():
+                self.show_speed(translate=f"translating {event['ms'] / 1000:.1f} s")
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -758,6 +787,8 @@ class MainWindow(QWidget):
                                           f"{event['ms'] / 1000:.1f} s")
         elif kind == "ocr" and self.running:
             self.show_speed(read=f"reading the text {event['ms']} ms")
+        elif kind == "heard" and self.running and event["final"]:
+            self.show_speed(read=f"recognizing speech {event['ms']} ms")
         elif kind == "devices":
             self.devices = event
             self.show_speed()
@@ -777,6 +808,8 @@ class MainWindow(QWidget):
                 self.status.setText("Loading the model…")
             elif event["state"] == "running" and self.whole_screen():
                 self.status.setText("Translating the whole screen. Text under this window is left alone.")
+            elif event["state"] == "running" and self.listening():
+                self.status.setText("Listening. Translations of what's said appear in the subtitle box.")
             elif event["state"] == "running":
                 self.status.setText("Translating. The box over the text shows the translation.")
         elif kind == "download":
@@ -791,8 +824,9 @@ class MainWindow(QWidget):
         self.timings.update(timings)
         lines = []
         model, ocr = self.devices.get("model"), self.devices.get("ocr")
-        if model or ocr:
-            lines.append(f"Model on {model or 'unknown'} · text reading on {ocr or 'unknown'}")
+        where = [f"Model on {model}" if model else "", f"text reading on {ocr}" if ocr else ""]
+        if any(where):
+            lines.append(" · ".join(w for w in where if w))
         steps = " · ".join(self.timings[k] for k in ("read", "translate") if k in self.timings)
         if steps:
             lines.append(steps[0].upper() + steps[1:])

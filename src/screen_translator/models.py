@@ -21,14 +21,20 @@ class ModelSpec:
     filename: str
     size_bytes: int
     sha256: str
+    source: str = ""
+    folder: str = ""
 
     @property
     def url(self) -> str:
-        return f"https://huggingface.co/{self.repo}/resolve/main/{self.filename}"
+        return self.source or f"https://huggingface.co/{self.repo}/resolve/main/{self.filename}"
 
     @property
     def path(self) -> Path:
-        return models_dir() / self.filename
+        return models_dir() / self.folder / self.filename
+
+    @property
+    def parts(self) -> tuple["ModelSpec", ...]:
+        return (self,)
 
     @property
     def downloaded(self) -> bool:
@@ -62,6 +68,37 @@ MODELS: dict[str, ModelSpec] = {
 
 DEFAULT_MODEL = "qwen3.5-4b"
 
+
+@dataclass(frozen=True)
+class ModelBundle:
+    """Several files that are downloaded and used together."""
+
+    key: str
+    label: str
+    parts: tuple[ModelSpec, ...]
+
+    @property
+    def size_bytes(self) -> int:
+        return sum(part.size_bytes for part in self.parts)
+
+    @property
+    def downloaded(self) -> bool:
+        return all(part.downloaded for part in self.parts)
+
+
+_SENSEVOICE = "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+SPEECH = ModelBundle("speech", "Speech recognition (SenseVoice-Small)", (
+    ModelSpec("speech-vad", "Silero VAD", "", "silero_vad.onnx", 643854,
+              "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+              source="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+              folder="speech"),
+    ModelSpec("speech-tokens", "SenseVoice tokens", _SENSEVOICE, "tokens.txt", 315894,
+              "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc", folder="speech"),
+    ModelSpec("speech-model", "SenseVoice-Small", _SENSEVOICE, "model.int8.onnx", 239233841,
+              "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51", folder="speech"),
+))
+DOWNLOADS: dict[str, "ModelSpec | ModelBundle"] = {**MODELS, SPEECH.key: SPEECH}
+
 ProgressFn = Callable[[int, int], None]
 
 
@@ -76,11 +113,17 @@ class NotEnoughSpace(OSError):
 SPACE_MARGIN = 512 * 1024 * 1024
 
 
-def check_space(spec: ModelSpec) -> None:
-    """Refuse a download that would fill the disk; a full disk breaks other apps, not just this one."""
+def _remaining(spec: ModelSpec) -> int:
+    if spec.downloaded:
+        return 0
     part = spec.path.with_suffix(spec.path.suffix + ".part")
-    remaining = spec.size_bytes - (part.stat().st_size if part.exists() else 0)
-    free = shutil.disk_usage(spec.path.parent).free
+    return spec.size_bytes - (part.stat().st_size if part.exists() else 0)
+
+
+def check_space(spec: "ModelSpec | ModelBundle") -> None:
+    """Refuse a download that would fill the disk; a full disk breaks other apps, not just this one."""
+    remaining = sum(_remaining(part) for part in spec.parts)
+    free = shutil.disk_usage(models_dir()).free
     if free < remaining + SPACE_MARGIN:
         short = remaining + SPACE_MARGIN - free
         raise NotEnoughSpace(
@@ -89,8 +132,18 @@ def check_space(spec: ModelSpec) -> None:
         )
 
 
+def download_all(item: "ModelSpec | ModelBundle", progress: ProgressFn, cancel: threading.Event) -> None:
+    check_space(item)
+    before = 0
+    for spec in item.parts:
+        if not spec.downloaded:
+            download(spec, lambda done, _total, before=before: progress(before + done, item.size_bytes), cancel)
+        before += spec.size_bytes
+
+
 def download(spec: ModelSpec, progress: ProgressFn, cancel: threading.Event, chunk: int = 1 << 20) -> Path:
     check_space(spec)
+    spec.path.parent.mkdir(parents=True, exist_ok=True)
     part = spec.path.with_suffix(spec.path.suffix + ".part")
     done = part.stat().st_size if part.exists() else 0
     request = urllib.request.Request(spec.url, headers={"User-Agent": "screen-translator"})
