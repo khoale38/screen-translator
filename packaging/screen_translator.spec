@@ -11,6 +11,7 @@ APP_NAME = "Screen Translator"
 EXE_NAME = "screen-translator"
 BUNDLE_ID = "io.github.khoale38.screentranslator"
 VERSION = version("screen-translator")
+ICONS = os.path.join(SPECPATH, "icons")
 
 datas = collect_data_files("screen_translator") + collect_data_files("llama_cpp")
 binaries = collect_dynamic_libs("llama_cpp")
@@ -54,6 +55,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     upx=False,
+    icon=os.path.join(ICONS, "icon.ico"),
 )
 
 coll = COLLECT(exe, a.binaries, a.datas, name=EXE_NAME, upx=False)
@@ -63,6 +65,7 @@ if sys.platform == "darwin":
         coll,
         name=f"{APP_NAME}.app",
         bundle_identifier=BUNDLE_ID,
+        icon=os.path.join(ICONS, "icon.icns"),
         version=VERSION,
         info_plist={
             "CFBundleName": APP_NAME,

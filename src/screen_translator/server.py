@@ -27,6 +27,8 @@ class Hub:
         self.lines: deque[dict] = deque(maxlen=30)
         self.status: dict = {"type": "status", "state": "stopped", "error": ""}
         self.download: dict | None = None
+        self.screen: dict | None = None
+        self.screen_texts: dict[str, str] = {}
         self.listeners: list[Callable[[dict], None]] = []
 
     def emit(self, event: dict) -> None:
@@ -41,8 +43,25 @@ class Hub:
             self.status = event
         elif event["type"] == "download":
             self.download = event
+        elif event["type"] == "screen":
+            self.screen = event
+        elif event["type"] == "screen_text" and event["final"]:
+            if len(self.screen_texts) >= 500:
+                self.screen_texts.clear()
+            self.screen_texts[event["source"]] = event["translation"]
+        cleared = event["type"] == "clear" and event.get("area") is None
+        if cleared or (event["type"] == "status" and event["state"] == "stopped"):
+            self.screen, self.screen_texts = None, {}
         if self.loop:
             self.loop.call_soon_threadsafe(self._schedule, json.dumps(event, ensure_ascii=False))
+
+    def screen_snapshot(self) -> dict | None:
+        """The current whole-screen layout with every translation known so far, for a newly connected overlay."""
+        if not self.screen:
+            return None
+        blocks = [{**b, "translation": b.get("translation") or self.screen_texts.get(b["text"])}
+                  for b in self.screen["blocks"]]
+        return {**self.screen, "blocks": blocks}
 
     def _schedule(self, payload: str) -> None:
         for ws in list(self.sockets):
@@ -98,10 +117,11 @@ def create_app(
 
     async def static(request: web.Request) -> web.Response:
         name = request.match_info["name"]
-        if name not in {"app.css", "panel.js", "overlay.js"}:
+        kinds = {"app.css": "text/css", "panel.js": "application/javascript",
+                 "overlay.js": "application/javascript", "icon.png": "image/png"}
+        if name not in kinds:
             raise web.HTTPNotFound()
-        kind = "text/css" if name.endswith(".css") else "application/javascript"
-        return web.Response(text=(WEB / name).read_text(encoding="utf-8"), content_type=kind)
+        return web.Response(body=(WEB / name).read_bytes(), content_type=kinds[name])
 
     def state() -> dict:
         return {
@@ -224,6 +244,8 @@ def create_app(
         await ws.send_str(json.dumps(hub.status))
         for line in hub.lines:
             await ws.send_str(json.dumps(line, ensure_ascii=False))
+        if screen := hub.screen_snapshot():
+            await ws.send_str(json.dumps(screen, ensure_ascii=False))
         try:
             async for msg in ws:
                 if msg.type == WSMsgType.ERROR:

@@ -275,3 +275,21 @@ def test_the_window_lists_the_shortcuts_and_any_another_app_holds(app, tmp_path,
     window.enable_global_hotkeys()
     text = window.shortcuts.text()
     assert hotkeys.label("T") in text and "Already used by another app: " + hotkeys.label("H") in text
+
+
+def test_a_newer_release_shows_a_download_link_unless_the_check_is_off(app, tmp_path):
+    from screen_translator.updates import Release
+
+    window, _ = make_window(tmp_path)
+    window.show_update(None)
+    assert window.update_note.isHidden()
+    window.show_update(Release("0.2.0", "https://github.com/khoale38/screen-translator/releases/tag/v0.2.0"))
+    assert not window.update_note.isHidden()
+    assert "0.2.0" in window.update_note.text() and "releases/tag/v0.2.0" in window.update_note.text()
+
+    (tmp_path / "off").mkdir()
+    quiet, _ = make_window(tmp_path / "off", check_updates=False)
+    quiet.show_update(Release("0.2.0", "https://example.invalid"))
+    assert quiet.update_note.isHidden()
+    window.close()
+    quiet.close()

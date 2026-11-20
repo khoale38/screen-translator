@@ -31,9 +31,16 @@
   .line.pending { opacity: 0.8; }
   .src { display: block; color: var(--src); font-size: 0.55em; font-weight: 500; }
   .hide { opacity: 0; }
+  #screen { position: fixed; inset: 0; pointer-events: none; }
+  .patch {
+    position: absolute; box-sizing: border-box; padding: 0 2px; border-radius: 3px;
+    line-height: 1.15; overflow-wrap: anywhere; display: flex; align-items: center;
+  }
+  .patch.pending { opacity: 0.7; }
 </style>
 </head>
 <body>
+<div id="screen"></div>
 <div id="lines"></div>
 <script src="/static/overlay.js"></script>
 </body>

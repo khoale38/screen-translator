@@ -148,7 +148,8 @@ async def test_rejects_other_websites_and_foreign_hosts(store):
 async def test_pages_are_served(store):
     app = create_app(store, make_pipeline_factory([""], EchoTranslator()), FakeCapture)
     async with TestClient(TestServer(app, port=store.settings.port)) as client:
-        for path in ("/panel", "/overlay", "/static/panel.js", "/static/overlay.js", "/static/app.css"):
+        for path in ("/panel", "/overlay", "/static/panel.js", "/static/overlay.js", "/static/app.css",
+                     "/static/icon.png"):
             assert (await client.get(path)).status == 200, path
         assert (await client.get("/static/../config.py")).status == 404
 

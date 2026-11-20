@@ -18,6 +18,7 @@ LicenseFile=..\..\LICENSE
 OutputDir=..\..\dist
 OutputBaseFilename=ScreenTranslator-{#AppVersion}-windows-x64-setup
 UninstallDisplayIcon={app}\screen-translator.exe
+SetupIconFile=..\icons\icon.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

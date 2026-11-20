@@ -7,6 +7,7 @@ import threading
 import urllib.error
 import urllib.request
 import webbrowser
+from importlib import resources
 
 from PySide6.QtCore import QObject, QPoint, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -18,7 +19,7 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
-from . import languages
+from . import languages, updates
 from .appearance import Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes
 from .capture import exclude_window_from_capture
 from .config import SettingsStore
@@ -34,6 +35,7 @@ TAB = 330
 
 class Bridge(QObject):
     event = Signal(dict)
+    update_found = Signal(object)
 
 
 class Api:
@@ -243,11 +245,11 @@ class ScreenOverlay(QWidget):
             if block.get("translation"):
                 self.translations[block["text"]] = (block["translation"], True)
         self._layouts = {i: self._layout(b) for i, b in enumerate(blocks) if b["text"] in self.translations}
+        self.update()
 
     def _unchanged(self, block: dict) -> bool:
         text, final = self.translations.get(block["text"], ("", False))
         return final and " ".join(text.split()).casefold() == " ".join(block["text"].split()).casefold()
-        self.update()
 
     def set_translation(self, source: str, text: str, final: bool) -> None:
         self.translations[source] = (text, final)
@@ -353,6 +355,8 @@ class MainWindow(QWidget):
         self.overlays: list[TranslationOverlay] = []
         self.screen_overlay = ScreenOverlay()
         bridge.event.connect(self.on_event)
+        self.bridge = bridge
+        bridge.update_found.connect(self.show_update)
 
         self.scope = QComboBox()
         self.scope.addItem("A selected area (subtitles, dialogue)", "area")
@@ -414,6 +418,12 @@ class MainWindow(QWidget):
         self.last.setWordWrap(True)
         self.last.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
+        self.update_note = QLabel()
+        self.update_note.setOpenExternalLinks(True)
+        self.update_note.setWordWrap(True)
+        self.update_note.setStyleSheet("background: #1e3a8a; color: white; padding: 6px 8px; border-radius: 4px;")
+        self.update_note.hide()
+
         self.screen_label = QLabel("Screen")
         form = QGridLayout()
         rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
@@ -432,6 +442,7 @@ class MainWindow(QWidget):
         for button in (self.select, self.add_area, self.forget, self.more):
             tools.addWidget(button)
         layout = QVBoxLayout(self)
+        layout.addWidget(self.update_note)
         layout.addLayout(form)
         layout.addLayout(download_row)
         layout.addLayout(tools)
@@ -701,6 +712,18 @@ class MainWindow(QWidget):
                 self.status.setText("Click “Select areas”, drag the green box over the text (add more boxes if the "
                                     "text is in several places), then Start.")
 
+    def check_for_updates(self) -> None:
+        if self.store.settings.check_updates:
+            threading.Thread(target=lambda: self.bridge.update_found.emit(updates.check()), name="update-check",
+                             daemon=True).start()
+
+    def show_update(self, release: "updates.Release | None") -> None:
+        if release is None or not self.store.settings.check_updates:
+            return
+        self.update_note.setText(f"Screen Translator {release.version} is out. "
+                                 f"<a style='color: #fcd34d' href='{release.url}'>Download it</a>")
+        self.update_note.show()
+
     def on_event(self, event: dict) -> None:
         kind = event["type"]
         if kind == "line" and self.running:
@@ -795,11 +818,15 @@ def make_tray(window: "MainWindow") -> QSystemTrayIcon:
     show = QAction("Show Screen Translator", menu)
     toggle = QAction("Start", menu)
     quit_app = QAction("Quit", menu)
+    check_updates = QAction("Check for updates at startup", menu)
+    check_updates.setCheckable(True)
+    check_updates.setChecked(window.store.settings.check_updates)
+    check_updates.toggled.connect(lambda on: window.api.call("/api/settings", {"check_updates": on}))
     show.triggered.connect(lambda: bring_to_front(window))
     toggle.triggered.connect(window.toggle_running)
     quit_app.triggered.connect(window.close)
     menu.aboutToShow.connect(lambda: toggle.setText(f"{'Stop' if window.running else 'Start'}    {shortcut('T')}"))
-    for action in (show, toggle, quit_app):
+    for action in (show, toggle, check_updates, quit_app):
         menu.addAction(action)
     tray.setContextMenu(menu)
     tray.show()
@@ -812,6 +839,7 @@ def run(store: SettingsStore) -> None:
     os.environ.setdefault("QT_MAC_SET_RAISE_PROCESS", "0")
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("Screen Translator")
+    app.setWindowIcon(QIcon(str(resources.files("screen_translator") / "web" / "icon.png")))
     bridge = Bridge()
     ready, stop = threading.Event(), threading.Event()
     server = threading.Thread(target=serve, args=(store, ready, stop, bridge.event.emit), name="server", daemon=True)
@@ -828,6 +856,7 @@ def run(store: SettingsStore) -> None:
     window = MainWindow(Api(f"http://127.0.0.1:{store.settings.port}"), store, bridge)
     tray = make_tray(window)
     window.enable_global_hotkeys()
+    window.check_for_updates()
     window.show()
     bring_to_front(window)
     app.exec()

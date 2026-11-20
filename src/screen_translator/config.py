@@ -64,6 +64,7 @@ class Settings:
     model: str = "qwen3.5-4b"
     custom_model_path: str = ""
     gpu_layers: int = -1
+    check_updates: bool = True
     port: int = 8765
 
     @classmethod

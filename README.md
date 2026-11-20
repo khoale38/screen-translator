@@ -1,6 +1,6 @@
 # Screen Translator
 
-Real-time translation of the text on your screen: game dialogue, hard-subbed video, mission objectives, menus. The translation is drawn right over the original text, or added to OBS as live subtitles. It runs **entirely on your computer**: on-device OCR, a local LLM through llama.cpp, no account, no API keys and no cloud calls.
+Real-time translation of the text on your screen: game dialogue, hard-subbed video, mission objectives, menus. The translation is drawn right over the original text, or added to OBS as live subtitles. It runs **entirely on your computer**: on-device OCR, a local LLM through llama.cpp, no account, no API keys, and the text you read never leaves your computer.
 
 Unlike line-by-line translators, it **keeps context**. Every new line is translated together with the last few lines and their translations, so names, pronouns, gender, tone and sentences split across screens stay consistent.
 
@@ -74,7 +74,7 @@ These work from any app, including full-screen games and video. No extra permiss
    - On macOS and Windows, OBS needs a Python install set under **Tools → Scripts → Python Settings**.
 2. If you installed the app in its default location, the script finds it on its own. Otherwise set **Screen Translator command** to the `screen-translator` executable. The app then starts and stops with OBS.
 3. In the app window, click **Select areas** and drag the box over the subtitles.
-4. In the script, click **Add overlay to current scene**. It adds a 1920×1080 Browser Source called *Live Translation* that shows the translations of your selected areas as subtitles. (Whole-screen mode isn't shown in the overlay.)
+4. In the script, click **Add overlay to current scene**. It adds a 1920×1080 Browser Source called *Live Translation*. With selected areas it shows the translations as subtitles; with **The whole screen** it paints each translation over its original text, so the captured screen should fill the canvas.
 5. Optional: add the control panel as a dock via **Docks → Custom Browser Docks**, with URL `http://127.0.0.1:8765/panel`.
 
 On Windows, the translations the app draws on screen are hidden from screen recording, so viewers only see the overlay. Tick **Run without a window** in the script if you'd rather not have the app window at all; then pick the capture area under **Open control panel**.
@@ -95,6 +95,7 @@ Add any of these to the Browser Source URL, `http://127.0.0.1:8765/overlay?…`:
 | `bg` | `0.55` | background opacity, 0–1 |
 | `color` | `ffffff` | text colour (hex) |
 | `hold` | `0` | hide the subtitles after N seconds (0 means keep them) |
+| `screen=0` | on | don't show whole-screen translations |
 
 ## Models
 
@@ -117,7 +118,7 @@ Models are stored in `~/Library/Application Support/ScreenTranslator/models` on 
 4. **Translate with context**: a local model gets your glossary, the **Watching** notes and the recent lines as conversation history. Context expires after 5 minutes by default, and **Forget context** clears it. Whole-screen mode translates up to 12 pieces of text per request.
 5. **Show**: the translation streams onto the screen as it's written, and over a local WebSocket to the OBS overlay.
 
-Everything listens on `127.0.0.1` only and rejects requests from other websites.
+Everything listens on `127.0.0.1` only and rejects requests from other websites. The only other network traffic is the model download and, once at startup, a check of this repository's latest release; turn the check off with **Check for updates at startup** in the menu-bar menu.
 
 ## From source
 

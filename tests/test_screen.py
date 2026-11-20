@@ -249,3 +249,21 @@ async def test_text_smaller_than_the_chosen_size_is_skipped(store):
         await client.post("/api/stop", json={})
     shown = next(e for e in events if e["type"] == "screen" and e["blocks"])
     assert [b["text"] for b in shown["blocks"]] == ["Hold L1 to open your loadout"]
+
+
+def test_an_overlay_that_connects_late_gets_the_screen_with_every_known_translation():
+    from screen_translator.server import Hub
+
+    hub = Hub()
+    hub.emit({"type": "screen", "ms": 5, "blocks": [
+        {"text": "メニュー", "box": (0, 0, 0.1, 0.1), "line_height": 0.02, "bg": "#000", "fg": "#fff",
+         "translation": "Menu"},
+        {"text": "こんにちは", "box": (0, 0.5, 0.3, 0.1), "line_height": 0.02, "bg": "#000", "fg": "#fff",
+         "translation": None},
+    ]})
+    hub.emit({"type": "screen_text", "source": "こんにちは", "translation": "Hel", "final": False})
+    assert [b["translation"] for b in hub.screen_snapshot()["blocks"]] == ["Menu", None]
+    hub.emit({"type": "screen_text", "source": "こんにちは", "translation": "Hello", "final": True})
+    assert [b["translation"] for b in hub.screen_snapshot()["blocks"]] == ["Menu", "Hello"]
+    hub.emit({"type": "status", "state": "stopped", "error": ""})
+    assert hub.screen_snapshot() is None
