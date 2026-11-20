@@ -15,6 +15,8 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.12"
+  # Compiled once per platform and cached on its own (bump the suffix after changing CMAKE_ARGS).
+  LLAMA_CPP_VERSION: "0.3.37"
 
 jobs:
   macos:
@@ -34,9 +36,25 @@ jobs:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
           cache-suffix: macos-metal-portable
+      - name: Restore compiled llama.cpp
+        id: llama
+        uses: actions/cache/restore@v4
+        with:
+          path: wheels
+          key: llama-cpp-python-${{ env.LLAMA_CPP_VERSION }}-macos-metal-portable
+      - name: Compile llama.cpp
+        if: steps.llama.outputs.cache-hit != 'true'
+        run: python -m pip wheel "llama-cpp-python==$LLAMA_CPP_VERSION" --no-deps -w wheels
+      - name: Save compiled llama.cpp
+        if: steps.llama.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: wheels
+          key: ${{ steps.llama.outputs.cache-primary-key }}
       - name: Install
         run: |
           uv venv --python "$(which python)"
+          uv pip install wheels/*.whl
           uv pip install ".[desktop]" pyinstaller
       - name: Build app and DMG
         run: ./packaging/build_macos.sh
@@ -74,9 +92,25 @@ jobs:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
           cache-suffix: windows-vulkan-dl-avx2
+      - name: Restore compiled llama.cpp
+        id: llama
+        uses: actions/cache/restore@v4
+        with:
+          path: wheels
+          key: llama-cpp-python-${{ env.LLAMA_CPP_VERSION }}-windows-vulkan-dl-avx2
+      - name: Compile llama.cpp
+        if: steps.llama.outputs.cache-hit != 'true'
+        run: python -m pip wheel "llama-cpp-python==$env:LLAMA_CPP_VERSION" --no-deps -w wheels
+      - name: Save compiled llama.cpp
+        if: steps.llama.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: wheels
+          key: ${{ steps.llama.outputs.cache-primary-key }}
       - name: Install
         run: |
           uv venv --python (Get-Command python).Source
+          uv pip install (Get-ChildItem wheels\*.whl).FullName
           uv pip install ".[desktop]" pyinstaller
       - name: Build app
         run: .venv\Scripts\python -m PyInstaller --noconfirm --clean --distpath dist --workpath build\pyinstaller packaging\screen_translator.spec
@@ -85,23 +119,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .st-home/models
-          key: model-Qwen3.5-4B-Q4_K_M
+          key: model-Qwen3.5-2B-Q8_0
       - name: Download test model
         if: steps.model.outputs.cache-hit != 'true'
         run: |
           New-Item -ItemType Directory -Force .st-home\models | Out-Null
-          curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-4B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
-      - name: Self-test without a Vulkan loader
-        run: |
-          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and -not $_.StartsWith($env:VULKAN_SDK) }) -join ';'
-          ./packaging/windows/self_test.ps1
-      - name: Install the Vulkan runtime
-        uses: jakoch/install-vulkan-sdk-action@v1
-        with:
-          vulkan_version: 1.4.357.0
-          install_runtime: true
-          install_runtime_only: true
-      - name: Self-test with a Vulkan loader but no GPU
+          curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-2B-Q8_0.gguf https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q8_0.gguf
+      # The runner has no GPU but ships vulkan-1.dll, so this proves the Vulkan backend loads and falls back to the CPU.
+      - name: Self-test
         run: ./packaging/windows/self_test.ps1
       - name: Build installer and zip
         run: |

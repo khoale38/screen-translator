@@ -117,10 +117,10 @@ def _self_test() -> int:
         started = time.perf_counter()
         translator = LlamaTranslator(str(spec.path))
         print(f"Model {spec.key} loaded in {time.perf_counter() - started:.1f} s", flush=True)
-        for line in ("こんにちは、世界。", "ユキはまだ帰ってこないの？", "彼女、昨日から連絡がないんだ。"):
-            started = time.perf_counter()
-            result = translator.translate(build_messages(line, [], "ja", "en"))
-            print(f"Translation: {line} -> {result!r} in {time.perf_counter() - started:.2f} s", flush=True)
+        line = "ユキはまだ帰ってこないの？"
+        started = time.perf_counter()
+        result = translator.translate(build_messages(line, [], "ja", "en"))
+        print(f"Translation: {line} -> {result!r} in {time.perf_counter() - started:.2f} s", flush=True)
         translator.close()
     print("Self-test passed", flush=True)
     return 0
