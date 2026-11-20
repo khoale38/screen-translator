@@ -52,6 +52,7 @@ class FakeScreenCapture(FakeCapture):
 
 class ScriptedScreenOcr:
     name = "fake"
+    device = "fake GPU"
 
     def __init__(self, script):
         self.script = list(script)
@@ -114,6 +115,7 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
     finals = [e for e in events if e["type"] == "screen_text" and e["final"]]
     assert [e["translation"] for e in finals] == ["EN(ファイル)", "EN(こんにちは)", "EN(さようなら)"]
     assert any(e["type"] == "screen" and [b["text"] for b in e["blocks"]] == ["ファイル"] for e in events)
+    assert [e["ocr"] for e in events if e["type"] == "devices"] == ["fake GPU"]
 
 
 class TwoAreaCapture(FakeCapture):

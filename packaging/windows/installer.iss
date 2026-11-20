@@ -22,12 +22,17 @@ SetupIconFile=..\icons\icon.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; The default model downloads into {app}\models on first run.
+ExtraDiskSpaceRequired=2740937888
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "..\..\dist\screen-translator\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\models"
 
 [Icons]
 Name: "{autoprograms}\Screen Translator"; Filename: "{app}\screen-translator.exe"

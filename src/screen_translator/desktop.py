@@ -417,6 +417,12 @@ class MainWindow(QWidget):
         self.last = QLabel()
         self.last.setWordWrap(True)
         self.last.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.speed = QLabel()
+        self.speed.setWordWrap(True)
+        self.speed.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.speed.setStyleSheet("color: gray; font-size: 11px;")
+        self.devices: dict[str, str] = {}
+        self.timings: dict[str, str] = {}
 
         self.update_note = QLabel()
         self.update_note.setOpenExternalLinks(True)
@@ -450,6 +456,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.shortcuts)
         layout.addWidget(self.status)
         layout.addWidget(self.last)
+        layout.addWidget(self.speed)
 
         self.select.toggled.connect(self.toggle_source)
         self.add_area.clicked.connect(self.new_area)
@@ -701,6 +708,9 @@ class MainWindow(QWidget):
         self.start.setStyleSheet(f"QPushButton {{ background: {color}; color: white; font-size: 18px; "
                                  f"font-weight: 600; border-radius: 8px; }}")
         self.scope.setEnabled(not running)
+        if running:
+            self.timings = {}
+            self.show_speed()
         if not running:
             self.set_overlays_hidden(False)
             for overlay in self.overlays:
@@ -738,8 +748,19 @@ class MainWindow(QWidget):
         elif kind == "screen" and self.running:
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.set_blocks(event["blocks"])
+            if event["blocks"]:
+                self.show_speed(read=f"reading the screen {event['ms']} ms")
         elif kind == "screen_text" and self.running:
             self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
+            if event["final"] and "ms" in event:
+                pieces = event.get("batch", 1)
+                self.show_speed(translate=f"translating {pieces} piece{'s' if pieces > 1 else ''} "
+                                          f"{event['ms'] / 1000:.1f} s")
+        elif kind == "ocr" and self.running:
+            self.show_speed(read=f"reading the text {event['ms']} ms")
+        elif kind == "devices":
+            self.devices = event
+            self.show_speed()
 
         elif kind == "clear":
             area = event.get("area")
@@ -765,6 +786,22 @@ class MainWindow(QWidget):
                 self.progress.setMaximum(1000)
                 self.progress.setValue(int(1000 * event["done"] / max(1, event["total"])))
             QTimer.singleShot(0, self.refresh_model)
+
+    def show_speed(self, **timings: str) -> None:
+        self.timings.update(timings)
+        lines = []
+        model, ocr = self.devices.get("model"), self.devices.get("ocr")
+        if model or ocr:
+            lines.append(f"Model on {model or 'unknown'} · text reading on {ocr or 'unknown'}")
+        steps = " · ".join(self.timings[k] for k in ("read", "translate") if k in self.timings)
+        if steps:
+            lines.append(steps[0].upper() + steps[1:])
+        text = "<br>".join(lines)
+        if model == "CPU" and self.store.settings.gpu_layers != 0:
+            text += ("<br><span style='color:#d97706'>No usable graphics card was found, so the model runs on the "
+                     "CPU, which is slow. Updating the graphics driver usually fixes this; Qwen3.5 2B is faster "
+                     "meanwhile.</span>")
+        self.speed.setText(text)
 
     def closeEvent(self, event) -> None:
         self.api.call("/api/stop", {})

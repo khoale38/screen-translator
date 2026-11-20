@@ -67,6 +67,7 @@ class Pipeline:
         self._screen_blocks: list[Block] = []
         self._screen_changed = threading.Event()
         self._cache: dict[tuple[str, str, str], str] = {}
+        self.devices: dict[str, str] = {}
         self.state = "stopped"
         self.last_error = ""
 
@@ -161,6 +162,7 @@ class Pipeline:
                     thumb = thumbnail(frame)
                     if changed(thumbs.get(area), thumb):
                         lines = ocr.recognize(frame, settings.source_lang)
+                        self._report_devices(ocr)
                         texts[area] = assemble(lines)
                         heights[area] = median(line.box[3] for line in lines) if lines else 0.0
                         self.emit({"type": "ocr", "area": area, "text": texts[area],
@@ -175,6 +177,13 @@ class Pipeline:
                 self._stop.wait(max(0.0, settings.capture_interval_s - (time.monotonic() - started)))
         finally:
             capture.close()
+
+    def _report_devices(self, ocr: OcrEngine) -> None:
+        devices = {"model": getattr(self._translator, "device", ""), "ocr": getattr(ocr, "device", "")}
+        if devices != self.devices:
+            self.devices = devices
+            print(f"Model runs on {devices['model'] or 'unknown'}; OCR runs on {devices['ocr'] or 'unknown'}", flush=True)
+            self.emit({"type": "devices", **devices})
 
     def _is_own_output(self, event: TextEvent) -> bool:
         """Ignore text that is our own translation, e.g. the floating subtitle window sitting inside the region."""
@@ -306,6 +315,7 @@ class Pipeline:
                         and b.line_height * screen_height >= settings.min_text_px
                         and not already_in(settings.target_lang, b.text)
                     ]
+                    self._report_devices(ocr)
                     for b in blocks:
                         b.bg, b.fg = block_colors(frame, b.box)
                     ms = round((time.monotonic() - started) * 1000)

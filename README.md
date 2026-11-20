@@ -25,7 +25,7 @@ There's also a portable `ScreenTranslator-<version>-windows-x64.zip`: extract it
 
 The app also puts a **文A** icon in the notification area of the taskbar. Use it to bring the window back, start or stop, or quit.
 
-It runs the model on your graphics card through Vulkan (NVIDIA, AMD or Intel; keep the graphics driver up to date). Without a Vulkan driver it falls back to the CPU, which is much slower (a few seconds per line); if that's too slow, pick **Qwen3.5 2B**. It needs a processor with AVX2 (most PCs from 2013 on). The default OCR models are included, so the first run works offline.
+It runs the model on your graphics card through Vulkan and reads text on it through DirectML (NVIDIA, AMD or Intel; keep the graphics driver up to date). Without a working driver both fall back to the CPU, which is much slower (a few seconds per line); if that's too slow, pick **Qwen3.5 2B**. While it runs, the bottom of the window shows which device the model and the text reading are on and how long each step takes. It needs a processor with AVX2 (most PCs from 2013 on). The default OCR models are included, so the first run works offline.
 
 ## Using it
 
@@ -96,7 +96,7 @@ All models run locally through llama.cpp. Pick one in the app, or point **Custom
 | Qwen3.5 9B | 5.7 GB | best quality, needs 16 GB RAM |
 | Gemma 3 4B | 2.5 GB | widest language coverage (Gemma terms of use) |
 
-Models are stored in `%LOCALAPPDATA%\ScreenTranslator\models`.
+Models are stored in the `models` folder inside the folder you installed to (or unzipped the portable version to), and uninstalling removes them. If that folder is read-only, such as an all-users install under Program Files, they go to `%LOCALAPPDATA%\ScreenTranslator\models` instead. Models downloaded by an earlier version are moved over the first time you start.
 
 ## How it works
 

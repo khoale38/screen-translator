@@ -124,7 +124,10 @@ class LlamaTranslator:
         from llama_cpp import Llama
         from llama_cpp.llama_chat_format import Jinja2ChatFormatter
 
+        from .devices import model_device
+
         self._llm = Llama(model_path=model_path, n_gpu_layers=gpu_layers, n_ctx=n_ctx, verbose=False)
+        self.device = model_device(gpu_layers)
         token_text = lambda token: self._llm.detokenize([token], special=True).decode("utf-8", "ignore")
         self._format = Jinja2ChatFormatter(
             self._llm.metadata["tokenizer.chat_template"],

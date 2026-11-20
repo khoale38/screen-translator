@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import sys
 import threading
 from dataclasses import asdict, dataclass, field, fields
+from functools import lru_cache
 from pathlib import Path
 
 from platformdirs import user_data_dir
@@ -19,9 +22,54 @@ def data_dir() -> Path:
 
 
 def models_dir() -> Path:
+    if not os.environ.get("SCREEN_TRANSLATOR_HOME"):
+        beside_app = installed_models_dir()
+        if beside_app:
+            return beside_app
     path = data_dir() / "models"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def app_dir() -> Path | None:
+    """The folder the Windows app was installed or unzipped to; None when running from source or on macOS."""
+    if getattr(sys, "frozen", False) and sys.platform == "win32":
+        return Path(sys.executable).resolve().parent
+    return None
+
+
+@lru_cache(maxsize=1)
+def installed_models_dir() -> Path | None:
+    """Models live in the folder picked at install, unless it is read-only (an all-users install in Program Files)."""
+    folder = app_dir()
+    if folder is None:
+        return None
+    path = folder / "models"
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write-test"
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError:
+        return None
+    move_models(data_dir() / "models", path)
+    return path
+
+
+def move_models(old: Path, new: Path) -> None:
+    """Bring models downloaded by earlier versions along, so they are not downloaded again."""
+    if not old.is_dir():
+        return
+    for model in old.glob("*.gguf*"):
+        if not (new / model.name).exists():
+            try:
+                shutil.move(str(model), new / model.name)
+            except OSError:
+                continue
+    try:
+        old.rmdir()
+    except OSError:
+        pass
 
 
 @dataclass

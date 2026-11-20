@@ -293,3 +293,21 @@ def test_a_newer_release_shows_a_download_link_unless_the_check_is_off(app, tmp_
     assert quiet.update_note.isHidden()
     window.close()
     quiet.close()
+
+
+def test_the_window_says_where_the_model_runs_and_how_long_each_step_takes(app, tmp_path):
+    window, _ = make_window(tmp_path, scope="screen")
+    window.set_running(True)
+    window.on_event({"type": "devices", "model": "NVIDIA GeForce RTX 2060 (Vulkan)", "ocr": "GPU (DirectML)"})
+    window.on_event({"type": "screen", "ms": 420, "blocks": [{"text": "犬", "box": [0.1, 0.1, 0.1, 0.05],
+                                                               "line_height": 0.05, "bg": "#000", "fg": "#fff",
+                                                               "translation": None}]})
+    window.on_event({"type": "screen_text", "source": "犬", "translation": "Dog", "final": True, "ms": 1800,
+                     "batch": 3})
+    text = window.speed.text()
+    assert "Model on NVIDIA GeForce RTX 2060 (Vulkan) · text reading on GPU (DirectML)" in text
+    assert "Reading the screen 420 ms · translating 3 pieces 1.8 s" in text
+    assert "CPU" not in text
+
+    window.on_event({"type": "devices", "model": "CPU", "ocr": "CPU"})
+    assert "Updating the graphics driver" in window.speed.text()

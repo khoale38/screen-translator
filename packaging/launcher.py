@@ -24,56 +24,19 @@ def _no_error_dialogs() -> None:
         ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
 
 
-def _ggml():
-    from llama_cpp import _ggml, llama_cpp
-
-    if sys.platform == "win32":
-        return _ggml.libggml
-    # Wheels hold libggml.dylib and libggml.1.dylib as two copies with separate backend registries;
-    # looking symbols up through libllama finds the copy llama.cpp actually uses.
-    return llama_cpp._lib
-
-
-def _ggml_base():
-    """Device names live in ggml-base; Windows' GetProcAddress, unlike dlsym, does not search dependent DLLs."""
-    if sys.platform != "win32":
-        return _ggml()
-    import ctypes
-
-    from llama_cpp import _ggml as bindings
-
-    return ctypes.CDLL(str(bindings.libggml_base_path / "ggml-base.dll"))
-
-
 def _load_llama_backends() -> None:
     # GGML_BACKEND_DL builds only search next to the executable, but the backend libraries live in llama_cpp/lib.
     import ctypes
 
     from llama_cpp import _ggml as bindings
 
-    ggml = _ggml()
+    from screen_translator import devices
+
+    ggml = devices.ggml_lib()
     ggml.ggml_backend_reg_count.restype = ctypes.c_size_t
     if ggml.ggml_backend_reg_count() == 0:
         ggml.ggml_backend_load_all_from_path.argtypes = [ctypes.c_char_p]
         ggml.ggml_backend_load_all_from_path(str(bindings.libggml_base_path).encode("utf-8"))
-
-
-def _llama_devices() -> list[tuple[str, str, int]]:
-    import ctypes
-
-    ggml, base = _ggml(), _ggml_base()
-    ggml.ggml_backend_dev_count.restype = ctypes.c_size_t
-    ggml.ggml_backend_dev_get.argtypes = [ctypes.c_size_t]
-    ggml.ggml_backend_dev_get.restype = ctypes.c_void_p
-    for fn in (base.ggml_backend_dev_name, base.ggml_backend_dev_description):
-        fn.argtypes, fn.restype = [ctypes.c_void_p], ctypes.c_char_p
-    base.ggml_backend_dev_type.argtypes, base.ggml_backend_dev_type.restype = [ctypes.c_void_p], ctypes.c_int
-    devices = []
-    for i in range(ggml.ggml_backend_dev_count()):
-        dev = ggml.ggml_backend_dev_get(i)
-        name, desc = base.ggml_backend_dev_name(dev), base.ggml_backend_dev_description(dev)
-        devices.append((name.decode(), desc.decode(errors="replace"), base.ggml_backend_dev_type(dev)))
-    return devices
 
 
 def _self_test() -> int:
@@ -95,17 +58,17 @@ def _self_test() -> int:
 
     print(f"Desktop UI: Qt {qVersion()}", flush=True)
     print("llama.cpp:", llama_cpp.llama_print_system_info().decode(), flush=True)
-    devices = _llama_devices()
-    for name, desc, kind in devices:
+    from screen_translator.devices import llama_devices, model_device
+
+    for name, desc, kind in llama_devices():
         print(f"Device: {name} ({desc}), type {kind}", flush=True)
-    gpus = [f"{name} ({desc})" for name, desc, kind in devices if kind in (1, 2)]
-    print("Backend:", gpus[0] if gpus else "CPU", flush=True)
+    print("Backend:", model_device(), flush=True)
 
     image = Image.new("RGB", (900, 160), "white")
     ImageDraw.Draw(image).text((30, 40), "HELLO WORLD", fill="black", font=ImageFont.load_default(72))
     engine = default_engine()
     text = assemble(engine.recognize(Frame(image.convert("RGBA").tobytes("raw", "BGRA"), *image.size), "en"))
-    print(f"OCR ({engine.name}): {text!r}", flush=True)
+    print(f"OCR ({engine.name} on {engine.device}): {text!r}", flush=True)
     if "HELLO" not in text.upper():
         print("Self-test failed: OCR did not read the test image", flush=True)
         return 1

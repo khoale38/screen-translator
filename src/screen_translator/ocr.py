@@ -37,6 +37,7 @@ def prefer_button_reading(candidates: list[str]) -> str:
 class OcrEngine(Protocol):
     name: str
     hint: str
+    device: str
 
     def recognize(self, frame: Frame, lang: str) -> list[OcrLine]: ...
 
@@ -44,6 +45,7 @@ class OcrEngine(Protocol):
 class AppleVisionOcr:
     name = "Apple Vision"
     hint = ""
+    device = "Apple Vision"
 
     def __init__(self) -> None:
         import Vision
@@ -112,9 +114,11 @@ class RapidOcr:
     name = "RapidOCR"
     hint = "Auto-detect reads Chinese, Japanese and Latin-script text. Pick Korean, Russian, Ukrainian, Thai, Arabic or Hindi explicitly."
 
-    def __init__(self, model_dir: Path | None = None) -> None:
+    def __init__(self, model_dir: Path | None = None, gpu: bool = sys.platform == "win32") -> None:
         self._model_dir = model_dir or ocr_models_dir()
         self._engines: dict[str, object] = {}
+        self._gpu = gpu
+        self.device = "CPU"
 
     def _engine(self, lang: str):
         group = RAPID_GROUPS.get(lang, "multi")
@@ -130,6 +134,7 @@ class RapidOcr:
                 "Global.log_level": "error",
                 "Global.use_cls": False,
                 "EngineConfig.onnxruntime.intra_op_num_threads": max(1, (os.cpu_count() or 2) // 2),
+                "EngineConfig.onnxruntime.use_dml": self._gpu,
                 "Det.ocr_version": OCRVersion.PPOCRV6,
                 "Det.model_type": ModelType.SMALL,
                 "Det.lang_type": LangDet.CH,
@@ -138,7 +143,16 @@ class RapidOcr:
         return self._engines[group]
 
     def recognize(self, frame: Frame, lang: str) -> list[OcrLine]:
-        result = self._engine(lang)(frame.array()[:, :, :3])
+        image = frame.array()[:, :, :3]
+        try:
+            result = self._engine(lang)(image)
+        except Exception:
+            if not self._gpu:
+                raise
+            # DirectML needs a DirectX 12 GPU; without one, read on the CPU from now on.
+            self._gpu, self._engines = False, {}
+            result = self._engine(lang)(image)
+        self.device = _ort_device(self._engines[RAPID_GROUPS.get(lang, "multi")])
         if result.boxes is None or result.txts is None:
             return []
         lines = []
@@ -148,6 +162,12 @@ class RapidOcr:
             w, h = float(xs.max()) / frame.width - x0, float(ys.max()) / frame.height - y0
             lines.append(OcrLine(text, float(score), (x0, y0, w, h)))
         return lines
+
+
+def _ort_device(engine) -> str:
+    session = getattr(getattr(getattr(engine, "text_det", None), "session", None), "session", None)
+    providers = session.get_providers() if session is not None else []
+    return "GPU (DirectML)" if providers and providers[0] == "DmlExecutionProvider" else "CPU"
 
 
 RAPID_GROUPS = {"ko": "korean", "ru": "eslav", "uk": "eslav", "th": "th", "ar": "arabic", "hi": "devanagari"}

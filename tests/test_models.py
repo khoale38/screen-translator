@@ -64,3 +64,40 @@ def test_running_out_of_space_mid_download_removes_the_partial_file(spec, monkey
     with pytest.raises(NotEnoughSpace, match="filled up"):
         download(spec, lambda done, total: None, threading.Event(), chunk=1024)
     assert not spec.path.with_suffix(".gguf.part").exists()
+
+
+def test_the_windows_app_keeps_models_in_its_install_folder_and_brings_old_ones_along(tmp_path, monkeypatch):
+    from screen_translator import config
+
+    old = tmp_path / "appdata"
+    (old / "models").mkdir(parents=True)
+    (old / "models" / "a.gguf").write_bytes(b"model")
+    (old / "models" / "b.gguf.part").write_bytes(b"half")
+    install = tmp_path / "Screen Translator"
+    monkeypatch.delenv("SCREEN_TRANSLATOR_HOME", raising=False)
+    monkeypatch.setattr(config, "user_data_dir", lambda *a, **k: str(old))
+    monkeypatch.setattr(config, "app_dir", lambda: install)
+    config.installed_models_dir.cache_clear()
+    try:
+        assert config.models_dir() == install / "models"
+        assert (install / "models" / "a.gguf").read_bytes() == b"model"
+        assert (install / "models" / "b.gguf.part").exists()
+        assert not (old / "models").exists()
+    finally:
+        config.installed_models_dir.cache_clear()
+
+
+def test_a_read_only_install_folder_falls_back_to_app_data(tmp_path, monkeypatch):
+    from screen_translator import config
+
+    install = tmp_path / "Program Files"
+    install.mkdir()
+    (install / "models").write_text("not a folder")
+    monkeypatch.delenv("SCREEN_TRANSLATOR_HOME", raising=False)
+    monkeypatch.setattr(config, "user_data_dir", lambda *a, **k: str(tmp_path / "appdata"))
+    monkeypatch.setattr(config, "app_dir", lambda: install)
+    config.installed_models_dir.cache_clear()
+    try:
+        assert config.models_dir() == tmp_path / "appdata" / "models"
+    finally:
+        config.installed_models_dir.cache_clear()
