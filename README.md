@@ -15,17 +15,7 @@ Translated without context, the third line comes out as *"Could **you** have gon
 
 ## Install
 
-Download the latest build from the [Releases page](https://github.com/khoale38/screen-translator/releases/latest). The translation model isn't included: the app downloads it from Hugging Face the first time (2.7 GB for the default), after checking there's room on the disk.
-
-### macOS (Apple Silicon, macOS 13 or later)
-
-1. Download `ScreenTranslator-<version>-macos-arm64.dmg`, open it and drag **Screen Translator** into **Applications**.
-2. Open the app. It isn't notarized by Apple yet, so macOS blocks the first launch: go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to the Screen Translator message. On macOS 13 and 14 you can instead right-click the app and choose **Open**.
-3. When you press **Start**, allow Screen Recording (see [macOS permission](#macos-permission)).
-
-The app lives in the **menu bar** (the **文A** icon), not the Dock. That's what lets its translations appear on top of full-screen apps such as full-screen YouTube or games. Use the icon to bring the window back, start or stop, or quit. Translation runs on the GPU through Metal.
-
-### Windows (10 or 11, 64-bit)
+Screen Translator is released for **Windows 10 and 11 (64-bit)**. Download the latest build from the [Releases page](https://github.com/khoale38/screen-translator/releases/latest). The translation model isn't included: the app downloads it from Hugging Face the first time (2.7 GB for the default), after checking there's room on the disk.
 
 1. Download `ScreenTranslator-<version>-windows-x64-setup.exe` and run it. It installs for your user only and doesn't need admin rights.
 2. The installer isn't code-signed yet, so SmartScreen may say *Windows protected your PC*. Click **More info → Run anyway**.
@@ -33,11 +23,9 @@ The app lives in the **menu bar** (the **文A** icon), not the Dock. That's what
 
 There's also a portable `ScreenTranslator-<version>-windows-x64.zip`: extract it anywhere and run `screen-translator.exe`.
 
-The Windows build runs the model on your graphics card through Vulkan (NVIDIA, AMD or Intel; keep the graphics driver up to date). Without a Vulkan driver it falls back to the CPU, which is much slower (a few seconds per line); if that's too slow, pick **Qwen3.5 2B**. It needs a processor with AVX2 (most PCs from 2013 on). The default OCR models are included, so the first run works offline.
+The app also puts a **文A** icon in the notification area of the taskbar. Use it to bring the window back, start or stop, or quit.
 
-### macOS permission
-
-macOS only lets an app see other windows after you allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**. Allow whichever app starts Screen Translator (the Screen Translator app, OBS, or your terminal), then restart that app. Without the permission, capture only sees the wallpaper, and the app shows a message saying so. After updating the app, macOS may ask again; if capture still only sees the wallpaper, remove Screen Translator from that list and add it back.
+It runs the model on your graphics card through Vulkan (NVIDIA, AMD or Intel; keep the graphics driver up to date). Without a Vulkan driver it falls back to the CPU, which is much slower (a few seconds per line); if that's too slow, pick **Qwen3.5 2B**. It needs a processor with AVX2 (most PCs from 2013 on). The default OCR models are included, so the first run works offline.
 
 ## Using it
 
@@ -52,13 +40,13 @@ macOS only lets an app see other windows after you allow it in **System Settings
 
 ### Shortcuts
 
-These work from any app, including full-screen games and video. No extra permission is needed.
+These work from any app, including full-screen games and video.
 
-| macOS | Windows | |
-|---|---|---|
-| ⌃⇧T | Ctrl+Shift+T | start or stop translating |
-| ⌃⇧H | Ctrl+Shift+H | hide or show the translations, to peek at the original |
-| ⌃⇧1 … ⌃⇧9 | Ctrl+Shift+1 … 9 | translate the whole of screen 1–9 |
+| Shortcut | |
+|---|---|
+| Ctrl+Shift+T | start or stop translating |
+| Ctrl+Shift+H | hide or show the translations, to peek at the original |
+| Ctrl+Shift+1 … 9 | translate the whole of screen 1–9 |
 
 ### Tips for better translations
 
@@ -71,13 +59,13 @@ These work from any app, including full-screen games and video. No extra permiss
 ## Use with OBS
 
 1. In OBS, open **Tools → Scripts → +** and load `obs/screen_translator_obs.py`.
-   - On macOS and Windows, OBS needs a Python install set under **Tools → Scripts → Python Settings**.
+   - OBS needs a Python install set under **Tools → Scripts → Python Settings**.
 2. If you installed the app in its default location, the script finds it on its own. Otherwise set **Screen Translator command** to the `screen-translator` executable. The app then starts and stops with OBS.
 3. In the app window, click **Select areas** and drag the box over the subtitles.
 4. In the script, click **Add overlay to current scene**. It adds a 1920×1080 Browser Source called *Live Translation*. With selected areas it shows the translations as subtitles; with **The whole screen** it paints each translation over its original text, so the captured screen should fill the canvas.
 5. Optional: add the control panel as a dock via **Docks → Custom Browser Docks**, with URL `http://127.0.0.1:8765/panel`.
 
-On Windows, the translations the app draws on screen are hidden from screen recording, so viewers only see the overlay. Tick **Run without a window** in the script if you'd rather not have the app window at all; then pick the capture area under **Open control panel**.
+The translations the app draws on screen are hidden from screen recording, so viewers only see the overlay. Tick **Run without a window** in the script if you'd rather not have the app window at all; then pick the capture area under **Open control panel**.
 
 The script also adds OBS hotkeys (**Settings → Hotkeys**) for *start/stop translating* and *forget context*.
 
@@ -103,26 +91,26 @@ All models run locally through llama.cpp. Pick one in the app, or point **Custom
 
 | Model | Size | Notes |
 |---|---|---|
-| Qwen3.5 4B (default) | 2.7 GB | first words in about 0.5 s on an Apple Silicon Mac; good quality |
+| Qwen3.5 4B (default) | 2.7 GB | good quality, the best balance of speed and accuracy |
 | Qwen3.5 2B | 2.0 GB | fastest, for 8 GB machines, weaker with slang |
 | Qwen3.5 9B | 5.7 GB | best quality, needs 16 GB RAM |
 | Gemma 3 4B | 2.5 GB | widest language coverage (Gemma terms of use) |
 
-Models are stored in `~/Library/Application Support/ScreenTranslator/models` on macOS, `%LOCALAPPDATA%\ScreenTranslator\models` on Windows, and `~/.local/share/ScreenTranslator/models` on Linux.
+Models are stored in `%LOCALAPPDATA%\ScreenTranslator\models`.
 
 ## How it works
 
 1. **Capture**: grabs your selected areas, or the chosen screen, a few times per second, and skips OCR when nothing changed. Its own translations are left out of the capture.
-2. **OCR**: Apple Vision on macOS (30 languages including CJK). On Windows and Linux, RapidOCR (PP-OCRv6) reads Chinese, Japanese, English and other Latin-script languages out of the box; Korean, Russian/Ukrainian, Thai, Arabic and Hindi use extra models that download the first time you pick that language. HUD symbols and dot rows are dropped, and misread button icons (`LI`, `Lt`) become `L1`.
+2. **OCR**: RapidOCR (PP-OCRv6) reads Chinese, Japanese, English and other Latin-script languages out of the box; Korean, Russian/Ukrainian, Thai, Arabic and Hindi use extra models that download the first time you pick that language. HUD symbols and dot rows are dropped, and misread button icons (`LI`, `Lt`) become `L1`.
 3. **Stabilize**: waits until the text stops changing, so typewriter-style dialogue is translated once and complete. Speaker-name labels are kept on their own line, and a line that comes back is shown from cache instead of being translated again.
 4. **Translate with context**: a local model gets your glossary, the **Watching** notes and the recent lines as conversation history. Context expires after 5 minutes by default, and **Forget context** clears it. Whole-screen mode translates up to 12 pieces of text per request.
 5. **Show**: the translation streams onto the screen as it's written, and over a local WebSocket to the OBS overlay.
 
-Everything listens on `127.0.0.1` only and rejects requests from other websites. The only other network traffic is the model download and, once at startup, a check of this repository's latest release; turn the check off with **Check for updates at startup** in the menu-bar menu.
+Everything listens on `127.0.0.1` only and rejects requests from other websites. The only other network traffic is the model download and, once at startup, a check of this repository's latest release; turn the check off with **Check for updates at startup** in the 文A icon's menu.
 
 ## From source
 
-Requires Python 3.10+. On macOS, llama.cpp is built with Metal GPU support automatically.
+Requires Python 3.10+. Running from source also works on macOS (Apple Silicon, macOS 13 or later), which isn't released but is used for development; see [macOS](#macos).
 
 ```bash
 git clone https://github.com/khoale38/screen-translator.git
@@ -131,8 +119,10 @@ uv venv && uv pip install -e ".[desktop]"
 ```
 
 ```bash
-.venv/bin/screen-translator
+.venv\Scripts\screen-translator
 ```
+
+(`.venv/bin/screen-translator` on macOS.)
 
 | Flag | |
 |---|---|
@@ -144,14 +134,24 @@ uv venv && uv pip install -e ".[desktop]"
 
 ```bash
 uv pip install pytest pytest-asyncio
-.venv/bin/python -m pytest
+.venv\Scripts\python -m pytest
 ```
 
 `ST_E2E=1` also runs the slower tests that load a real model (`ST_E2E_MODEL=qwen3.5-4b` to pick which).
 
-To build the macOS app and DMG locally, run `uv pip install pyinstaller` and then `./packaging/build_macos.sh`. In GitHub Actions, pushing a tag such as `v0.1.0-rc1` builds the macOS and Windows packages as downloadable test builds; a tag that exactly matches the version in `pyproject.toml`, such as `v0.1.0`, also publishes them as a GitHub Release.
+In GitHub Actions, pushing a tag such as `v0.1.0-rc1` builds the Windows installer and zip, plus a macOS DMG, as downloadable test builds. A tag that exactly matches the version in `pyproject.toml`, such as `v0.1.0`, also publishes the Windows files as a GitHub Release; the DMG is never published.
 
 `examples/dialogue-demo.html` plays a typewriter-style Japanese conversation. Open it in a browser window and select it as an area to try the whole pipeline.
+
+### macOS
+
+macOS isn't released, but the app runs there from source or as the test DMG from a tag build (`./packaging/build_macos.sh` builds it locally after `uv pip install pyinstaller`). Differences from Windows:
+
+- OCR uses Apple Vision (30 languages including CJK) and the model runs on the GPU through Metal; llama.cpp is built with Metal support automatically.
+- The app lives in the **menu bar**, not the Dock, which lets its translations appear over full-screen apps.
+- Shortcuts use ⌃⇧ (Control+Shift) instead of Ctrl+Shift.
+- macOS only lets an app see other windows after you allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**. Allow whichever app starts Screen Translator (the app, OBS, or your terminal), then restart it. Without it, capture only sees the wallpaper. The DMG isn't notarized, so its first launch needs **Open Anyway** under **Privacy & Security**.
+- Settings and models are in `~/Library/Application Support/ScreenTranslator`.
 
 ## License
 
