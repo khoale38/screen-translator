@@ -3,6 +3,9 @@ name: Build
 on:
   push:
     tags: ["v*"]
+    # Tag builds can only reuse caches saved on their own tag or on main, so main compiles llama.cpp for them.
+    branches: [main]
+    paths: [".github/workflows/build.yml"]
   pull_request:
     paths:
       - "packaging/**"
@@ -17,6 +20,7 @@ env:
   PYTHON_VERSION: "3.12"
   # Compiled once per platform and cached on its own (bump the suffix after changing CMAKE_ARGS).
   LLAMA_CPP_VERSION: "0.3.37"
+  WARM_CACHE_ONLY: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
 jobs:
   macos:
@@ -52,17 +56,21 @@ jobs:
           path: wheels
           key: ${{ steps.llama.outputs.cache-primary-key }}
       - name: Install
+        if: env.WARM_CACHE_ONLY != 'true'
         run: |
           uv venv --python "$(which python)"
           uv pip install wheels/*.whl
           uv pip install ".[desktop]" pyinstaller
       - name: Build app and DMG
+        if: env.WARM_CACHE_ONLY != 'true'
         run: ./packaging/build_macos.sh
       - name: Self-test
+        if: env.WARM_CACHE_ONLY != 'true'
         env:
           SCREEN_TRANSLATOR_HOME: ${{ runner.temp }}/st-home
         run: '"dist/Screen Translator.app/Contents/MacOS/screen-translator" --self-test'
       - uses: actions/upload-artifact@v4
+        if: env.WARM_CACHE_ONLY != 'true'
         with:
           name: macos
           path: dist/*.dmg
@@ -108,27 +116,32 @@ jobs:
           path: wheels
           key: ${{ steps.llama.outputs.cache-primary-key }}
       - name: Install
+        if: env.WARM_CACHE_ONLY != 'true'
         run: |
           uv venv --python (Get-Command python).Source
           uv pip install (Get-ChildItem wheels\*.whl).FullName
           uv pip install ".[desktop]" pyinstaller
       - name: Build app
+        if: env.WARM_CACHE_ONLY != 'true'
         run: .venv\Scripts\python -m PyInstaller --noconfirm --clean --distpath dist --workpath build\pyinstaller packaging\screen_translator.spec
       - name: Restore test model
+        if: env.WARM_CACHE_ONLY != 'true'
         id: model
         uses: actions/cache@v4
         with:
           path: .st-home/models
           key: model-Qwen3.5-2B-Q8_0
       - name: Download test model
-        if: steps.model.outputs.cache-hit != 'true'
+        if: env.WARM_CACHE_ONLY != 'true' && steps.model.outputs.cache-hit != 'true'
         run: |
           New-Item -ItemType Directory -Force .st-home\models | Out-Null
           curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-2B-Q8_0.gguf https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q8_0.gguf
       # The runner has no GPU but ships vulkan-1.dll, so this proves the Vulkan backend loads and falls back to the CPU.
       - name: Self-test
+        if: env.WARM_CACHE_ONLY != 'true'
         run: ./packaging/windows/self_test.ps1
       - name: Build installer and zip
+        if: env.WARM_CACHE_ONLY != 'true'
         run: |
           $version = .venv\Scripts\python -c "from importlib.metadata import version; print(version('screen-translator'))"
           choco install innosetup --no-progress -y
@@ -136,6 +149,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Compress-Archive -Path dist\screen-translator -DestinationPath "dist\ScreenTranslator-$version-windows-x64.zip"
       - uses: actions/upload-artifact@v4
+        if: env.WARM_CACHE_ONLY != 'true'
         with:
           name: windows
           path: |
