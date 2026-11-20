@@ -139,7 +139,7 @@ uv pip install pytest pytest-asyncio
 
 `ST_E2E=1` also runs the slower tests that load a real model (`ST_E2E_MODEL=qwen3.5-4b` to pick which).
 
-In GitHub Actions, pushing a tag such as `v0.1.0-rc1` builds the Windows installer and zip, plus a macOS DMG, as downloadable test builds. A tag that exactly matches the version in `pyproject.toml`, such as `v0.1.0`, also publishes the Windows files as a GitHub Release; the DMG is never published.
+In GitHub Actions, pushing a tag builds the Windows installer and zip, plus a macOS DMG as a test download on the run; the DMG is never published. A tag matching the version in `pyproject.toml`, such as `v0.1.0`, publishes the Windows files as a GitHub Release. A test tag such as `v0.1.0-rc1` publishes them as a prerelease, which the app's update check ignores.
 
 `examples/dialogue-demo.html` plays a typewriter-style Japanese conversation. Open it in a browser window and select it as an area to try the whole pipeline.
 
