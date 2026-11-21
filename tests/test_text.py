@@ -28,6 +28,20 @@ def test_stabilizer_waits_for_typewriter_text_to_settle():
     assert emitted[0].text == "こんにちは"
 
 
+def test_stabilizer_accepts_a_subtitle_that_reads_slightly_differently_over_a_moving_scene():
+    s = Stabilizer(stable_ticks=2)
+    reads = ["Get in the car before the police arrive.", "Get in the car before the po1ice arrive. l",
+             "Get in the car before the police arrive!"]
+    emitted = [e for e in (s.feed(t) for t in reads) if e]
+    assert len(emitted) == 1 and emitted[0].text.startswith("Get in the car")
+
+
+def test_stabilizer_moves_on_to_a_new_subtitle():
+    s = Stabilizer(stable_ticks=2)
+    events = [s.feed(t) for t in ["Lose the cops.", "Lose the cops.", "Go to the safehouse.", "Go to the safehouse."]]
+    assert [e.text for e in events if e] == ["Lose the cops.", "Go to the safehouse."]
+
+
 def test_stabilizer_does_not_repeat_and_clears_when_text_disappears():
     s = Stabilizer(stable_ticks=2)
     assert [s.feed("Hello there") for _ in range(4)].count(None) == 3

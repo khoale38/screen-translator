@@ -52,7 +52,7 @@ def default_recognizer():
 
 
 class Superseded(Exception):
-    """A newer piece of speech arrived while an older one was still being translated."""
+    """Newer speech arrived, or the text left the screen, while it was still being translated."""
 
 
 class Yielded(Exception):
@@ -155,6 +155,7 @@ class Pipeline:
         self._translator_ready = threading.Event()
         self._screen_lock = threading.Lock()
         self._screen_blocks: list[Block] = []
+        self._screen_reading: list[Block] = []
         self._screen_changed = threading.Event()
         self._cache: dict[tuple[str, str, str], str] = {}
         self.devices: dict[str, str] = {}
@@ -384,6 +385,16 @@ class Pipeline:
         settings = self.store.settings
         return text, settings.source_lang, settings.target_lang
 
+    def _read_screen(self, blocks: list[Block]) -> None:
+        """Text just read, translated straight away so it is ready by the time it holds still and is shown."""
+        with self._screen_lock:
+            self._screen_reading = blocks
+        self._screen_changed.set()
+
+    def _on_screen(self) -> set[str]:
+        with self._screen_lock:
+            return {b.text for b in self._screen_blocks + self._screen_reading}
+
     def _publish_screen(self, blocks: list[Block], ms: int, ocr_timing: dict | None = None) -> None:
         with self._screen_lock:
             self._screen_blocks = blocks
@@ -412,6 +423,7 @@ class Pipeline:
                 if self._reset_stabilizer.is_set():
                     self._reset_stabilizer.clear()
                     previous_thumb, candidate, seen, shown = None, frozenset(), 0, []
+                    self._read_screen([])
                     self._publish_screen([], 0)
 
                 grab = lambda: capture.grab_rect(settings.screen_rect) if settings.screen_rect else capture.grab(settings.monitor, None)
@@ -429,6 +441,7 @@ class Pipeline:
                     self._report_devices(ocr)
                     for b in blocks:
                         b.bg, b.fg = block_colors(frame, b.box)
+                    self._read_screen(blocks)
                     ms = round((time.monotonic() - started) * 1000)
                     # A second look straight after OCR: if nothing moved, publish now instead of after the next tick.
                     after = thumbnail(grab())
@@ -436,16 +449,17 @@ class Pipeline:
                     thumb = after
                 previous_thumb = thumb
 
-                signature = _signature(blocks)
-                seen = seen + 1 if signature == candidate else 1
-                candidate = signature
-                if signature != _signature(shown):
-                    if seen >= settings.stable_ticks or settled:
+                # Stable means the same words: over a moving game scene the boxes never quite hold still.
+                texts = _texts(blocks)
+                seen = seen + 1 if texts == candidate else 1
+                candidate = texts
+                if _signature(blocks) != _signature(shown):
+                    if texts == _texts(shown) or seen >= settings.stable_ticks or settled:
                         shown = blocks
                         self._publish_screen(shown, ms, getattr(ocr, "timing", None))
                     else:
-                        # Hide what moved or changed straight away; show the new layout once it holds still.
-                        still = [b for b in shown if _key(b) in signature]
+                        # Hide what changed straight away; show the new words once they hold.
+                        still = [b for b in shown if b.text in texts]
                         if len(still) != len(shown):
                             shown = still
                             self._publish_screen(shown, ms, getattr(ocr, "timing", None))
@@ -461,7 +475,7 @@ class Pipeline:
         while not self._stop.is_set():
             self._screen_changed.clear()
             with self._screen_lock:
-                blocks = list(self._screen_blocks)
+                blocks = self._screen_blocks + self._screen_reading
             pending = list(dict.fromkeys(b.text for b in blocks if self._cache_key(b.text) not in self._cache))
             if not pending:
                 self._screen_changed.wait(0.2)
@@ -477,7 +491,7 @@ class Pipeline:
                         self._parallel_failed = True
                 for text in batch if len(batch) == 1 else self._translate_batch(translator, batch):
                     self._translate_block(translator, text)
-            except Yielded:
+            except (Yielded, Superseded):
                 continue
 
     def _warm_up(self, translator: SharedTranslator) -> None:
@@ -502,15 +516,19 @@ class Pipeline:
         ]
         started = time.monotonic()
         finished: list[tuple[str, str]] = []
+        left = set(texts)
 
         def piece(index: int, translation: str, done: bool) -> None:
             source = texts[index]
+            if not done and self._screen_changed.is_set() and not left & self._on_screen():
+                raise Superseded()
             translation = strip_item_letter(translation, index)
             if not done:
                 self.emit({"type": "screen_text", "source": source, "translation": translation, "final": False})
                 return
             translation = label_speaker(source, translation)
             self._remember(source, translation)
+            left.discard(source)
             finished.append((source, translation))
             self.emit({"type": "screen_text", "source": source, "translation": translation, "final": True,
                        "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
@@ -701,6 +719,10 @@ def _take_batch(texts: list[str], max_items: int = 12, max_chars: int = 1200) ->
 
 def _key(block: Block) -> tuple:
     return block.text, tuple(round(v * 200) for v in block.box)
+
+
+def _texts(blocks: list[Block]) -> frozenset:
+    return frozenset(b.text for b in blocks)
 
 
 def _signature(blocks: list[Block]) -> frozenset:

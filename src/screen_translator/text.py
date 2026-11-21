@@ -123,10 +123,13 @@ class Stabilizer:
             return None
 
         self._empty = 0
-        if norm == self._candidate:
+        typing = norm != self._candidate and norm.startswith(self._candidate)
+        # Over a moving game scene the same subtitle reads a character or two differently each time.
+        if self._candidate and not typing and similar(norm, self._candidate, 0.85):
             self._count += 1
         else:
-            self._candidate, self._count = norm, 1
+            self._count = 1
+        self._candidate = norm
 
         if self._count < self.stable_ticks or similar(norm, self._emitted, 0.92):
             return None

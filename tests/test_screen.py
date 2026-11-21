@@ -103,9 +103,12 @@ async def test_whole_screen_translates_each_block_once_and_reuses_translations(s
 
         task = asyncio.create_task(reader())
         await client.post("/api/start", json={})
-        await wait_for(lambda: any(
-            e["type"] == "screen" and [b["text"] for b in e["blocks"]] == ["ファイル", "こんにちは"]
-            and all(b["translation"] for b in e["blocks"]) for e in events))
+        def shown(texts):
+            return [i for i, e in enumerate(events) if e["type"] == "screen"
+                    and [b["text"] for b in e["blocks"]] == texts and all(b["translation"] for b in e["blocks"])]
+
+        await wait_for(lambda: shown(["ファイル", "さようなら"])
+                       and any(i > shown(["ファイル", "さようなら"])[0] for i in shown(["ファイル", "こんにちは"])))
         await client.post("/api/stop", json={})
         await ws.close()
         task.cancel()

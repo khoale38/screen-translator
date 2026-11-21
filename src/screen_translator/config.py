@@ -98,7 +98,7 @@ class Settings:
     overlay_mode: str = "cover"
     scope: str = "area"
     screen_name: str = ""
-    screen_interval_s: float = 1.0
+    screen_interval_s: float = 0.5
     overlay_opacity: float = 0.92
     overlay_box: bool = True
     text_size: str = "x1"
@@ -125,6 +125,9 @@ class Settings:
         values = {k: v for k, v in raw.items() if k in known}
         if values.get("scope") == "speech":
             values["scope"], values["listen"] = "area", True
+        # The old default, saved into every settings file; nothing in the window sets it.
+        if values.get("screen_interval_s") == 1.0:
+            del values["screen_interval_s"]
         region = values.get("region")
         if isinstance(region, dict):
             values["region"] = Region(**{k: float(region[k]) for k in ("left", "top", "width", "height")})
