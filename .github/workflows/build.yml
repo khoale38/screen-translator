@@ -174,7 +174,8 @@ jobs:
           key: natural-voices-supertonic-3-int8
       - name: Download natural voices
         if: env.WARM_CACHE_ONLY != 'true' && steps.voices.outputs.cache-hit != 'true'
-        run: .venv\Scripts\python -c "import threading; from screen_translator.models import NATURAL_VOICES, download_all; download_all(NATURAL_VOICES, lambda d, t: None, threading.Event())"
+        run: |
+          .venv\Scripts\python -c "import threading; from screen_translator.models import NATURAL_VOICES, download_all; download_all(NATURAL_VOICES, lambda d, t: None, threading.Event())"
       # The runner has no GPU but ships vulkan-1.dll, so this proves the Vulkan backend loads and falls back to the CPU.
       - name: Self-test
         if: env.WARM_CACHE_ONLY != 'true'
