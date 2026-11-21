@@ -1,4 +1,4 @@
-"""Dubbing: speaks each translated line with a voice already installed in the OS.
+"""Dubbing: speaks each translated line with a natural voice (once downloaded) or one already installed in the OS.
 
 The voice follows the speaker: male or female from their pitch, higher or lower within that, and the emotion
 SenseVoice heard (excited, sad, angry...) shifts pace, pitch and loudness.
@@ -103,7 +103,8 @@ def voice_choices(voices: list[Voice], target: str) -> list[tuple[str, str]]:
     """(value, label) pairs for a voice menu: automatic, each accent, then each voice."""
     matches = [v for v in voices if _base(v.lang) == _base(target)]
     choices = [("", "Match the speaker")]
-    accents = sorted({v.lang for v in matches})
+    # Natural voices are listed by bare language ("vi"); only regional system voices have an accent.
+    accents = sorted({v.lang for v in matches if "-" in v.lang})
     if len(accents) > 1:
         choices += [(f"accent:{lang}", f"Match the speaker · {accent_name(lang)}") for lang in accents]
     return choices + [(f"voice:{v.id}", v.label) for v in matches]
@@ -172,8 +173,31 @@ class MacVoices:
         return np.clip(audio * how.loudness, -1, 1), rate
 
 
+class CombinedVoices:
+    """Natural voices first, then the system's; natural voices appear as soon as their download finishes."""
+
+    def __init__(self, system, natural=None) -> None:
+        self.system, self.natural = system, natural
+
+    def _sources(self) -> list:
+        from .models import NATURAL_VOICES
+
+        ready = self.natural is not None and NATURAL_VOICES.downloaded
+        return [self.natural, self.system] if ready else [self.system]
+
+    @property
+    def voices(self) -> list[Voice]:
+        return [voice for source in self._sources() for voice in source.voices]
+
+    def synthesize(self, text: str, voice: Voice, how: Delivery) -> tuple[np.ndarray, int]:
+        source = self.natural if voice.id.startswith("natural:") else self.system
+        return source.synthesize(text, voice, how)
+
+
 def default_voices():
-    return WindowsVoices() if sys.platform == "win32" else MacVoices()
+    from .natural_voices import NaturalVoices
+
+    return CombinedVoices(WindowsVoices() if sys.platform == "win32" else MacVoices(), NaturalVoices())
 
 
 class OriginalSound:

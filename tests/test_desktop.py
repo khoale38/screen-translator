@@ -327,7 +327,7 @@ def test_speech_is_an_add_on_with_its_own_download_and_subtitle_box(app, tmp_pat
     assert not window.download.isVisibleTo(window)
     window.listen.setChecked(True)
     assert ("/api/settings", {"listen": True}) in api.posts
-    assert window.download.isVisibleTo(window) and "speech recognition (0.2 GB)" in window.download.text()
+    assert window.download.isVisibleTo(window) and "speech recognition (240 MB)" in window.download.text()
 
     window.running = True
     window.on_event({"type": "line", "id": 1, "area": 0, "source": "看板", "translation": "Sign", "final": True,
@@ -374,3 +374,17 @@ def test_copy_log_puts_the_report_on_the_clipboard(app, tmp_path):
     window.copy_log.click()
     assert QtWidgets.QApplication.clipboard().text() == "Screen Translator 0.1.0\nline 0: 300 ms"
     assert "C:/st/screen-translator.log" in window.status.text()
+
+
+def test_dubbing_offers_natural_voices_for_languages_they_speak(app, tmp_path):
+    window, api = make_window(tmp_path, scope="area", areas=[[100, 100, 400, 60]], listen=True, target_lang="vi")
+    api.state["speech"] = {"label": "Speech recognition", "size": 240_000_000, "downloaded": True}
+    api.state["voices"] = {"label": "Natural voices", "size": 132_000_000, "downloaded": False, "languages": ["en", "vi"]}
+    window.load()
+    window.refresh_model()
+    assert not window.download.isVisibleTo(window)
+    window.dub.setChecked(True)
+    assert window.download.isVisibleTo(window) and window.download.text() == "Download natural voices (132 MB)"
+    window.target_lang.setCurrentIndex(window.target_lang.findData("zh"))
+    window.refresh_model()
+    assert not window.download.isVisibleTo(window)

@@ -102,3 +102,32 @@ def test_a_missing_voice_is_reported_instead_of_crashing():
     wait(lambda: events)
     assert "No voice for ja" in events[0]["error"] and not played
     dubber.close()
+
+
+def test_natural_voices_come_first_once_downloaded(monkeypatch):
+    from screen_translator import models
+    from screen_translator.dub import CombinedVoices
+    from screen_translator.natural_voices import NaturalVoices
+
+    natural = NaturalVoices(folder=models.models_dir())
+    combined = CombinedVoices(FakeVoices(), natural)
+    monkeypatch.setattr(type(models.NATURAL_VOICES), "downloaded", property(lambda self: False))
+    assert pick_voice(combined.voices, "vi", "female").id == "an"
+    monkeypatch.setattr(type(models.NATURAL_VOICES), "downloaded", property(lambda self: True))
+    assert pick_voice(combined.voices, "vi", "female").id == "natural:vi:F1"
+    assert pick_voice(combined.voices, "ja", "male").id == "natural:ja:M1"
+    assert pick_voice(combined.voices, "ms", "male").id == "natural:ms:M1"
+    assert pick_voice(combined.voices, "zh", "female") is None
+    assert [label for _v, label in voice_choices(combined.voices, "vi")][1:3] == [
+        "Natural voice 1 · vi · female", "Natural voice 1 · vi · male"]
+
+
+def test_text_is_prepared_the_way_supertonic_reads_it():
+    from screen_translator.natural_voices import pieces, prepare
+
+    assert prepare("Wait — “now”", "en") == '<en>Wait - "now"</en>'
+    assert prepare("Get in", "en") == "<en>Get in.</en>"
+    assert prepare("Đi thôi!", "vi").startswith("<vi>") and prepare("Đi thôi!", "vi").endswith("!</vi>")
+    long = "One sentence here. " * 30
+    assert all(len(piece) <= 300 for piece in pieces(long, "en")) and len(pieces(long, "en")) > 1
+    assert pieces("短い。", "ja") == ["短い。"]

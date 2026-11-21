@@ -101,3 +101,25 @@ def test_a_read_only_install_folder_falls_back_to_app_data(tmp_path, monkeypatch
         assert config.models_dir() == tmp_path / "appdata" / "models"
     finally:
         config.installed_models_dir.cache_clear()
+
+
+def test_an_archive_download_is_unpacked_and_remembered(tmp_path, monkeypatch):
+    import io
+    import tarfile
+
+    from screen_translator import models
+
+    monkeypatch.setattr(models, "models_dir", lambda: tmp_path)
+    payload = io.BytesIO()
+    with tarfile.open(fileobj=payload, mode="w:bz2") as archive:
+        data = b"weights"
+        info = tarfile.TarInfo("pack/model.onnx")
+        info.size = len(data)
+        archive.addfile(info, io.BytesIO(data))
+    spec = models.ModelSpec("pack", "Pack", "", "pack.tar.bz2", len(payload.getvalue()), "", folder="voices", unpack=True)
+    spec.path.parent.mkdir(parents=True)
+    spec.path.write_bytes(payload.getvalue())
+    assert not spec.downloaded
+    models.unpack(spec)
+    assert spec.downloaded and not spec.path.exists()
+    assert (tmp_path / "voices" / "pack" / "model.onnx").read_bytes() == b"weights"

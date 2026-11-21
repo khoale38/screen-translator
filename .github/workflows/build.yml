@@ -165,6 +165,16 @@ jobs:
           curl.exe -fL --retry 3 -o .st-home\models\speech\model.int8.onnx "$hf/model.int8.onnx"
           curl.exe -fL --retry 3 -o .st-home\models\speech\tokens.txt "$hf/tokens.txt"
           curl.exe -fL --retry 3 -o .st-home\models\speech\silero_vad.onnx https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
+      - name: Restore natural voices
+        if: env.WARM_CACHE_ONLY != 'true'
+        id: voices
+        uses: actions/cache@v4
+        with:
+          path: .st-home/models/voices
+          key: natural-voices-supertonic-3-int8
+      - name: Download natural voices
+        if: env.WARM_CACHE_ONLY != 'true' && steps.voices.outputs.cache-hit != 'true'
+        run: .venv\Scripts\python -c "import threading; from screen_translator.models import NATURAL_VOICES, download_all; download_all(NATURAL_VOICES, lambda d, t: None, threading.Event())"
       # The runner has no GPU but ships vulkan-1.dll, so this proves the Vulkan backend loads and falls back to the CPU.
       - name: Self-test
         if: env.WARM_CACHE_ONLY != 'true'

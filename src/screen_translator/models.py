@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import shutil
+import tarfile
 import threading
 import time
 import urllib.request
@@ -23,6 +24,7 @@ class ModelSpec:
     sha256: str
     source: str = ""
     folder: str = ""
+    unpack: bool = False
 
     @property
     def url(self) -> str:
@@ -37,7 +39,13 @@ class ModelSpec:
         return (self,)
 
     @property
+    def unpacked_marker(self) -> Path:
+        return self.path.with_name(self.filename + ".unpacked")
+
+    @property
     def downloaded(self) -> bool:
+        if self.unpack:
+            return self.unpacked_marker.exists()
         return self.path.exists() and self.path.stat().st_size == self.size_bytes
 
 
@@ -102,7 +110,38 @@ SPEECH = ModelBundle("speech", "Speech recognition (SenseVoice-Small)", (
     ModelSpec("speech-model", "SenseVoice-Small", _SENSEVOICE, "model.int8.onnx", 239233841,
               "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51", folder="speech"),
 ))
-DOWNLOADS: dict[str, "ModelSpec | ModelBundle"] = {**MODELS, SPEECH.key: SPEECH}
+_SUPERTONIC = "https://huggingface.co/Supertone/supertonic-3/resolve/3cadd1ee6394adea1bd021217a0e650ede09a323"
+NATURAL_VOICES = ModelBundle("voices", "Natural voices (Supertonic 3)", (
+    ModelSpec("voices-model", "Supertonic 3, 8-bit", "", "sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+              128774318, "82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427",
+              source="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/"
+                     "sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+              folder="voices", unpack=True),
+    ModelSpec("voices-characters", "Supertonic character table", "", "unicode_indexer.json", 277676,
+              "9bf7346e43883a81f8645c81224f786d43c5b57f3641f6e7671a7d6c493cb24f",
+              source=f"{_SUPERTONIC}/onnx/unicode_indexer.json", folder="voices"),
+    ModelSpec("voice-F1", "Voice F1", "", "F1.json", 292046, "bbdec6ee00231c2c742ad05483df5334cab3b52fda3ba38e6a07059c4563dbc2",
+              source=f"{_SUPERTONIC}/voice_styles/F1.json", folder="voices"),
+    ModelSpec("voice-F2", "Voice F2", "", "F2.json", 292423, "7c722c6a72707b1a77f035d67f0d1351ba187738e06f7683e8c72b1df3477fc6",
+              source=f"{_SUPERTONIC}/voice_styles/F2.json", folder="voices"),
+    ModelSpec("voice-F3", "Voice F3", "", "F3.json", 290794, "12f6ef2573baa2defa1128069cb59f203e3ab67c92af77b42df8a0e3a2f7c6ab",
+              source=f"{_SUPERTONIC}/voice_styles/F3.json", folder="voices"),
+    ModelSpec("voice-F4", "Voice F4", "", "F4.json", 291808, "c2fa764c1225a76dfc3e2c73e8aa4f70d9ee48793860eb34c295fff01c2e032b",
+              source=f"{_SUPERTONIC}/voice_styles/F4.json", folder="voices"),
+    ModelSpec("voice-F5", "Voice F5", "", "F5.json", 291479, "45966e73316415626cf41a7d1c6f3b4c70dbc1ba2bee5c1978ef0ce33244fc8d",
+              source=f"{_SUPERTONIC}/voice_styles/F5.json", folder="voices"),
+    ModelSpec("voice-M1", "Voice M1", "", "M1.json", 291748, "e35604687f5d23694b8e91593a93eec0e4eca6c0b02bb8ed69139ab2ea6b0a5b",
+              source=f"{_SUPERTONIC}/voice_styles/M1.json", folder="voices"),
+    ModelSpec("voice-M2", "Voice M2", "", "M2.json", 292055, "b76cbf62bac707c710cf0ae5aba5e31eea1a6339a9734bfae33ab98499534a50",
+              source=f"{_SUPERTONIC}/voice_styles/M2.json", folder="voices"),
+    ModelSpec("voice-M3", "Voice M3", "", "M3.json", 290198, "ea1ac35ccb91b0d7ecad533a2fbd0eec10c91513d8951e3b25fbba99954e159b",
+              source=f"{_SUPERTONIC}/voice_styles/M3.json", folder="voices"),
+    ModelSpec("voice-M4", "Voice M4", "", "M4.json", 291522, "ca8eefad4fcd989c9379032ff3e50738adc547eeb5e221b82593a6d7b3bac303",
+              source=f"{_SUPERTONIC}/voice_styles/M4.json", folder="voices"),
+    ModelSpec("voice-M5", "Voice M5", "", "M5.json", 291469, "dd22b92740314321f8ae11c5e87f8dd60d060f15dd3a632b5adf77f471f77af2",
+              source=f"{_SUPERTONIC}/voice_styles/M5.json", folder="voices"),
+))
+DOWNLOADS: dict[str, "ModelSpec | ModelBundle"] = {**MODELS, SPEECH.key: SPEECH, NATURAL_VOICES.key: NATURAL_VOICES}
 
 ProgressFn = Callable[[int, int], None]
 
@@ -143,6 +182,8 @@ def download_all(item: "ModelSpec | ModelBundle", progress: ProgressFn, cancel: 
     for spec in item.parts:
         if not spec.downloaded:
             download(spec, lambda done, _total, before=before: progress(before + done, item.size_bytes), cancel)
+            if spec.unpack:
+                unpack(spec)
         before += spec.size_bytes
 
 
@@ -184,6 +225,14 @@ def download(spec: ModelSpec, progress: ProgressFn, cancel: threading.Event, chu
         raise ValueError(f"Checksum mismatch for {spec.filename}; the partial file was removed, please retry.")
     part.rename(spec.path)
     return spec.path
+
+
+def unpack(spec: ModelSpec) -> None:
+    """Unpack a downloaded archive beside it and remove the archive, keeping a marker that it is done."""
+    with tarfile.open(spec.path) as archive:
+        archive.extractall(spec.path.parent, filter="data")
+    spec.path.unlink()
+    spec.unpacked_marker.write_text("", encoding="utf-8")
 
 
 def sha256_of(path: Path) -> str:

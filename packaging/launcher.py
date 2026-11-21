@@ -145,18 +145,24 @@ def _dub_self_test() -> bool:
     from screen_translator.dub import Delivery, default_voices
 
     voices = default_voices()
-    print(f"Dub voices: {', '.join(v.label for v in voices.voices) or 'none'}", flush=True)
-    voice = next((v for v in voices.voices if v.lang.lower().startswith("en")), None)
-    if voice is None:
+    english = [v for v in voices.voices if v.lang.lower().startswith("en")]
+    print(f"Dub voices: {len(voices.voices)}; English: {', '.join(v.label for v in english[:12]) or 'none'}",
+          flush=True)
+    natural = next((v for v in english if v.id.startswith("natural:")), None)
+    system = next((v for v in english if not v.id.startswith("natural:")), None)
+    if not (natural or system):
         print("No English voice installed here; skipping dubbing", flush=True)
         return True
-    started = time.perf_counter()
-    audio, rate = voices.synthesize("Get in the car.", voice, Delivery(1.1, 6, 1.2))
-    print(f"Dub: {voice.name} spoke {len(audio) / rate:.1f} s of audio in {time.perf_counter() - started:.2f} s",
-          flush=True)
-    if len(audio) < rate * 0.3:
-        print("Self-test failed: the dub voice produced no audio", flush=True)
-        return False
+    for voice in (natural, system):
+        if voice is None:
+            continue
+        started = time.perf_counter()
+        audio, rate = voices.synthesize("Get in the car.", voice, Delivery(1.1, 6, 1.2))
+        print(f"Dub: {voice.name} spoke {len(audio) / rate:.1f} s of audio in {time.perf_counter() - started:.2f} s",
+              flush=True)
+        if len(audio) < rate * 0.3:
+            print(f"Self-test failed: {voice.name} produced no audio", flush=True)
+            return False
     return True
 
 

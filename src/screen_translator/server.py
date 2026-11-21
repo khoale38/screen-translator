@@ -10,10 +10,10 @@ from typing import Callable
 
 from aiohttp import WSMsgType, web
 
-from . import diagnostics, languages
+from . import diagnostics, languages, natural_voices
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
-from .models import DOWNLOADS, MODELS, SPEECH, DownloadCancelled, NotEnoughSpace, check_space, download_all
+from .models import DOWNLOADS, MODELS, NATURAL_VOICES, SPEECH, DownloadCancelled, NotEnoughSpace, check_space, download_all
 from .ocr import RapidOcr, default_engine
 from .pipeline import Pipeline
 
@@ -137,6 +137,9 @@ def create_app(
                 for m in MODELS.values()
             ],
             "speech": {"label": SPEECH.label, "size": SPEECH.size_bytes, "downloaded": SPEECH.downloaded},
+            "voices": {"label": NATURAL_VOICES.label, "size": NATURAL_VOICES.size_bytes,
+                       "downloaded": NATURAL_VOICES.downloaded,
+                       "languages": sorted(natural_voices.LANGS | set(natural_voices.BORROWED))},
             "download": hub.download,
             "lines": list(hub.lines),
         }
@@ -185,9 +188,9 @@ def create_app(
 
         def listing() -> list[dict]:
             if not installed_voices:
-                installed_voices.extend((voices_factory or default_voices)().voices)
+                installed_voices.append((voices_factory or default_voices)())
             return [{"value": value, "label": label}
-                    for value, label in voice_choices(installed_voices, store.settings.target_lang)]
+                    for value, label in voice_choices(installed_voices[0].voices, store.settings.target_lang)]
 
         try:
             return web.json_response({"voices": await asyncio.to_thread(listing)})

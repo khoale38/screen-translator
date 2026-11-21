@@ -497,12 +497,14 @@ class MainWindow(QWidget):
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
         self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model(),
                                                 self.show_dub()))
-        self.dub.toggled.connect(lambda on: (self.api.call("/api/settings", {"dub": on}), self.show_dub()))
+        self.dub.toggled.connect(lambda on: (self.api.call("/api/settings", {"dub": on}), self.show_dub(),
+                                             self.refresh_model()))
         self.dub_voice.activated.connect(
             lambda _i: self.api.call("/api/settings", {"dub_voice": self.dub_voice.currentData()}))
         self.dub_original.activated.connect(
             lambda _i: self.api.call("/api/settings", {"dub_original": self.dub_original.currentData()}))
-        self.target_lang.currentIndexChanged.connect(lambda _i: QTimer.singleShot(0, self.refresh_voices))
+        self.target_lang.currentIndexChanged.connect(
+            lambda _i: (QTimer.singleShot(0, self.refresh_voices), QTimer.singleShot(0, self.refresh_model)))
         self.position.currentIndexChanged.connect(lambda _i: self.apply_style({"overlay_mode": self.position.currentData()}))
         self.text_size.currentIndexChanged.connect(lambda _i: self.apply_style({"text_size": self.text_size.currentData()}))
         self.box.toggled.connect(lambda on: self.apply_style({"overlay_box": on}))
@@ -596,7 +598,8 @@ class MainWindow(QWidget):
             self.status.setText(result["error"])
         elif len(choices) <= 1:
             self.status.setText(f"No voice for {self.target_lang.currentText()} is installed, so lines can't be "
-                                "read aloud yet. Add one in Windows Settings → Time & language → Speech.")
+                                "read aloud yet. Download natural voices above, or add a voice in Windows Settings → "
+                                "Time & language → Speech.")
 
     def subtitle_area(self) -> QRect:
         """Where spoken lines appear: low and centred on the screen being translated, like film subtitles."""
@@ -650,6 +653,10 @@ class MainWindow(QWidget):
         speech = state.get("speech")
         if hasattr(self, "listen") and self.listening() and speech and not speech["downloaded"]:
             return "speech", "speech recognition", speech["size"]
+        voices = state.get("voices")
+        if (hasattr(self, "dub") and self.listening() and self.dub.isChecked() and voices and not voices["downloaded"]
+                and self.target_lang.currentData().split("-")[0] in voices.get("languages", [])):
+            return "voices", "natural voices", voices["size"]
         return None
 
     def refresh_model(self) -> None:
@@ -660,8 +667,8 @@ class MainWindow(QWidget):
         missing = self.missing_download()
         self.download.setVisible(bool(missing) or active)
         self.progress.setVisible(active)
-        self.download.setText("Cancel download" if active else
-                              f"Download {missing[1]} ({missing[2] / 1e9:.1f} GB)" if missing else "")
+        size = f"{missing[2] / 1e9:.1f} GB" if missing and missing[2] >= 1e9 else f"{missing[2] / 1e6:.0f} MB" if missing else ""
+        self.download.setText("Cancel download" if active else f"Download {missing[1]} ({size})" if missing else "")
 
     def toggle_download(self) -> None:
         state = self.api.call("/api/state")
@@ -899,6 +906,8 @@ class MainWindow(QWidget):
                 self.progress.setMaximum(1000)
                 self.progress.setValue(int(1000 * event["done"] / max(1, event["total"])))
             QTimer.singleShot(0, self.refresh_model)
+            if event.get("finished") and event.get("key") == "voices":
+                QTimer.singleShot(0, self.refresh_voices)
 
     def copy_diagnostics(self) -> None:
         result = self.api.call("/api/log")
