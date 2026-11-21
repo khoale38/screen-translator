@@ -52,7 +52,9 @@ def build_messages(
     if notes.strip():
         system += f"\n\nBackground on what is being shown:\n{notes.strip()}"
 
-    messages = [{"role": "system", "content": system}]
+    # The plain facts ride along for translation models that take their own short prompt instead (see for_hy_mt).
+    messages = [{"role": "system", "content": system, "target": target, "glossary": dict(glossary or {}),
+                 "notes": notes.strip()}]
     for turn in history:
         messages.append({"role": "user", "content": turn.source})
         messages.append({"role": "assistant", "content": turn.translation})
@@ -103,8 +105,31 @@ def build_screen_messages(
     messages = build_messages("", history, source_lang, target_lang, glossary, notes)
     messages[0]["content"] += SCREEN_NOTE
     listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
-    messages[-1]["content"] = f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}."
+    messages[-1].update(content=f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}.", item=screen[index],
+                        screen=screen)
     return messages
+
+
+def for_hy_mt(messages: list[dict]) -> list[dict]:
+    """The same request in Tencent HY-MT's own prompt format, which it follows far better than a system prompt.
+
+    https://huggingface.co/tencent/HY-MT1.5-1.8B#prompts. The text is also listed above the instruction: on its
+    own, a short line loses its subject ("ユキはまだ？" became "hasn't returned yet?").
+    """
+    facts, last = messages[0], messages[-1]
+    text = last.get("item", last["content"])
+    terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in facts.get("glossary", {}).items() if src.strip())
+    parts = [f"参考下面的翻译：\n{terms}"] if terms else []
+    if facts.get("notes"):
+        parts.append(f"背景：{facts['notes']}")
+    turns = messages[1:-1]
+    if turns:
+        parts.append("前面的对话：\n" + "\n".join(f"{asked['content']}\n{answered['content']}"
+                                               for asked, answered in zip(turns[::2], turns[1::2])))
+    parts.append("屏幕上的文字：\n" + "\n".join(last.get("screen", [text])))
+    prompt = "\n".join(parts) + (f"\n参考上面的信息，把下面的文本翻译成{facts['target']}，注意不需要翻译上文，"
+                                  f"也不要额外解释：\n{text}")
+    return [{"role": "user", "content": prompt}]
 
 
 def strip_item_letter(text: str, index: int) -> str:
@@ -147,6 +172,11 @@ def label_speaker(source: str, translation: str) -> str:
     return translation
 
 
+def _stops(formatted) -> list[str]:
+    # Some models' end token has no text (HY-MT); an empty stop string would end every reply before it starts.
+    return [stop for stop in formatted.stop if stop]
+
+
 class Translator(Protocol):
     def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str: ...
 
@@ -179,6 +209,7 @@ class LlamaTranslator:
         )
         # Sampling picks a different pronoun from line to line; the likeliest word keeps characters consistent.
         self.temperature = 0.0
+        self._hy_mt = self._llm.metadata.get("general.architecture", "").startswith("hunyuan")
         self._snapshots: dict[tuple[int, ...], object] = {}
         self._turn_snapshots: dict[tuple[int, ...], object] = {}
         self._parallel = None
@@ -201,6 +232,8 @@ class LlamaTranslator:
 
         if self._parallel is None:
             self._parallel = ParallelDecoder(self._llm)
+        if self._hy_mt:
+            conversations = [for_hy_mt(messages) for messages in conversations]
         prompts = [self._tokens(messages)[1] for messages in conversations]
         instructions = self._shared(prompts[0], conversations[0][:1] + [{"role": "user", "content": "\u2063"}])
         stop = {self._llm.token_eos()}
@@ -231,28 +264,36 @@ class LlamaTranslator:
         return next((i for i, (a, b) in enumerate(zip(tokens, probe)) if a != b), min(len(tokens), len(probe)))
 
     def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str:
+        budget = min(1024, 64 + 3 * len(messages[-1].get("item", messages[-1]["content"])))
+        if self._hy_mt:
+            # A plain transformer: llama.cpp reuses the shared start of the prompt by itself.
+            messages = for_hy_mt(messages)
         formatted, tokens = self._tokens(messages)
-        self._resume(tokens)
-        self._save_turn(messages, tokens)
-        budget = min(1024, 64 + 3 * len(messages[-1]["content"]))
+        if not self._hy_mt:
+            self._resume(tokens)
+            self._save_turn(messages, tokens)
         raw = ""
         shown = ""
         for chunk in self._llm.create_completion(
-            tokens, stream=True, temperature=self.temperature, top_p=0.9, max_tokens=budget, stop=formatted.stop,
+            tokens, stream=True, temperature=self.temperature, top_p=0.9, max_tokens=budget, stop=_stops(formatted),
         ):
             raw += chunk["choices"][0]["text"]
             visible = clean_output(raw)
             if on_partial and visible != shown:
                 shown = visible
                 on_partial(visible)
-        self._save_instructions(messages, tokens)
+        if not self._hy_mt:
+            self._save_instructions(messages, tokens)
         return clean_output(raw)
 
     def warm_up(self, messages: list[dict]) -> None:
+        if self._hy_mt:
+            messages = for_hy_mt(messages)
         formatted, tokens = self._tokens(messages)
-        for _chunk in self._llm.create_completion(tokens, max_tokens=4, temperature=0.0, stop=formatted.stop):
+        for _chunk in self._llm.create_completion(tokens, max_tokens=4, temperature=0.0, stop=_stops(formatted)):
             pass
-        self._save_instructions(messages, tokens)
+        if not self._hy_mt:
+            self._save_instructions(messages, tokens)
 
     def _snapshot(self):
         # Llama.save_state also copies a 500 MB table of scores this app never reads; the sequence alone takes ms.

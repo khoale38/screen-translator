@@ -36,6 +36,9 @@ if (-not (Select-String -Path $log -Pattern "^Speech \(" -Quiet)) {
 if (-not (Select-String -Path $log -Pattern "^Side by side:" -Quiet)) {
     Write-Error "The self-test did not translate side by side"
 }
+if (-not (Select-String -Path $log -Pattern "^Model hy-mt1.5-1.8b loaded" -Quiet)) {
+    Write-Error "The self-test did not load HY-MT; is it in $env:SCREEN_TRANSLATOR_HOME\models?"
+}
 if (-not (Select-String -Path $log -Pattern "^Translation:" -Quiet)) {
     Write-Error "The self-test did not translate anything; is the test model in $env:SCREEN_TRANSLATOR_HOME\models?"
 }

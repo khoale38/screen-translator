@@ -49,7 +49,12 @@ MODELS: dict[str, ModelSpec] = {
             2740937888, "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
         ),
         ModelSpec(
-            "qwen3.5-2b", "Qwen3.5 2B · fastest, for older machines (2.0 GB)", "unsloth/Qwen3.5-2B-GGUF",
+            "hy-mt1.5-1.8b", "HY-MT1.5 1.8B · fastest, made for translation (1.5 GB)", "tencent/HY-MT1.5-1.8B-GGUF",
+            "HY-MT1.5-1.8B-Q6_K.gguf", 1474785216,
+            "c3819200ab9a79cb29b9a05ce8920e2eb01ae7ce520094fc5b57356494f3c641",
+        ),
+        ModelSpec(
+            "qwen3.5-2b", "Qwen3.5 2B · for older machines (2.0 GB)", "unsloth/Qwen3.5-2B-GGUF",
             "Qwen3.5-2B-Q8_0.gguf", 2012012800,
             "1b04acba824817554f4ce23639bc8495ff70453b8fcb047900c731521021f2c1",
         ),

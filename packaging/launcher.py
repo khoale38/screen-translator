@@ -73,10 +73,10 @@ def _self_test() -> int:
         print("Self-test failed: OCR did not read the test image", flush=True)
         return 1
 
-    spec = next((m for m in MODELS.values() if m.downloaded), None)
-    if spec is None:
+    specs = [m for m in MODELS.values() if m.downloaded]
+    if not specs:
         print("No model downloaded; skipping translation", flush=True)
-    else:
+    for spec in specs:
         started = time.perf_counter()
         translator = LlamaTranslator(str(spec.path))
         print(f"Model {spec.key} loaded in {time.perf_counter() - started:.1f} s", flush=True)
@@ -92,8 +92,8 @@ def _self_test() -> int:
             [build_screen_messages(i, screen, [], "ja", "en") for i in range(len(screen))], [len(t) for t in screen])
         print(f"Side by side: {results!r} in {time.perf_counter() - started:.2f} s", flush=True)
         translator.close()
-        if not all(results):
-            print("Self-test failed: side-by-side translation returned nothing", flush=True)
+        if not result or not all(results):
+            print(f"Self-test failed: {spec.key} returned no translation", flush=True)
             return 1
     if not _speech_self_test():
         return 1

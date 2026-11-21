@@ -30,7 +30,8 @@ log.addHandler(_memory)
 
 
 def log_path() -> Path:
-    return data_dir() / "screen-translator.log"
+    # screen-translator.log is taken: the Windows launcher sends all program output there.
+    return data_dir() / "activity.log"
 
 
 def start() -> None:

@@ -138,6 +138,18 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force .st-home\models | Out-Null
           curl.exe -fL --retry 3 -o .st-home\models\Qwen3.5-2B-Q8_0.gguf https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q8_0.gguf
+      - name: Restore translation model
+        if: env.WARM_CACHE_ONLY != 'true'
+        id: hymt
+        uses: actions/cache@v4
+        with:
+          path: .st-home/models/HY-MT1.5-1.8B-Q6_K.gguf
+          key: model-HY-MT1.5-1.8B-Q6_K
+      - name: Download translation model
+        if: env.WARM_CACHE_ONLY != 'true' && steps.hymt.outputs.cache-hit != 'true'
+        run: |
+          New-Item -ItemType Directory -Force .st-home\models | Out-Null
+          curl.exe -fL --retry 3 -o .st-home\models\HY-MT1.5-1.8B-Q6_K.gguf https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/resolve/main/HY-MT1.5-1.8B-Q6_K.gguf
       - name: Restore speech model
         if: env.WARM_CACHE_ONLY != 'true'
         id: speech

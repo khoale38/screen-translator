@@ -1,5 +1,5 @@
 from screen_translator.context import ContextWindow
-from screen_translator.translator import build_messages, clean_output, label_speaker
+from screen_translator.translator import build_messages, build_screen_messages, clean_output, for_hy_mt, label_speaker
 
 
 class Clock:
@@ -60,3 +60,20 @@ def test_label_speaker_joins_a_name_line_onto_the_translation():
     assert label_speaker("カイ\nまさか…", "Kai: No way...") == "Kai: No way..."
     assert label_speaker("まさか…", "No way...\nreally?") == "No way...\nreally?"
     assert label_speaker("長い一行目のテキストがここにあります。\n二行目", "A long first sentence.\nSecond") == "A long first sentence.\nSecond"
+
+
+def test_hy_mt_gets_one_short_request_with_the_earlier_lines_and_terms_above_the_text():
+    ctx = ContextWindow()
+    ctx.add("ユキはまだ？", "Is Yuki not back yet?")
+    [request] = for_hy_mt(build_messages("行ったよ。", ctx.turns(), "ja", "en", {"ユキ": "Yuki"}, "A JRPG"))
+    assert request["role"] == "user"
+    assert request["content"] == (
+        "参考下面的翻译：\nユキ 翻译成 Yuki\n\n背景：A JRPG\n前面的对话：\nユキはまだ？\nIs Yuki not back yet?\n"
+        "屏幕上的文字：\n行ったよ。\n参考上面的信息，把下面的文本翻译成English，注意不需要翻译上文，也不要额外解释：\n行ったよ。")
+
+
+def test_hy_mt_screen_requests_share_everything_but_the_item():
+    screen = ["設定", "ミッション失敗"]
+    a, b = (for_hy_mt(build_screen_messages(i, screen, [], "ja", "vi"))[0]["content"] for i in range(2))
+    assert a.endswith("\n設定") and b.endswith("\nミッション失敗")
+    assert a.rsplit("\n", 1)[0] == b.rsplit("\n", 1)[0]
