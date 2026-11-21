@@ -111,6 +111,24 @@ async def test_pipeline_translates_each_stable_line_once_with_growing_context(st
     assert any(e["type"] == "line" and not e["final"] for e in events)
 
 
+async def test_the_log_lists_each_step_with_timings_and_the_settings(store):
+    script = ["一行目", "一行目", "一行目"]
+    app = create_app(store, make_pipeline_factory(script, EchoTranslator()), FakeCapture)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        await client.post("/api/start", json={})
+        for _ in range(100):
+            text = (await (await client.get("/api/log")).json())["text"]
+            if "line 0:" in text:
+                break
+            await asyncio.sleep(0.05)
+        await client.post("/api/stop", json={})
+    assert "Settings: area" in text and "auto -> en" in text
+    assert "Start: area" in text
+    assert "read area 0 in " in text
+    line = next(row for row in text.splitlines() if "line 0:" in row)
+    assert "first word" in line and "'一行目' -> 'EN(一行目)'" in line
+
+
 async def test_pipeline_ignores_its_own_subtitles_when_they_are_captured(store):
     translator = EchoTranslator()
     script = ["猫だ", "猫だ", "猫だ", "EN(猫だ)", "EN(猫だ)", "EN(猫だ)", "EN(猫だ)"]

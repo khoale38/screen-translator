@@ -10,7 +10,7 @@ from typing import Callable
 
 from aiohttp import WSMsgType, web
 
-from . import languages
+from . import diagnostics, languages
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
 from .models import DOWNLOADS, MODELS, SPEECH, DownloadCancelled, NotEnoughSpace, check_space, download_all
@@ -143,6 +143,10 @@ def create_app(
 
     async def get_state(_: web.Request) -> web.Response:
         return web.json_response(state())
+
+    async def get_log(_: web.Request) -> web.Response:
+        return web.json_response({"text": diagnostics.report(store.settings, pipeline.devices),
+                                  "path": str(diagnostics.log_path())})
 
     async def update_settings(request: web.Request) -> web.Response:
         patch = await request.json()
@@ -278,6 +282,7 @@ def create_app(
         web.get("/static/{name}", static),
         web.get("/ws", websocket),
         web.get("/api/state", get_state),
+        web.get("/api/log", get_log),
         web.post("/api/settings", update_settings),
         web.post("/api/start", start),
         web.post("/api/stop", stop),

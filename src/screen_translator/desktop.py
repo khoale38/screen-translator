@@ -442,6 +442,8 @@ class MainWindow(QWidget):
         self.speed.setStyleSheet("color: gray; font-size: 11px;")
         self.devices: dict[str, str] = {}
         self.timings: dict[str, str] = {}
+        self.copy_log = QPushButton("Copy log")
+        self.copy_log.setToolTip("Copies what was read and translated, with timings, to paste into a bug report.")
 
         self.update_note = QLabel()
         self.update_note.setOpenExternalLinks(True)
@@ -476,7 +478,10 @@ class MainWindow(QWidget):
         layout.addWidget(self.shortcuts)
         layout.addWidget(self.status)
         layout.addWidget(self.last)
-        layout.addWidget(self.speed)
+        speed_row = QHBoxLayout()
+        speed_row.addWidget(self.speed, 1)
+        speed_row.addWidget(self.copy_log, 0, Qt.AlignBottom)
+        layout.addLayout(speed_row)
 
         self.select.toggled.connect(self.toggle_source)
         self.add_area.clicked.connect(self.new_area)
@@ -484,6 +489,7 @@ class MainWindow(QWidget):
         self.forget.clicked.connect(lambda: self.api.call("/api/context/clear", {}))
         self.more.clicked.connect(lambda: webbrowser.open(f"{self.api.base_url}/panel"))
         self.download.clicked.connect(self.toggle_download)
+        self.copy_log.clicked.connect(self.copy_diagnostics)
         for combo, key in ((self.source_lang, "source_lang"), (self.target_lang, "target_lang"),
                            (self.model, "model"), (self.scope, "scope"),
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
@@ -893,6 +899,14 @@ class MainWindow(QWidget):
                 self.progress.setMaximum(1000)
                 self.progress.setValue(int(1000 * event["done"] / max(1, event["total"])))
             QTimer.singleShot(0, self.refresh_model)
+
+    def copy_diagnostics(self) -> None:
+        result = self.api.call("/api/log")
+        if "text" not in result:
+            self.status.setText(f"Could not read the log: {result.get('error', 'no answer')}")
+            return
+        QGuiApplication.clipboard().setText(result["text"])
+        self.status.setText(f"Log copied, ready to paste. It is also saved in {result['path']}")
 
     def show_speed(self, **timings: str) -> None:
         self.timings.update(timings)

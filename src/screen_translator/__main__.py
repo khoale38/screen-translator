@@ -5,6 +5,7 @@ import threading
 import webbrowser
 from pathlib import Path
 
+from . import diagnostics
 from .config import SettingsStore
 from .server import serve
 
@@ -24,6 +25,7 @@ def main() -> None:
         print("\n".join(prefetch_rapid_models(args.prefetch_ocr)))
         return
 
+    diagnostics.start()
     store = SettingsStore()
     if args.port:
         store.update({"port": args.port})

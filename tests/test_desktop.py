@@ -366,3 +366,11 @@ def test_dubbing_appears_with_speech_and_offers_voices_accents_and_game_sound(ap
     api.responses["/api/voices"] = {"voices": [{"value": "", "label": "Match the speaker"}]}
     window.refresh_voices()
     assert "No voice for" in window.status.text()
+
+
+def test_copy_log_puts_the_report_on_the_clipboard(app, tmp_path):
+    window, api = make_window(tmp_path)
+    api.responses["/api/log"] = {"text": "Screen Translator 0.1.0\nline 0: 300 ms", "path": "C:/st/screen-translator.log"}
+    window.copy_log.click()
+    assert QtWidgets.QApplication.clipboard().text() == "Screen Translator 0.1.0\nline 0: 300 ms"
+    assert "C:/st/screen-translator.log" in window.status.text()

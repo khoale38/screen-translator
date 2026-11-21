@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
+from . import diagnostics
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .context import ContextWindow
@@ -131,7 +132,7 @@ class Pipeline:
         dubber_factory: Callable[["Pipeline"], object] = default_dubber,
     ) -> None:
         self.store = store
-        self.emit = emit
+        self.emit = diagnostics.recording(emit)
         self.ocr_factory = ocr_factory
         self.translator_factory = translator_factory
         self.capture_factory = capture_factory
@@ -184,6 +185,7 @@ class Pipeline:
             if not SPEECH.downloaded:
                 raise FileNotFoundError("Speech recognition is not downloaded yet.")
         self.permission_check()
+        diagnostics.log.info("Start: %s", diagnostics.settings_line(settings))
         self._stop.clear()
         self._translator_ready.clear()
         self._events = queue.Queue()
@@ -233,6 +235,7 @@ class Pipeline:
             loop()
         except Exception as exc:
             traceback.print_exc()
+            diagnostics.log.exception("%s stopped", threading.current_thread().name)
             self._stop.set()
             self._set_state("error", f"{type(exc).__name__}: {exc}")
 
@@ -361,8 +364,11 @@ class Pipeline:
             settings.glossary, settings.notes,
         )
         started = time.monotonic()
+        first: list[int] = []
 
         def partial(text: str) -> None:
+            if text and not first:
+                first.append(round((time.monotonic() - started) * 1000))
             self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
                        "translation": text, "final": False, "line_height": event.line_height})
 
@@ -374,6 +380,7 @@ class Pipeline:
             "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
             "final": True, "line_height": event.line_height,
             "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
+            "first_ms": first[0] if first else None,
         })
 
     def _remember(self, text: str, translation: str) -> None:
