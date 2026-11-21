@@ -113,7 +113,7 @@ def _speech_self_test() -> bool:
                 return False
             audio = np.frombuffer(clip.readframes(clip.getnframes()), np.int16).astype(np.float32) / 32768
         started = time.perf_counter()
-        text, spoken = recognizer.recognize(audio, "auto")
+        text, spoken, _emotion = recognizer.recognize(audio, "auto")
         print(f"Speech ({spoken}): {text!r} in {time.perf_counter() - started:.2f} s", flush=True)
         if "police" not in text.lower():
             print("Self-test failed: the speech sample was not recognized", flush=True)
@@ -126,6 +126,27 @@ def _speech_self_test() -> bool:
         source.close()
     except Exception as exc:
         print(f"No sound device to listen to here: {exc}", flush=True)
+    return _dub_self_test()
+
+
+def _dub_self_test() -> bool:
+    import time
+
+    from screen_translator.dub import Delivery, default_voices
+
+    voices = default_voices()
+    print(f"Dub voices: {', '.join(v.label for v in voices.voices) or 'none'}", flush=True)
+    voice = next((v for v in voices.voices if v.lang.lower().startswith("en")), None)
+    if voice is None:
+        print("No English voice installed here; skipping dubbing", flush=True)
+        return True
+    started = time.perf_counter()
+    audio, rate = voices.synthesize("Get in the car.", voice, Delivery(1.1, 6, 1.2))
+    print(f"Dub: {voice.name} spoke {len(audio) / rate:.1f} s of audio in {time.perf_counter() - started:.2f} s",
+          flush=True)
+    if len(audio) < rate * 0.3:
+        print("Self-test failed: the dub voice produced no audio", flush=True)
+        return False
     return True
 
 

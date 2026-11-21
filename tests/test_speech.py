@@ -69,16 +69,18 @@ class LengthRecognizer:
         self.short, self.long, self.lang, self.cutoff = short, long, lang, cutoff
 
     def recognize(self, samples, lang):
-        return (self.short if len(samples) // CHUNK <= self.cutoff else self.long), self.lang
+        return (self.short if len(samples) // CHUNK <= self.cutoff else self.long), self.lang, "ANGRY"
 
 
-def run_speech(store, audio, recognizer, translator, seconds=3.0):
-    store.update({"scope": "area", "listen": True, "source_lang": "ja", "target_lang": "en"})
+def run_speech(store, audio, recognizer, translator, seconds=3.0, dubber=None):
+    store.update({"scope": "area", "listen": True, "dub": dubber is not None, "source_lang": "ja",
+                  "target_lang": "en"})
     events = []
     pipeline = Pipeline(store, events.append, translator_factory=lambda settings: translator,
                         ocr_factory=lambda: ScriptedOcr([""]), capture_factory=FakeCapture,
                         permission_check=lambda: None,
-                        audio_factory=lambda: audio, recognizer_factory=lambda: (recognizer, FakeVad()))
+                        audio_factory=lambda: audio, recognizer_factory=lambda: (recognizer, FakeVad()),
+                        dubber_factory=lambda pipeline: dubber)
     from screen_translator.models import SPEECH
 
     original = type(SPEECH).downloaded
@@ -168,3 +170,31 @@ def test_speech_jumps_ahead_of_on_screen_text_on_the_shared_model():
     assert time.monotonic() - started < 0.2
     worker.join()
     assert outcome == ["yielded"]
+
+
+class FakeDubber:
+    def __init__(self):
+        self.lines = []
+
+    def say(self, line):
+        self.lines.append(line)
+
+    def speaking(self):
+        return False
+
+    def close(self):
+        pass
+
+
+def test_finished_translated_lines_are_dubbed_with_the_emotion_heard(store):
+    dubber = FakeDubber()
+    run_speech(store, FakeAudio(speech(10), delay=0.01), LengthRecognizer("待って", "待って", cutoff=15),
+               EchoTranslator(), dubber=dubber)
+    assert [(line.text, line.target, line.emotion) for line in dubber.lines] == [("EN(待って)", "en", "ANGRY")]
+
+
+def test_lines_already_in_the_target_language_are_not_dubbed_over_the_original(store):
+    dubber = FakeDubber()
+    run_speech(store, FakeAudio(speech(10)), LengthRecognizer("Hold on.", "Hold on.", "en"), EchoTranslator(),
+               dubber=dubber)
+    assert dubber.lines == []

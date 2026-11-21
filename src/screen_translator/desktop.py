@@ -364,6 +364,22 @@ class MainWindow(QWidget):
         self.listen = QCheckBox("Also translate what's said (speech, voice acting)")
         self.listen.setToolTip("Listens to the PC's sound and subtitles speech at the bottom of the screen.")
         self.speech_overlay = TranslationOverlay()
+        self.dub = QCheckBox("Read them aloud too (dubbing)")
+        self.dub.setToolTip("Speaks each translated line in a voice that follows the speaker's gender, pitch and "
+                            "emotion. Uses the voices installed in Windows.")
+        self.dub_voice = QComboBox()
+        self.dub_voice.setToolTip("Match the speaker picks a male or female voice from how they sound. Pick an "
+                                  "accent or one voice to always use it.")
+        self.dub_original = QComboBox()
+        for value, label in (("duck", "Turn game sound down"), ("keep", "Keep game sound"),
+                             ("mute", "Mute game sound")):
+            self.dub_original.addItem(label, value)
+        self.dub_row = QWidget()
+        dub_layout = QHBoxLayout(self.dub_row)
+        dub_layout.setContentsMargins(0, 0, 0, 0)
+        dub_layout.addWidget(self.dub_voice, 2)
+        dub_layout.addWidget(self.dub_original, 1)
+        self.dub_label = QLabel("Dub voice")
         self.screen_pick = QComboBox()
         self.flash = ScreenFlash()
         self.refresh_screens()
@@ -435,7 +451,8 @@ class MainWindow(QWidget):
 
         self.screen_label = QLabel("Screen")
         form = QGridLayout()
-        rows = ((QLabel("Translate"), self.scope), (QLabel(""), self.listen), (self.screen_label, self.screen_pick),
+        rows = ((QLabel("Translate"), self.scope), (QLabel(""), self.listen), (QLabel(""), self.dub),
+                (self.dub_label, self.dub_row), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
                 (QLabel("Model"), self.model), (QLabel("Overlay"), self.overlay_row),
                 (self.min_text_label, self.min_text),
@@ -472,7 +489,14 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
-        self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model()))
+        self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model(),
+                                                self.show_dub()))
+        self.dub.toggled.connect(lambda on: (self.api.call("/api/settings", {"dub": on}), self.show_dub()))
+        self.dub_voice.activated.connect(
+            lambda _i: self.api.call("/api/settings", {"dub_voice": self.dub_voice.currentData()}))
+        self.dub_original.activated.connect(
+            lambda _i: self.api.call("/api/settings", {"dub_original": self.dub_original.currentData()}))
+        self.target_lang.currentIndexChanged.connect(lambda _i: QTimer.singleShot(0, self.refresh_voices))
         self.position.currentIndexChanged.connect(lambda _i: self.apply_style({"overlay_mode": self.position.currentData()}))
         self.text_size.currentIndexChanged.connect(lambda _i: self.apply_style({"text_size": self.text_size.currentData()}))
         self.box.toggled.connect(lambda on: self.apply_style({"overlay_box": on}))
@@ -503,9 +527,14 @@ class MainWindow(QWidget):
         self.box.blockSignals(True)
         self.box.setChecked(s.overlay_box)
         self.box.blockSignals(False)
-        self.listen.blockSignals(True)
-        self.listen.setChecked(s.listen)
-        self.listen.blockSignals(False)
+        for check, value in ((self.listen, s.listen), (self.dub, s.dub)):
+            check.blockSignals(True)
+            check.setChecked(value)
+            check.blockSignals(False)
+        self.dub_original.blockSignals(True)
+        self.dub_original.setCurrentIndex(max(0, self.dub_original.findData(s.dub_original)))
+        self.dub_original.blockSignals(False)
+        self.show_dub()
         self.screen_overlay.text_size = self.text_size.currentData()
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
@@ -536,6 +565,32 @@ class MainWindow(QWidget):
             self.select.setChecked(False)
         if not self.running:
             self.set_running(False)
+
+    def show_dub(self) -> None:
+        self.dub.setVisible(self.listening())
+        on = self.listening() and self.dub.isChecked()
+        for widget in (self.dub_label, self.dub_row):
+            widget.setVisible(on)
+        if on and self.dub_voice.count() == 0:
+            self.refresh_voices()
+
+    def refresh_voices(self) -> None:
+        if not (self.listening() and self.dub.isChecked()):
+            self.dub_voice.clear()
+            return
+        result = self.api.call("/api/voices")
+        choices = result.get("voices") or []
+        self.dub_voice.blockSignals(True)
+        self.dub_voice.clear()
+        for choice in choices:
+            self.dub_voice.addItem(choice["label"], choice["value"])
+        self.dub_voice.setCurrentIndex(max(0, self.dub_voice.findData(self.store.settings.dub_voice)))
+        self.dub_voice.blockSignals(False)
+        if result.get("error"):
+            self.status.setText(result["error"])
+        elif len(choices) <= 1:
+            self.status.setText(f"No voice for {self.target_lang.currentText()} is installed, so lines can't be "
+                                "read aloud yet. Add one in Windows Settings → Time & language → Speech.")
 
     def subtitle_area(self) -> QRect:
         """Where spoken lines appear: low and centred on the screen being translated, like film subtitles."""
@@ -800,6 +855,11 @@ class MainWindow(QWidget):
         elif kind == "devices":
             self.devices = event
             self.show_speed()
+        elif kind == "dub":
+            if event.get("error"):
+                self.status.setText(event["error"])
+            else:
+                self.show_speed(dub=f"voice ready in {event['ms']} ms ({event['voice']})")
 
         elif kind == "clear":
             area = event.get("area")
@@ -835,7 +895,7 @@ class MainWindow(QWidget):
         where = [f"Model on {model}" if model else "", f"text reading on {ocr}" if ocr else ""]
         if any(where):
             lines.append(" · ".join(w for w in where if w))
-        steps = " · ".join(self.timings[k] for k in ("read", "translate", "hear", "speech") if k in self.timings)
+        steps = " · ".join(self.timings[k] for k in ("read", "translate", "hear", "speech", "dub") if k in self.timings)
         if steps:
             lines.append(steps[0].upper() + steps[1:])
         text = "<br>".join(lines)

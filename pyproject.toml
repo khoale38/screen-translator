@@ -20,6 +20,13 @@ dependencies = [
     "onnxruntime>=1.20; sys_platform != 'win32'",
     "onnxruntime-directml>=1.20; sys_platform == 'win32'",
     "soundcard>=0.4.6",
+    "comtypes>=1.4; sys_platform == 'win32'",
+    "pycaw>=20240316; sys_platform == 'win32'",
+    "winrt-runtime>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Foundation>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Foundation.Collections>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Media.SpeechSynthesis>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Storage.Streams>=3.0; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

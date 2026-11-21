@@ -114,6 +114,9 @@ class Settings:
     gpu_layers: int = -1
     check_updates: bool = True
     listen: bool = False
+    dub: bool = False
+    dub_voice: str = ""
+    dub_original: str = "duck"
     port: int = 8765
 
     @classmethod

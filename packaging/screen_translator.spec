@@ -32,6 +32,8 @@ else:
     datas += collect_data_files("rapidocr", excludes=["models/*.onnx"]) + [(ocr_models, "ocr_models")]
     hiddenimports += collect_submodules("rapidocr")
 binaries += collect_dynamic_libs("onnxruntime")
+if sys.platform == "win32":
+    hiddenimports += collect_submodules("winrt") + collect_submodules("pycaw") + ["comtypes.stream"]
 
 a = Analysis(
     [os.path.join(SPECPATH, "launcher.py")],

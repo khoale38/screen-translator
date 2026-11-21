@@ -81,11 +81,14 @@ class FakeApi:
     def __init__(self):
         self.posts = []
         self.state = {}
+        self.responses = {}
 
     def call(self, path, body=None):
         if body is not None:
             self.posts.append((path, body))
-        return self.state if path == "/api/state" else {}
+        if path == "/api/state":
+            return self.state
+        return self.responses.get(path, {})
 
 
 def make_window(tmp_path, **settings):
@@ -338,3 +341,25 @@ def test_settings_from_the_speech_only_test_build_turn_into_the_add_on(tmp_path)
 
     settings = Settings.from_dict({"scope": "speech"})
     assert (settings.scope, settings.listen) == ("area", True)
+
+
+def test_dubbing_appears_with_speech_and_offers_voices_accents_and_game_sound(app, tmp_path):
+    window, api = make_window(tmp_path, scope="area", target_lang="en")
+    api.responses["/api/voices"] = {"voices": [
+        {"value": "", "label": "Match the speaker"},
+        {"value": "accent:en-GB", "label": "Match the speaker · UK accent"},
+        {"value": "voice:zira", "label": "Microsoft Zira · en-US · female"}]}
+    assert not window.dub.isVisibleTo(window)
+    window.listen.setChecked(True)
+    assert window.dub.isVisibleTo(window) and not window.dub_row.isVisibleTo(window)
+    window.dub.setChecked(True)
+    assert ("/api/settings", {"dub": True}) in api.posts
+    assert window.dub_row.isVisibleTo(window)
+    assert [window.dub_voice.itemText(i) for i in range(window.dub_voice.count())][1] == "Match the speaker · UK accent"
+    window.dub_original.setCurrentIndex(window.dub_original.findData("mute"))
+    window.dub_original.activated.emit(window.dub_original.currentIndex())
+    assert ("/api/settings", {"dub_original": "mute"}) in api.posts
+
+    api.responses["/api/voices"] = {"voices": [{"value": "", "label": "Match the speaker"}]}
+    window.refresh_voices()
+    assert "No voice for" in window.status.text()

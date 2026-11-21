@@ -10,11 +10,21 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 
 RATE = 16000
 CHUNK = 512  # 32 ms, the block size Silero VAD expects at 16 kHz
+
+EMOTIONS = ("HAPPY", "SAD", "ANGRY", "FEARFUL", "DISGUSTED", "SURPRISED")
+
+
+class Recognition(NamedTuple):
+    text: str
+    lang: str
+    emotion: str = ""
+
 
 SENSEVOICE_LANGS = {"zh": "zh", "zh-Hant": "zh", "en": "en", "ja": "ja", "ko": "ko", "yue": "yue"}
 _SPECIAL = re.compile(r"<\|[^|]*\|>")
@@ -96,11 +106,11 @@ class SenseVoice:
     def transcribe(self, samples: np.ndarray, lang: str = "auto") -> str:
         return self.recognize(samples, lang)[0]
 
-    def recognize(self, samples: np.ndarray, lang: str = "auto") -> tuple[str, str]:
-        """The words and the language they were spoken in, e.g. ("ちょっと待って", "ja")."""
+    def recognize(self, samples: np.ndarray, lang: str = "auto") -> Recognition:
+        """The words, the language they were spoken in and the emotion heard, e.g. ("待って!", "ja", "ANGRY")."""
         features = stack_frames(fbank(samples), self._window, self._shift)
         if len(features) == 0:
-            return "", ""
+            return Recognition("", "")
         features = (features + self._neg_mean) * self._inv_std
         language = self._langs.get(SENSEVOICE_LANGS.get(lang, "auto"), self._langs["auto"])
         (logits,) = self._session.run(None, {
@@ -116,9 +126,29 @@ class SenseVoice:
                 pieces.append(self._tokens.get(int(index), ""))
             previous = index
         raw = "".join(pieces)
-        spoken = next((tag for tag in _SPECIAL.findall(raw) if tag[2:-2] in self._langs), "<||>")[2:-2]
+        tags = [tag[2:-2] for tag in _SPECIAL.findall(raw)]
+        spoken = next((tag for tag in tags if tag in self._langs), "")
+        emotion = next((tag for tag in tags if tag in EMOTIONS), "")
         text = " ".join(_SPECIAL.sub("", raw).replace("▁", " ").split())
-        return _CJK_GAP.sub("", text), spoken
+        return Recognition(_CJK_GAP.sub("", text), spoken, emotion)
+
+
+def pitch_hz(samples: np.ndarray) -> float:
+    """Median voice pitch, from the autocorrelation of 40 ms frames; 0 when nothing sounds voiced."""
+    length, hop = 640, 320
+    low, high = RATE // 400, RATE // 70
+    pitches = []
+    for start in range(0, len(samples) - length, hop):
+        frame = samples[start:start + length].astype(np.float64)
+        frame -= frame.mean()
+        energy = float(frame @ frame)
+        if energy < 1e-3:
+            continue
+        corr = np.correlate(frame, frame, "full")[length - 1:]
+        lag = low + int(np.argmax(corr[low:high]))
+        if corr[lag] / energy > 0.45:
+            pitches.append(RATE / lag)
+    return float(np.median(pitches)) if pitches else 0.0
 
 
 class Vad:

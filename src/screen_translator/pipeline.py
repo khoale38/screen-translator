@@ -8,6 +8,8 @@ import traceback
 from statistics import median
 from typing import TYPE_CHECKING, Callable
 
+import numpy as np
+
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .context import ContextWindow
@@ -84,6 +86,12 @@ class SharedTranslator:
             return self.inner.translate(messages, partial)
 
 
+def default_dubber(pipeline: "Pipeline"):
+    from .dub import Dubber
+
+    return Dubber(lambda: pipeline.store.settings, emit=pipeline.emit)
+
+
 def default_translator(settings: Settings) -> Translator:
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
@@ -99,6 +107,7 @@ class Pipeline:
         permission_check: Callable[[], None] = ensure_screen_permission,
         audio_factory: Callable[[], object] = default_audio,
         recognizer_factory: Callable[[], tuple] = default_recognizer,
+        dubber_factory: Callable[["Pipeline"], object] = default_dubber,
     ) -> None:
         self.store = store
         self.emit = emit
@@ -108,6 +117,8 @@ class Pipeline:
         self.permission_check = permission_check
         self.audio_factory = audio_factory
         self.recognizer_factory = recognizer_factory
+        self.dubber_factory = dubber_factory
+        self._dubber = None
         self.context = ContextWindow(store.settings.context_lines, store.settings.context_ttl_s)
         self._events: queue.Queue[TextEvent] = queue.Queue()
         self._stop = threading.Event()
@@ -171,6 +182,9 @@ class Pipeline:
         for thread in self._threads:
             thread.join(timeout=5)
         self._threads = []
+        if self._dubber is not None:
+            self._dubber.close()
+            self._dubber = None
         self._set_state("stopped")
 
     def shutdown(self) -> None:
@@ -480,7 +494,7 @@ class Pipeline:
 
 
     def _listen_loop(self) -> None:
-        from .speech import Segmenter
+        from .speech import RATE, Segmenter, pitch_hz
 
         if not self._wait_for_translator():
             return
@@ -494,17 +508,23 @@ class Pipeline:
                 block = source.read()
                 if block is None:
                     continue
+                if self._dubber is not None and self._dubber.speaking() and not getattr(
+                        source, "excludes_own_sound", False):
+                    block = np.zeros_like(block)
                 heard = segmenter.feed(block)
                 if heard is None:
                     continue
                 started = time.monotonic()
-                text, spoken = recognizer.recognize(heard.samples, self.store.settings.source_lang)
-                text = normalize(text)
+                result = recognizer.recognize(heard.samples, self.store.settings.source_lang)
+                text, spoken = normalize(result[0]), result[1]
+                emotion = result[2] if len(result) > 2 else ""
                 self.emit({"type": "heard", "id": utterance, "text": text, "final": heard.final, "lang": spoken,
                            "ms": round((time.monotonic() - started) * 1000)})
                 with self._heard_lock:
                     self._heard = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
-                                   "lang": spoken, "at": time.monotonic()}
+                                   "lang": spoken, "emotion": emotion, "at": time.monotonic(),
+                                   "pitch": pitch_hz(heard.samples) if heard.final else 0.0,
+                                   "seconds": len(heard.samples) / RATE}
                 self._heard_changed.set()
                 if heard.final:
                     utterance += 1
@@ -547,6 +567,16 @@ class Pipeline:
                 self.context.add(text, translation)
                 self._speech_line(heard, translation, True, ms=round((time.monotonic() - heard["at"]) * 1000),
                                   context_lines=len(self.context.turns()) - 1)
+                if settings.dub:
+                    self._dub(translation, heard)
+
+    def _dub(self, translation: str, heard: dict) -> None:
+        from .dub import Line
+
+        if self._dubber is None:
+            self._dubber = self.dubber_factory(self)
+        self._dubber.say(Line(translation, self.store.settings.target_lang, heard.get("emotion", ""),
+                              heard.get("pitch", 0.0)))
 
     def _speech_line(self, heard: dict, translation: str, final: bool, **extra) -> None:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],

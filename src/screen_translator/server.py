@@ -79,8 +79,10 @@ def create_app(
     pipeline_factory: Callable[[SettingsStore, Callable[[dict], None]], Pipeline] = Pipeline,
     capture_factory: Callable[[], ScreenCapture] = ScreenCapture,
     on_event: Callable[[dict], None] | None = None,
+    voices_factory: Callable[[], object] | None = None,
 ) -> web.Application:
     hub = Hub()
+    installed_voices: list = []
     if on_event:
         hub.listeners.append(on_event)
     pipeline = pipeline_factory(store, hub.emit)
@@ -173,6 +175,20 @@ def create_app(
             return fn(capture)
         finally:
             capture.close()
+
+    async def voices(_: web.Request) -> web.Response:
+        from .dub import default_voices, voice_choices
+
+        def listing() -> list[dict]:
+            if not installed_voices:
+                installed_voices.extend((voices_factory or default_voices)().voices)
+            return [{"value": value, "label": label}
+                    for value, label in voice_choices(installed_voices, store.settings.target_lang)]
+
+        try:
+            return web.json_response({"voices": await asyncio.to_thread(listing)})
+        except Exception as exc:
+            return web.json_response({"voices": [], "error": f"Could not list voices: {exc}"})
 
     async def monitors(_: web.Request) -> web.Response:
         return web.json_response(await asyncio.to_thread(with_capture, lambda c: c.monitors()))
@@ -267,6 +283,7 @@ def create_app(
         web.post("/api/stop", stop),
         web.post("/api/context/clear", clear_context),
         web.get("/api/monitors", monitors),
+        web.get("/api/voices", voices),
         web.get("/api/screenshot", screenshot),
         web.post("/api/ocr/test", test_ocr),
         web.post("/api/models/{key}/download", start_download),
