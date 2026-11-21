@@ -7,10 +7,14 @@ from __future__ import annotations
 
 import ctypes
 import os
+import sys
 import threading
 import time
 from ctypes import POINTER, Structure, byref, c_int64, c_uint16, c_uint32, c_uint64, c_ubyte, c_ulong, c_void_p
 from ctypes.wintypes import DWORD, LPCWSTR, WORD
+
+# comtypes joins COM in the thread that imports it; audio activation needs the multithreaded apartment.
+sys.coinit_flags = 0
 
 import comtypes
 from comtypes import COMMETHOD, COMObject, GUID, HRESULT, IUnknown
@@ -146,7 +150,10 @@ class ProcessLoopback:
     excludes_own_sound = True
 
     def __init__(self, rate: int = 16000) -> None:
-        comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        try:
+            comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        except OSError:
+            pass
         self.rate = rate
         self._client = _activate()
         for source_rate, channels, flags in ((rate, 1, LOOPBACK | AUTOCONVERT), (44100, 2, LOOPBACK)):
