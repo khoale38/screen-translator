@@ -312,6 +312,9 @@ def test_the_window_says_where_the_model_runs_and_how_long_each_step_takes(app, 
     assert "Model on NVIDIA GeForce RTX 2060 (Vulkan) · text reading on GPU (DirectML)" in text
     assert "Reading the screen 420 ms · translating 3 pieces 1.8 s" in text
     assert "CPU" not in text
+    window.on_event({"type": "screen_text", "source": "犬", "translation": "Dog", "final": True, "ms": 900,
+                     "batch": 9, "steps": {"list": 240, "steps": 31, "step": 21}})
+    assert "translating 9 pieces 0.9 s (reading the list 240 ms, then 31 steps of 21 ms)" in window.speed.text()
 
     window.on_event({"type": "devices", "model": "CPU", "ocr": "CPU"})
     assert "Updating the graphics driver" in window.speed.text()

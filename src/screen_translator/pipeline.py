@@ -90,6 +90,10 @@ class SharedTranslator:
     def parallel(self) -> bool:
         return hasattr(self.inner, "translate_each")
 
+    @property
+    def timing(self) -> dict[str, int]:
+        return dict(getattr(self.inner, "timing", {}))
+
     def translate_each(self, conversations: list[list[dict]], lengths: list[int],
                        on_piece: Callable[[int, str, bool], None]) -> list[str]:
         while self._urgent.is_set():
@@ -510,7 +514,7 @@ class Pipeline:
             finished.append((source, translation))
             self.emit({"type": "screen_text", "source": source, "translation": translation, "final": True,
                        "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
-                       "batch": len(texts)})
+                       "batch": len(texts), "steps": translator.timing})
 
         translator.translate_each(conversations, [len(text) for text in texts], piece)
         for source, translation in finished:

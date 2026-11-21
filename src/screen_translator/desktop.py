@@ -849,8 +849,11 @@ class MainWindow(QWidget):
             self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
             if event["final"] and "ms" in event:
                 pieces = event.get("batch", 1)
+                steps = event.get("steps") or {}
+                detail = (f" (reading the list {steps['list']} ms, then {steps['steps']} steps of {steps['step']} ms)"
+                          if steps.get("steps") else "")
                 self.show_speed(translate=f"translating {pieces} piece{'s' if pieces > 1 else ''} "
-                                          f"{event['ms'] / 1000:.1f} s")
+                                          f"{event['ms'] / 1000:.1f} s{detail}")
         elif kind == "ocr" and self.running:
             self.show_speed(read=f"reading the text {event['ms']} ms")
         elif kind == "heard" and self.running and event["final"]:

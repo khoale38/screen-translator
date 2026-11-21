@@ -175,6 +175,10 @@ class LlamaTranslator:
             self._parallel.close()
         self._llm.close()
 
+    @property
+    def timing(self) -> dict[str, int]:
+        return self._parallel.timing if self._parallel is not None else {}
+
     def translate_each(self, conversations: list[list[dict]], lengths: list[int],
                        on_piece: Callable[[int, str, bool], None] | None = None) -> list[str]:
         """Translate several pieces at once; `lengths` are the source lengths, which cap each output."""

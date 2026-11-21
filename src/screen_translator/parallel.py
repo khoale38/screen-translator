@@ -1,16 +1,23 @@
 """Translates many separate pieces of text at once, one llama.cpp sequence each.
 
-A GPU step for a dozen sequences costs little more than a step for one, so a screen of short pieces takes about as
+A GPU step for several sequences costs little more than a step for one, so a screen of short pieces takes about as
 long as its longest piece instead of the sum of them all.
 """
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Callable
+
+import time
 
 import numpy as np
 
 OnStep = Callable[[int, list[int], bool], None]
+
+# llama.cpp's fast matrix-vector kernels (CUDA, Vulkan, Metal) take at most 8 rows; a 9th switches every layer to
+# the general matrix kernels, which are several times slower per step on NVIDIA cards.
+MAX_ACTIVE = 8
 
 
 class ParallelDecoder:
@@ -40,6 +47,7 @@ class ParallelDecoder:
         self.max_sequences = max_sequences
         self._spare = max_sequences
         self._cached: tuple[int, ...] = ()
+        self.timing: dict[str, int] = {}
 
     def close(self) -> None:
         if self._ctx:
@@ -76,6 +84,7 @@ class ParallelDecoder:
         `on_step(index, tokens_so_far, finished)` is called as each output grows; raising from it stops decoding.
         """
         lib = self._lib
+        started = time.monotonic()
         count = len(prompts)
         if not 0 < count <= self.max_sequences:
             raise ValueError(f"between 1 and {self.max_sequences} prompts at a time")
@@ -96,18 +105,25 @@ class ParallelDecoder:
             for seq in range(1, count):
                 lib.llama_memory_seq_cp(self._memory, 0, seq, -1, -1)
 
-            self._decode([(prompt[pos], pos, seq, False)
-                          for seq, prompt in enumerate(prompts) for pos in range(common, len(prompt) - 1)])
-            self._decode([(prompt[-1], len(prompt) - 1, seq, True) for seq, prompt in enumerate(prompts)])
-
+            own = [(prompt[pos], pos, seq, pos == len(prompt) - 1)
+                   for seq, prompt in enumerate(prompts) for pos in range(common, len(prompt))]
+            if len(own) > self._n_batch:
+                self._decode([entry for entry in own if not entry[3]])
+                own = [entry for entry in own if entry[3]]
+            self._decode(own)
+            upcoming = {seq: self._next_token(row) for row, (_t, _p, seq, last) in enumerate(own) if last}
+            listed = time.monotonic()
+            self.timing = {"list": round((listed - started) * 1000), "steps": 0, "step": 0}
             outputs: list[list[int]] = [[] for _ in prompts]
             positions = [len(p) for p in prompts]
-            active = list(range(count))
-            index = {seq: seq for seq in active}
-            while active:
+            waiting = deque(sorted(range(count), key=lambda seq: -budgets[seq]))
+            active: list[int] = []
+            while waiting or active:
+                while waiting and len(active) < MAX_ACTIVE:
+                    active.append(waiting.popleft())
                 step = []
                 for seq in active:
-                    token = self._next_token(index[seq])
+                    token = upcoming.pop(seq)
                     done = token in stop or len(outputs[seq]) >= budgets[seq]
                     if not done:
                         outputs[seq].append(token)
@@ -118,7 +134,9 @@ class ParallelDecoder:
                 active = [seq for _token, _pos, seq, _ in step]
                 if step:
                     self._decode(step)
-                    index = {seq: row for row, (_t, _p, seq, _l) in enumerate(step)}
+                    upcoming.update((seq, self._next_token(row)) for row, (_t, _p, seq, _l) in enumerate(step))
+                    steps = self.timing["steps"] + 1
+                    self.timing.update(steps=steps, step=round((time.monotonic() - listed) * 1000 / steps))
             return outputs
         finally:
             for seq in range(count):
