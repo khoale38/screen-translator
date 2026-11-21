@@ -34,8 +34,8 @@ It runs the model on your graphics card through Vulkan and reads text on it thro
 3. Choose what to **Translate**:
    - **A selected area**: best for subtitles and dialogue boxes. Click **Select areas**, drag the green box over the text and resize it from its edges. **+ Add area** adds more boxes, for example one for the speaker's name and one for the line; all areas share the same context. Click **Done**.
    - **The whole screen**: translates every piece of text on one screen and repaints it in place in the original's colours. With several monitors, pick one under **Screen**. **Skip text** ignores tiny text such as stream chat, which OCR often misreads.
-   - **What you hear**: listens to whatever the PC is playing and subtitles the speech, for voice acting, streams and videos without subtitles. It understands Japanese, Chinese, Korean, Cantonese and English. Press **Download speech recognition** once (0.24 GB). **Move subtitles** places the subtitle box. A live caption appears while someone is talking, and the finished line usually lands within a second after they stop. Lines already spoken in your target language are shown as said.
-4. Press **Start**.
+4. Optionally tick **Also translate what's said** to subtitle speech too, for voice acting, streams and videos without subtitles. It listens to whatever the PC is playing, alongside the on-screen text, and shows spoken lines at the bottom of the screen. It understands Japanese, Chinese, Korean, Cantonese and English. Press **Download speech recognition** once (0.24 GB). A live caption appears while someone is talking, and the finished line usually lands within a second after they stop. Speech gets the model first, so on-screen text waits a moment while someone talks. Lines already spoken in your target language are shown as said.
+5. Press **Start**.
 
 **Overlay** sets how translations look for selected areas: **Over the text** or **Below the text** (moved above the area when there's no room below), the text size, and whether to draw a **Dark box** behind it or just outlined text.
 
@@ -101,7 +101,7 @@ Models are stored in the `models` folder inside the folder you installed to (or 
 
 ## How it works
 
-1. **Capture**: grabs your selected areas, or the chosen screen, a few times per second, and skips OCR when nothing changed. Its own translations are left out of the capture. In **What you hear** mode it records the PC's sound output instead; Silero VAD finds where each sentence starts and stops, and SenseVoice-Small writes it down in under 0.1 s.
+1. **Capture**: grabs your selected areas, or the chosen screen, a few times per second, and skips OCR when nothing changed. Its own translations are left out of the capture. With **Also translate what's said** it also records the PC's sound output; Silero VAD finds where each sentence starts and stops, and SenseVoice-Small writes it down in under 0.1 s.
 2. **OCR**: RapidOCR (PP-OCRv6) reads Chinese, Japanese, English and other Latin-script languages out of the box; Korean, Russian/Ukrainian, Thai, Arabic and Hindi use extra models that download the first time you pick that language. HUD symbols and dot rows are dropped, and misread button icons (`LI`, `Lt`) become `L1`.
 3. **Stabilize**: waits until the text stops changing, so typewriter-style dialogue is translated once and complete. Speaker-name labels are kept on their own line, and a line that comes back is shown from cache instead of being translated again.
 4. **Translate with context**: a local model gets your glossary, the **Watching** notes and the recent lines as conversation history. Context expires after 5 minutes by default, and **Forget context** clears it. Whole-screen mode translates up to 12 pieces of text per request.

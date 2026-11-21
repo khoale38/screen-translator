@@ -52,6 +52,38 @@ class Superseded(Exception):
     """A newer piece of speech arrived while an older one was still being translated."""
 
 
+class Yielded(Exception):
+    """Speech needed the model, so this text translation stepped aside and will be retried."""
+
+
+class SharedTranslator:
+    """One model for on-screen text and speech. Speech goes first: text waits, or stops mid-way and is redone."""
+
+    def __init__(self, inner: Translator) -> None:
+        self.inner = inner
+        self._lock = threading.Lock()
+        self._urgent = threading.Event()
+
+    def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None,
+                  urgent: bool = False) -> str:
+        if urgent:
+            self._urgent.set()
+        else:
+            while self._urgent.is_set():
+                time.sleep(0.01)
+        with self._lock:
+            if urgent:
+                self._urgent.clear()
+
+            def partial(text: str) -> None:
+                if not urgent and self._urgent.is_set():
+                    raise Yielded()
+                if on_partial:
+                    on_partial(text)
+
+            return self.inner.translate(messages, partial)
+
+
 def default_translator(settings: Settings) -> Translator:
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
@@ -81,6 +113,8 @@ class Pipeline:
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
         self._translator: Translator | None = None
+        self._shared: SharedTranslator | None = None
+        self._load_lock = threading.Lock()
         self._translator_key: tuple | None = None
         self._line_id = 0
         self._last_area: int | None = None
@@ -108,28 +142,26 @@ class Pipeline:
     def start(self) -> None:
         if self.running:
             return
-        resolve_model(self.store.settings)
-        speech = self.store.settings.scope == "speech"
-        if speech:
+        settings = self.store.settings
+        resolve_model(settings)
+        if settings.listen:
             from .models import SPEECH
 
             if not SPEECH.downloaded:
                 raise FileNotFoundError("Speech recognition is not downloaded yet.")
-        else:
-            self.permission_check()
+        self.permission_check()
         self._stop.clear()
         self._translator_ready.clear()
         self._events = queue.Queue()
         self._heard = None
-        if speech:
-            loops = (self._listen_loop, self._speech_translate_loop)
-        elif self.store.settings.scope == "screen":
-            loops = (self._screen_capture_loop, self._screen_translate_loop)
+        if settings.scope == "screen":
+            loops = [(self._screen_capture_loop, "capture"), (self._screen_translate_loop, "translate")]
         else:
-            loops = (self._capture_loop, self._translate_loop)
+            loops = [(self._capture_loop, "capture"), (self._translate_loop, "translate")]
+        if settings.listen:
+            loops += [(self._listen_loop, "listen"), (self._speech_translate_loop, "speech")]
         self._threads = [
-            threading.Thread(target=self._guard, args=(loop,), name=name, daemon=True)
-            for loop, name in zip(loops, ("capture", "translate"))
+            threading.Thread(target=self._guard, args=(loop,), name=name, daemon=True) for loop, name in loops
         ]
         for thread in self._threads:
             thread.start()
@@ -227,20 +259,22 @@ class Pipeline:
             return False
         return any(similar(event.text, normalize(turn.translation), 0.85) for turn in self.context.turns()[-3:])
 
-    def _load_translator(self) -> Translator:
+    def _load_translator(self) -> SharedTranslator:
         settings = self.store.settings
         key = (settings.model, settings.custom_model_path, settings.gpu_layers)
-        if self._translator is None or self._translator_key != key:
-            self._set_state("loading")
-            close = getattr(self._translator, "close", None)
-            if close:
-                close()
-            self._translator = None
-            self._translator = self.translator_factory(settings)
-            self._translator_key = key
-        return self._translator
+        with self._load_lock:
+            if self._translator is None or self._translator_key != key:
+                self._set_state("loading")
+                close = getattr(self._translator, "close", None)
+                if close:
+                    close()
+                self._translator = None
+                self._translator = self.translator_factory(settings)
+                self._shared = SharedTranslator(self._translator)
+                self._translator_key = key
+            return self._shared
 
-    def _ready_translator(self) -> Translator:
+    def _ready_translator(self) -> SharedTranslator:
         translator = self._load_translator()
         self._translator_ready.set()
         self._set_state("running")
@@ -256,7 +290,12 @@ class Pipeline:
             if event.kind == "clear":
                 self.emit({"type": "clear", "area": event.area})
                 continue
-            self._translate(translator, event)
+            try:
+                self._translate(translator, event)
+            except Yielded:
+                with self._events.mutex:
+                    self._events.queue.appendleft(event)
+                    self._events.not_empty.notify()
 
     def _translate(self, translator: Translator, event: TextEvent) -> None:
         settings = self.store.settings
@@ -390,11 +429,11 @@ class Pipeline:
                 self._screen_changed.wait(0.2)
                 continue
             batch = _take_batch(pending)
-            if len(batch) == 1:
-                self._translate_block(translator, batch[0])
+            try:
+                for text in batch if len(batch) == 1 else self._translate_batch(translator, batch):
+                    self._translate_block(translator, text)
+            except Yielded:
                 continue
-            for text in self._translate_batch(translator, batch):
-                self._translate_block(translator, text)
 
     def _translate_batch(self, translator: Translator, texts: list[str]) -> list[str]:
         """Translate several blocks in one call; returns the ones the model skipped, to be done one by one."""
@@ -464,8 +503,8 @@ class Pipeline:
                 self.emit({"type": "heard", "id": utterance, "text": text, "final": heard.final, "lang": spoken,
                            "ms": round((time.monotonic() - started) * 1000)})
                 with self._heard_lock:
-                    self._heard = {"id": utterance, "text": text, "final": heard.final, "lang": spoken,
-                                   "at": time.monotonic()}
+                    self._heard = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
+                                   "lang": spoken, "at": time.monotonic()}
                 self._heard_changed.set()
                 if heard.final:
                     utterance += 1
@@ -493,8 +532,7 @@ class Pipeline:
             if not text:
                 continue
             if _spoken_in(settings.target_lang, heard.get("lang", "")) or already_in(settings.target_lang, text):
-                self.emit({"type": "line", "id": heard["id"], "area": 0, "source": text, "translation": text,
-                           "final": heard["final"], "ms": 0, "context_lines": 0})
+                self._speech_line(heard, text, heard["final"], ms=0, context_lines=0)
                 continue
             if done and done[:2] == (heard["id"], _bare(text)):
                 translation = done[2]
@@ -507,9 +545,12 @@ class Pipeline:
             if heard["final"]:
                 self._remember(text, translation)
                 self.context.add(text, translation)
-                self.emit({"type": "line", "id": heard["id"], "area": 0, "source": text, "translation": translation,
-                           "final": True, "ms": round((time.monotonic() - heard["at"]) * 1000),
-                           "context_lines": len(self.context.turns()) - 1})
+                self._speech_line(heard, translation, True, ms=round((time.monotonic() - heard["at"]) * 1000),
+                                  context_lines=len(self.context.turns()) - 1)
+
+    def _speech_line(self, heard: dict, translation: str, final: bool, **extra) -> None:
+        self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
+                   "translation": translation, "final": final, **extra})
 
     def _translate_speech(self, translator: Translator, heard: dict) -> str:
         settings = self.store.settings
@@ -519,6 +560,8 @@ class Pipeline:
         messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
                                   settings.glossary, settings.notes)
 
+        started = time.monotonic()
+
         def partial(translation: str) -> None:
             if self._stop.is_set():
                 raise Superseded()
@@ -526,12 +569,14 @@ class Pipeline:
                 newer = self._heard
             if heard["final"] or not newer:
                 pass
-            elif newer["id"] != heard["id"] or (newer["final"] and _bare(newer["text"]) != _bare(heard["text"])):
+            elif newer["id"] != heard["id"]:
                 raise Superseded()
-            self.emit({"type": "line", "id": heard["id"], "area": 0, "source": heard["text"],
-                       "translation": translation, "final": False})
+            elif _bare(newer["text"]) != _bare(heard["text"]) and (
+                    newer["final"] or (newer["ending"] and time.monotonic() - started < 0.3)):
+                raise Superseded()
+            self._speech_line(heard, translation, False)
 
-        return label_speaker(heard["text"], translator.translate(messages, partial))
+        return label_speaker(heard["text"], translator.translate(messages, partial, urgent=True))
 
 
 def _spoken_in(target: str, spoken: str) -> bool:

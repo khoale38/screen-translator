@@ -361,7 +361,9 @@ class MainWindow(QWidget):
         self.scope = QComboBox()
         self.scope.addItem("A selected area (subtitles, dialogue)", "area")
         self.scope.addItem("The whole screen", "screen")
-        self.scope.addItem("What you hear (speech, voice acting)", "speech")
+        self.listen = QCheckBox("Also translate what's said (speech, voice acting)")
+        self.listen.setToolTip("Listens to the PC's sound and subtitles speech at the bottom of the screen.")
+        self.speech_overlay = TranslationOverlay()
         self.screen_pick = QComboBox()
         self.flash = ScreenFlash()
         self.refresh_screens()
@@ -433,7 +435,7 @@ class MainWindow(QWidget):
 
         self.screen_label = QLabel("Screen")
         form = QGridLayout()
-        rows = ((QLabel("Translate"), self.scope), (self.screen_label, self.screen_pick),
+        rows = ((QLabel("Translate"), self.scope), (QLabel(""), self.listen), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
                 (QLabel("Model"), self.model), (QLabel("Overlay"), self.overlay_row),
                 (self.min_text_label, self.min_text),
@@ -470,6 +472,7 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
+        self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model()))
         self.position.currentIndexChanged.connect(lambda _i: self.apply_style({"overlay_mode": self.position.currentData()}))
         self.text_size.currentIndexChanged.connect(lambda _i: self.apply_style({"text_size": self.text_size.currentData()}))
         self.box.toggled.connect(lambda on: self.apply_style({"overlay_box": on}))
@@ -500,6 +503,9 @@ class MainWindow(QWidget):
         self.box.blockSignals(True)
         self.box.setChecked(s.overlay_box)
         self.box.blockSignals(False)
+        self.listen.blockSignals(True)
+        self.listen.setChecked(s.listen)
+        self.listen.blockSignals(False)
         self.screen_overlay.text_size = self.text_size.currentData()
         for area in s.areas or ([s.area] if s.area else []):
             self.add_source(QRect(*area))
@@ -514,23 +520,28 @@ class MainWindow(QWidget):
         return self.scope.currentData() == "screen"
 
     def listening(self) -> bool:
-        return self.scope.currentData() == "speech"
+        return self.listen.isChecked()
 
     def show_scope(self) -> None:
-        screen, speech = self.whole_screen(), self.listening()
+        screen = self.whole_screen()
         for widget in (self.screen_label, self.screen_pick):
             widget.setVisible(screen and self.screen_pick.count() > 1)
         for widget in (self.min_text_label, self.min_text):
             widget.setVisible(screen)
-        self.position.setVisible(not screen and not speech)
-        self.box.setVisible(not screen)
+        for widget in (self.position, self.box):
+            widget.setVisible(not screen)
         self.select.setVisible(not screen)
-        self.select.setChecked(False)
-        self.select.setText("Move subtitles" if speech else "Select areas")
-        self.add_area.setVisible(False)
-        self.refresh_model()
+        self.add_area.setVisible(not screen and self.select.isChecked())
+        if screen:
+            self.select.setChecked(False)
         if not self.running:
             self.set_running(False)
+
+    def subtitle_area(self) -> QRect:
+        """Where spoken lines appear: low and centred on the screen being translated, like film subtitles."""
+        screen = (self.chosen_screen() if self.whole_screen() else QGuiApplication.primaryScreen()).geometry()
+        width = int(screen.width() * 0.7)
+        return QRect(screen.center().x() - width // 2, screen.bottom() - int(screen.height() * 0.08) - 110, width, 110)
 
     def refresh_screens(self) -> None:
         current = self.screen_pick.currentData() or self.store.settings.screen_name
@@ -576,7 +587,7 @@ class MainWindow(QWidget):
         if model and not model["downloaded"] and not self.store.settings.custom_model_path:
             return model["key"], "model", model["size"]
         speech = state.get("speech")
-        if hasattr(self, "scope") and self.listening() and speech and not speech["downloaded"]:
+        if hasattr(self, "listen") and self.listening() and speech and not speech["downloaded"]:
             return "speech", "speech recognition", speech["size"]
         return None
 
@@ -650,17 +661,13 @@ class MainWindow(QWidget):
         frame.raise_()
 
     def toggle_source(self, visible: bool) -> None:
-        speech = self.listening()
-        for frame in self.sources[:1] if speech else self.sources:
+        for frame in self.sources:
             if visible:
                 self.show_frame(frame)
             else:
                 frame.hide()
-        if not visible:
-            for frame in self.sources:
-                frame.hide()
-        self.add_area.setVisible(visible and not speech)
-        self.select.setText("Done" if visible else "Move subtitles" if speech else "Select areas")
+        self.add_area.setVisible(visible)
+        self.select.setText("Done" if visible else "Select areas")
 
     def save_areas(self, *_args) -> None:
         areas = [frame.area() for frame in self.sources]
@@ -690,7 +697,7 @@ class MainWindow(QWidget):
     def set_overlays_hidden(self, hidden: bool) -> None:
         """Peek at the original text; translations keep arriving underneath and show again when un-hidden."""
         self.overlays_hidden = hidden
-        for overlay in self.overlays:
+        for overlay in [*self.overlays, self.speech_overlay]:
             overlay.hidden_by_user = hidden
             if hidden:
                 overlay.hide()
@@ -712,13 +719,14 @@ class MainWindow(QWidget):
             self.api.call("/api/settings", {"screen_rect": native_rect(geometry), "screen_height": geometry.height()})
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.cover(geometry)
-        elif self.listening():
-            self.save_areas()
-            self.overlays[0].ensure_native()
         else:
             self.save_areas()
             for overlay in self.overlays:
                 overlay.ensure_native()
+        if self.listening():
+            self.speech_overlay.style = Style(True, self.store.settings.overlay_opacity, "cover",
+                                              self.text_size.currentData())
+            self.speech_overlay.ensure_native()
         result = self.api.call("/api/start", {})
         if "error" in result:
             self.status.setText(result["error"])
@@ -740,11 +748,9 @@ class MainWindow(QWidget):
             for overlay in self.overlays:
                 overlay.hide()
             self.screen_overlay.hide()
+            self.speech_overlay.hide()
             if self.whole_screen():
                 self.status.setText("Start to translate every piece of text on the screen in place.")
-            elif self.listening():
-                self.status.setText("Start to translate what's being said in whatever is playing. Use "
-                                    "“Move subtitles” to place the subtitle box.")
             else:
                 self.status.setText("Click “Select areas”, drag the green box over the text (add more boxes if the "
                                     "text is in several places), then Start.")
@@ -765,11 +771,13 @@ class MainWindow(QWidget):
         kind = event["type"]
         if kind == "line" and self.running:
             area = event.get("area", 0)
-            if area < len(self.overlays):
+            if area == "speech":
+                self.speech_overlay.show_text(event["translation"], event["final"], self.subtitle_area())
+                if event["final"]:
+                    self.show_speed(speech=f"speech translated {event['ms'] / 1000:.1f} s after it ended")
+            elif area < len(self.overlays):
                 self.overlays[area].show_text(event["translation"], event["final"], self.sources[area].area(),
                                               event.get("line_height", 0.0))
-            if event["final"] and self.listening():
-                self.show_speed(translate=f"translating {event['ms'] / 1000:.1f} s")
             if event["final"]:
                 self.last.setText(f"<span style='color:gray'>{event['source']}</span><br>{event['translation']}"
                                   f"<br><span style='color:gray;font-size:11px'>{event['ms']} ms · "
@@ -788,7 +796,7 @@ class MainWindow(QWidget):
         elif kind == "ocr" and self.running:
             self.show_speed(read=f"reading the text {event['ms']} ms")
         elif kind == "heard" and self.running and event["final"]:
-            self.show_speed(read=f"recognizing speech {event['ms']} ms")
+            self.show_speed(hear=f"recognizing speech {event['ms']} ms")
         elif kind == "devices":
             self.devices = event
             self.show_speed()
@@ -806,12 +814,12 @@ class MainWindow(QWidget):
                 self.status.setText(event["error"])
             elif event["state"] == "loading":
                 self.status.setText("Loading the model…")
-            elif event["state"] == "running" and self.whole_screen():
-                self.status.setText("Translating the whole screen. Text under this window is left alone.")
-            elif event["state"] == "running" and self.listening():
-                self.status.setText("Listening. Translations of what's said appear in the subtitle box.")
             elif event["state"] == "running":
-                self.status.setText("Translating. The box over the text shows the translation.")
+                text = ("Translating the whole screen. Text under this window is left alone." if self.whole_screen()
+                        else "Translating. The box over the text shows the translation.")
+                if self.listening():
+                    text += " Speech is subtitled at the bottom of the screen."
+                self.status.setText(text)
         elif kind == "download":
             if event.get("error") and event["error"] != "Cancelled":
                 self.status.setText(event["error"])
@@ -827,7 +835,7 @@ class MainWindow(QWidget):
         where = [f"Model on {model}" if model else "", f"text reading on {ocr}" if ocr else ""]
         if any(where):
             lines.append(" · ".join(w for w in where if w))
-        steps = " · ".join(self.timings[k] for k in ("read", "translate") if k in self.timings)
+        steps = " · ".join(self.timings[k] for k in ("read", "translate", "hear", "speech") if k in self.timings)
         if steps:
             lines.append(steps[0].upper() + steps[1:])
         text = "<br>".join(lines)
@@ -839,7 +847,7 @@ class MainWindow(QWidget):
 
     def closeEvent(self, event) -> None:
         self.api.call("/api/stop", {})
-        for widget in [*self.sources, *self.overlays, self.screen_overlay, self.flash]:
+        for widget in [*self.sources, *self.overlays, self.speech_overlay, self.screen_overlay, self.flash]:
             widget.close()
         super().closeEvent(event)
 

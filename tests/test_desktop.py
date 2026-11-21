@@ -314,15 +314,27 @@ def test_the_window_says_where_the_model_runs_and_how_long_each_step_takes(app, 
     assert "Updating the graphics driver" in window.speed.text()
 
 
-def test_speech_mode_offers_the_speech_download_and_shows_subtitles_in_the_first_box(app, tmp_path):
-    window, api = make_window(tmp_path, scope="speech", areas=[[100, 600, 800, 100]])
+def test_speech_is_an_add_on_with_its_own_download_and_subtitle_box(app, tmp_path):
+    window, api = make_window(tmp_path, scope="area", areas=[[100, 100, 400, 60]])
     api.state["speech"] = {"label": "Speech recognition", "size": 240_000_000, "downloaded": False}
     window.refresh_model()
+    assert not window.download.isVisibleTo(window)
+    window.listen.setChecked(True)
+    assert ("/api/settings", {"listen": True}) in api.posts
     assert window.download.isVisibleTo(window) and "speech recognition (0.2 GB)" in window.download.text()
-    assert window.select.text() == "Move subtitles"
 
     window.running = True
-    window.on_event({"type": "line", "id": 1, "area": 0, "source": "待って", "translation": "Wait", "final": True,
+    window.on_event({"type": "line", "id": 1, "area": 0, "source": "看板", "translation": "Sign", "final": True,
                      "ms": 300, "context_lines": 0})
-    assert window.overlays[0].text == "Wait"
-    assert "Translating 0.3 s" in window.speed.text()
+    window.on_event({"type": "line", "id": "speech-1", "area": "speech", "source": "待って", "translation": "Wait",
+                     "final": True, "ms": 200, "context_lines": 1})
+    assert window.overlays[0].text == "Sign" and window.speech_overlay.text == "Wait"
+    assert window.speech_overlay.geometry().center().x() == window.subtitle_area().center().x()
+    assert "Speech translated 0.2 s after it ended" in window.speed.text()
+
+
+def test_settings_from_the_speech_only_test_build_turn_into_the_add_on(tmp_path):
+    from screen_translator.config import Settings
+
+    settings = Settings.from_dict({"scope": "speech"})
+    assert (settings.scope, settings.listen) == ("area", True)

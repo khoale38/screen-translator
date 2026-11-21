@@ -113,12 +113,15 @@ class Settings:
     custom_model_path: str = ""
     gpu_layers: int = -1
     check_updates: bool = True
+    listen: bool = False
     port: int = 8765
 
     @classmethod
     def from_dict(cls, raw: dict) -> "Settings":
         known = {f.name for f in fields(cls)}
         values = {k: v for k, v in raw.items() if k in known}
+        if values.get("scope") == "speech":
+            values["scope"], values["listen"] = "area", True
         region = values.get("region")
         if isinstance(region, dict):
             values["region"] = Region(**{k: float(region[k]) for k in ("left", "top", "width", "height")})

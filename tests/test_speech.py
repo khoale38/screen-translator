@@ -6,7 +6,7 @@ from screen_translator.config import SettingsStore
 from screen_translator.pipeline import Pipeline
 from screen_translator.speech import CHUNK, RATE, Segmenter, fbank, stack_frames
 
-from test_app import EchoTranslator, store  # noqa: F401
+from test_app import EchoTranslator, FakeCapture, ScriptedOcr, store  # noqa: F401
 
 
 def block(prob):
@@ -73,9 +73,11 @@ class LengthRecognizer:
 
 
 def run_speech(store, audio, recognizer, translator, seconds=3.0):
-    store.update({"scope": "speech", "source_lang": "ja", "target_lang": "en"})
+    store.update({"scope": "area", "listen": True, "source_lang": "ja", "target_lang": "en"})
     events = []
     pipeline = Pipeline(store, events.append, translator_factory=lambda settings: translator,
+                        ocr_factory=lambda: ScriptedOcr([""]), capture_factory=FakeCapture,
+                        permission_check=lambda: None,
                         audio_factory=lambda: audio, recognizer_factory=lambda: (recognizer, FakeVad()))
     from screen_translator.models import SPEECH
 
@@ -134,3 +136,35 @@ def test_a_finished_sentence_cuts_short_a_stale_live_translation(store):
     finals = [e["translation"] for e in events if e["type"] == "line" and e["final"]]
     assert finals == ["EN(待って、どこに行くの)"]
     assert time.monotonic() - started < 1.5
+
+
+def test_speech_jumps_ahead_of_on_screen_text_on_the_shared_model():
+    import threading
+
+    from screen_translator.pipeline import SharedTranslator, Yielded
+
+    class Inner:
+        def translate(self, messages, on_partial=None):
+            text = messages[-1]["content"]
+            for _ in range(100 if text == "long screen text" else 1):
+                time.sleep(0.01)
+                on_partial("…")
+            return f"EN({text})"
+
+    shared = SharedTranslator(Inner())
+    outcome = []
+
+    def screen_text():
+        try:
+            outcome.append(shared.translate([{"content": "long screen text"}]))
+        except Yielded:
+            outcome.append("yielded")
+
+    worker = threading.Thread(target=screen_text)
+    worker.start()
+    time.sleep(0.1)
+    started = time.monotonic()
+    assert shared.translate([{"content": "待って"}], urgent=True) == "EN(待って)"
+    assert time.monotonic() - started < 0.2
+    worker.join()
+    assert outcome == ["yielded"]

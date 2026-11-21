@@ -143,6 +143,7 @@ class Vad:
 class Utterance:
     samples: np.ndarray
     final: bool
+    ending: bool = False
 
 
 class Segmenter:
@@ -186,7 +187,7 @@ class Segmenter:
         self._since_partial += 1
         if self._since_partial >= self.partial_blocks or self._quiet == 1:
             self._since_partial = 0
-            return Utterance(np.concatenate(self._speech), final=False)
+            return Utterance(np.concatenate(self._speech), final=False, ending=self._quiet == 1)
         return None
 
     def flush(self) -> Utterance | None:
