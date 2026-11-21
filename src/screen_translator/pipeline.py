@@ -87,6 +87,12 @@ class SharedTranslator:
 
             return self.inner.translate(messages, partial)
 
+    def warm_up(self, messages: list[dict]) -> None:
+        """The first translation sets up the GPU work and saves the instructions; done early, it holds up no line."""
+        if hasattr(self.inner, "warm_up"):
+            with self._lock:
+                self.inner.warm_up(messages)
+
     @property
     def parallel(self) -> bool:
         return hasattr(self.inner, "translate_each")
@@ -159,6 +165,7 @@ class Pipeline:
         self._screen_reading: list[Block] = []
         self._screen_changed = threading.Event()
         self._cache: dict[tuple[str, str, str], str] = {}
+        self._previews: dict[int, tuple[str, str, int, int | None]] = {}
         self.devices: dict[str, str] = {}
         self._heard_lock = threading.Lock()
         self._heard: dict | None = None
@@ -295,7 +302,7 @@ class Pipeline:
 
     def _is_own_output(self, event: TextEvent) -> bool:
         """Ignore text that is our own translation, e.g. the floating subtitle window sitting inside the region."""
-        if event.kind != "text":
+        if event.kind not in ("text", "preview"):
             return False
         return any(similar(event.text, normalize(turn.translation), 0.85) for turn in self.context.turns()[-3:])
 
@@ -322,20 +329,68 @@ class Pipeline:
 
     def _translate_loop(self) -> None:
         translator = self._ready_translator()
+        settings = self.store.settings
+        translator.warm_up(build_messages("OK", [], settings.source_lang, settings.target_lang,
+                                          settings.glossary, settings.notes))
         while not self._stop.is_set():
             try:
                 event = self._events.get(timeout=0.2)
             except queue.Empty:
                 continue
             if event.kind == "clear":
+                self._previews.pop(event.area, None)
                 self.emit({"type": "clear", "area": event.area})
                 continue
+            if self._newer_in(event):
+                continue
             try:
-                self._translate(translator, event)
+                if event.kind == "preview":
+                    self._preview(translator, event)
+                else:
+                    self._translate(translator, event)
+            except Superseded:
+                continue
             except Yielded:
                 with self._events.mutex:
                     self._events.queue.appendleft(event)
                     self._events.not_empty.notify()
+
+    def _newer_in(self, event: TextEvent) -> bool:
+        """Whether the area's text has changed or gone since this event, which makes translating it pointless."""
+        with self._events.mutex:
+            return any(queued.area == event.area and (queued.kind == "clear" or not similar(queued.text, event.text, 0.85))
+                       for queued in self._events.queue)
+
+    def _extended(self, event: TextEvent, history: list) -> bool:
+        return bool(history) and self._last_area == event.area and event.text.startswith(history[-1].source)
+
+    def _preview(self, translator: Translator, event: TextEvent) -> None:
+        """Translate text on its first read and show it; it becomes the line once a second read confirms it."""
+        settings = self.store.settings
+        if already_in(settings.target_lang, event.text) or self._cache.get(self._cache_key(event.text)) is not None:
+            return
+        history = self.context.turns()
+        extends = self._extended(event, history)
+        if extends:
+            history = history[:-1]
+        line_id = self._line_id if extends else self._line_id + 1
+        messages = build_messages(event.text, history, settings.source_lang, settings.target_lang,
+                                  settings.glossary, settings.notes)
+        started = time.monotonic()
+        first: list[int] = []
+
+        def partial(text: str) -> None:
+            if self._newer_in(event):
+                raise Superseded()
+            if text and not first:
+                first.append(round((time.monotonic() - started) * 1000))
+            self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
+                       "translation": text, "final": False, "line_height": event.line_height})
+
+        translation = label_speaker(event.text, translator.translate(messages, partial))
+        self._previews[event.area] = (event.text, translation, round((time.monotonic() - started) * 1000),
+                                      first[0] if first else None)
+        partial(translation)
 
     def _translate(self, translator: Translator, event: TextEvent) -> None:
         settings = self.store.settings
@@ -343,13 +398,26 @@ class Pipeline:
             self.emit({"type": "clear", "area": event.area})
             return
         history = self.context.turns()
-        replace = event.extends_previous and bool(history) and self._last_area == event.area
+        # The line it extends may have been dropped half-way; then there is nothing to replace.
+        replace = event.extends_previous and self._extended(event, history)
         self._last_area = event.area
         if replace:
             history = history[:-1]
         else:
             self._line_id += 1
         line_id = self._line_id
+
+        preview = self._previews.pop(event.area, None)
+        if preview and similar(preview[0], event.text, 0.92):
+            _source, translation, ms, first_ms = preview
+            self._remember(event.text, translation)
+            self.context.add(event.text, translation, replace_last=replace)
+            self.emit({
+                "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
+                "final": True, "line_height": event.line_height, "ms": ms, "context_lines": len(history),
+                "first_ms": first_ms, "early": True,
+            })
+            return
 
         known = None if replace else self._cache.get(self._cache_key(event.text))
         if known is not None:
@@ -367,6 +435,8 @@ class Pipeline:
         first: list[int] = []
 
         def partial(text: str) -> None:
+            if self._newer_in(event):
+                raise Superseded()
             if text and not first:
                 first.append(round((time.monotonic() - started) * 1000))
             self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,

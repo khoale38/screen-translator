@@ -1,6 +1,7 @@
 import asyncio
 import json
 import socket
+import time
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
@@ -127,6 +128,71 @@ async def test_the_log_lists_each_step_with_timings_and_the_settings(store):
     assert "read area 0 in " in text
     line = next(row for row in text.splitlines() if "line 0:" in row)
     assert "first word" in line and "'一行目' -> 'EN(一行目)'" in line
+
+
+class SlowTranslator(EchoTranslator):
+    def translate(self, messages, on_partial=None):
+        self.calls.append(messages)
+        result = f"EN({messages[-1]['content']})"
+        for end in range(1, len(result) + 1):
+            time.sleep(0.05)
+            if on_partial:
+                on_partial(result[:end])
+        return result
+
+
+async def test_a_line_that_changes_mid_translation_is_dropped_for_the_new_one(store):
+    store.update({"capture_interval_s": 0.05})
+    translator = SlowTranslator()
+    script = ["一行目", "一行目", "一行目", "二行目"]
+    app = create_app(store, make_pipeline_factory(script, translator), FakeCapture)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        events = []
+        ws = await client.ws_connect("/ws")
+
+        async def reader():
+            async for msg in ws:
+                events.append(json.loads(msg.data))
+
+        task = asyncio.create_task(reader())
+        await client.post("/api/start", json={})
+        await wait_for(lambda: any(e["type"] == "line" and e["final"] for e in events))
+        await client.post("/api/stop", json={})
+        await ws.close()
+        task.cancel()
+
+    finals = [e for e in events if e["type"] == "line" and e["final"]]
+    assert [e["translation"] for e in finals] == ["EN(二行目)"]
+    assert [call[-1]["content"] for call in translator.calls] == ["一行目", "二行目"]
+    assert len(translator.calls[1]) == 2, "the dropped line is not remembered as context"
+
+
+async def test_text_starts_translating_on_its_first_read_and_is_kept_once_confirmed(store):
+    store.update({"capture_interval_s": 0.05})
+    translator = SlowTranslator()
+    script = ["一行目", "一行目", "一行目", "一行目", "一行目", "一行目", "一行目", "一行目", "一行目", "一行目",
+              "二行目"]
+    app = create_app(store, make_pipeline_factory(script, translator), FakeCapture)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        events = []
+        ws = await client.ws_connect("/ws")
+
+        async def reader():
+            async for msg in ws:
+                events.append(json.loads(msg.data))
+
+        task = asyncio.create_task(reader())
+        await client.post("/api/start", json={})
+        await wait_for(lambda: sum(1 for e in events if e["type"] == "line" and e["final"]) >= 2)
+        await client.post("/api/stop", json={})
+        await ws.close()
+        task.cancel()
+
+    finals = [e for e in events if e["type"] == "line" and e["final"]]
+    assert [e["translation"] for e in finals] == ["EN(一行目)", "EN(二行目)"]
+    assert finals[0]["early"] and finals[0]["ms"] >= 300
+    assert [call[-1]["content"] for call in translator.calls] == ["一行目", "二行目"]
+    assert translator.calls[1][1:3] == [{"role": "user", "content": "一行目"}, {"role": "assistant", "content": "EN(一行目)"}]
 
 
 async def test_pipeline_ignores_its_own_subtitles_when_they_are_captured(store):

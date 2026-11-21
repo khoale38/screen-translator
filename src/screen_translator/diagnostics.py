@@ -62,6 +62,8 @@ def describe(event: dict) -> str | None:
     kind = event.get("type")
     if kind == "line" and event.get("final"):
         first = f", first word {event['first_ms']} ms" if event.get("first_ms") is not None else ""
+        if event.get("early"):
+            first += ", started on the first read"
         return (f"line {event.get('area')}: {event.get('ms')} ms{first}, {event.get('context_lines')} lines of context: "
                 f"{_short(event.get('source', ''))} -> {_short(event.get('translation', ''))}")
     if kind == "ocr":

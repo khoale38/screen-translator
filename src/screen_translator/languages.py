@@ -32,7 +32,10 @@ ADDRESS: dict[str, str] = {
         "family and older-younger pairs keep one pair both ways: the older one says anh, chị or chú for "
         "\"I\" and em or cháu for \"you\", the younger one says em or cháu for \"I\"; strangers and polite speech use tôi with anh, chị, bạn or "
         "ông. \"We\" is chúng ta when it includes the listener, chúng tôi when it does not. Terms like homie, dog, "
-        "bro or man mean a friend: drop them or say \"ông bạn\", \"anh em\", never \"con chó\"."
+        "bro or man mean a friend: drop them or say \"ông bạn\", \"anh em\", never \"con chó\". "
+        "Spoken Vietnamese ends lines with particles such as đi, nhé, mà, chứ, hả, á, vậy, đấy, thôi, luôn, and "
+        "uses slang and curses such as vãi, đỉnh, toang, ngầu, mẹ nó, chết tiệt, đồ khốn, im mồm where the "
+        "original is rough."
     ),
     "ja": "Japanese: casual speech between friends, です/ます to strangers and superiors; pick 俺, 僕 or 私 to fit "
           "the speaker, and use names or あなた/お前/君 to fit the relationship.",

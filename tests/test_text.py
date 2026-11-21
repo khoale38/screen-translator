@@ -2,6 +2,11 @@ from screen_translator.ocr import OcrLine
 from screen_translator.text import Stabilizer, assemble
 
 
+def kept(events):
+    """The lines a stabilizer settled on, leaving out first-read previews."""
+    return [e for e in events if e and e.kind != "preview"]
+
+
 def line(text, x, y, w=0.3, h=0.05, conf=0.9):
     return OcrLine(text, conf, (x, y, w, h))
 
@@ -22,8 +27,7 @@ def test_assemble_drops_low_confidence_noise():
 
 def test_stabilizer_waits_for_typewriter_text_to_settle():
     s = Stabilizer(stable_ticks=2)
-    events = [s.feed(t) for t in ["こん", "こんにち", "こんにちは", "こんにちは", "こんにちは"]]
-    emitted = [e for e in events if e]
+    emitted = kept(s.feed(t) for t in ["こん", "こんにち", "こんにちは", "こんにちは", "こんにちは"])
     assert len(emitted) == 1
     assert emitted[0].text == "こんにちは"
 
@@ -32,19 +36,19 @@ def test_stabilizer_accepts_a_subtitle_that_reads_slightly_differently_over_a_mo
     s = Stabilizer(stable_ticks=2)
     reads = ["Get in the car before the police arrive.", "Get in the car before the po1ice arrive. l",
              "Get in the car before the police arrive!"]
-    emitted = [e for e in (s.feed(t) for t in reads) if e]
+    emitted = kept(s.feed(t) for t in reads)
     assert len(emitted) == 1 and emitted[0].text.startswith("Get in the car")
 
 
 def test_stabilizer_moves_on_to_a_new_subtitle():
     s = Stabilizer(stable_ticks=2)
-    events = [s.feed(t) for t in ["Lose the cops.", "Lose the cops.", "Go to the safehouse.", "Go to the safehouse."]]
-    assert [e.text for e in events if e] == ["Lose the cops.", "Go to the safehouse."]
+    events = kept(s.feed(t) for t in ["Lose the cops.", "Lose the cops.", "Go to the safehouse.", "Go to the safehouse."])
+    assert [e.text for e in events] == ["Lose the cops.", "Go to the safehouse."]
 
 
 def test_stabilizer_does_not_repeat_and_clears_when_text_disappears():
     s = Stabilizer(stable_ticks=2)
-    assert [s.feed("Hello there") for _ in range(4)].count(None) == 3
+    assert len(kept(s.feed("Hello there") for _ in range(4))) == 1
     assert s.feed("") is None
     cleared = s.feed("")
     assert cleared and cleared.kind == "clear"
@@ -109,3 +113,12 @@ def test_ocr_prefers_a_runner_up_guess_that_keeps_the_button():
         "Hold LI to open your loadout"
     assert prefer_button_reading(["Hold on, Lisa", "Hold on, LI sa"]) == "Hold on, Lisa"
     assert prefer_button_reading(["Press R1 to access", "Press RI to access"]) == "Press R1 to access"
+
+
+def test_text_is_previewed_on_its_first_read_and_emitted_once_it_holds():
+    stab = Stabilizer(stable_ticks=2)
+    assert stab.feed("Get in").kind == "preview"
+    assert stab.feed("Get in the car.").kind == "preview"
+    event = stab.feed("Get in the car,")
+    assert event.kind == "text" and event.text == "Get in the car,"
+    assert stab.feed("Get in the car.") is None

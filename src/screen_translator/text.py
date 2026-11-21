@@ -132,6 +132,9 @@ class Stabilizer:
         self._candidate = norm
 
         if self._count < self.stable_ticks or similar(norm, self._emitted, 0.92):
+            if self._count == 1 and not similar(norm, self._emitted, 0.92):
+                # Worth translating already; it only counts once a later read confirms it.
+                return TextEvent("preview", norm)
             return None
 
         extends = bool(self._emitted) and norm.startswith(self._emitted)

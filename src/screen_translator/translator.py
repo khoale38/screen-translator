@@ -29,7 +29,9 @@ def build_messages(
         f"names, pronouns, gender, tone, terminology and each speaker's voice consistent.\n"
         f"- Translate what the line means, not word by word. Idioms, slang, game objectives and film dialogue must "
         f"become what a native {target} speaker would actually say in that situation (e.g. \"hit the books\" means "
-        f"study hard, not strike books). Keep it as short and punchy as the original.\n"
+        f"study hard, not strike books). Keep it as short and punchy as the original.\n"        f"- Sound like a native {target} speaker talking, not a textbook: casual lines stay casual, with the "
+        f"particles, interjections, slang and swearing people really use; formal lines stay formal. Insults and "
+        f"curses keep their force.\n"
         f"- Keep controller buttons, keys and on-screen labels such as L1, R2, X, Enter or Esc exactly as written, "
         f"and keep holding a button distinct from pressing or tapping it.\n"
         f"- Write complete, natural {target}. When the source leaves out a subject or object (common in Japanese, "
@@ -245,6 +247,12 @@ class LlamaTranslator:
                 on_partial(visible)
         self._save_instructions(messages, tokens)
         return clean_output(raw)
+
+    def warm_up(self, messages: list[dict]) -> None:
+        formatted, tokens = self._tokens(messages)
+        for _chunk in self._llm.create_completion(tokens, max_tokens=4, temperature=0.0, stop=formatted.stop):
+            pass
+        self._save_instructions(messages, tokens)
 
     def _snapshot(self):
         # Llama.save_state also copies a 500 MB table of scores this app never reads; the sequence alone takes ms.
