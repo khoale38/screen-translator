@@ -18,7 +18,8 @@ from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
 from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normalize, similar
 from .translator import (
-    LlamaTranslator, Translator, build_batch_messages, build_messages, label_speaker, parse_numbered,
+    LlamaTranslator, Translator, build_batch_messages, build_messages, build_screen_messages, label_speaker,
+    parse_numbered, strip_item_letter,
 )
 
 if TYPE_CHECKING:
@@ -85,6 +86,22 @@ class SharedTranslator:
 
             return self.inner.translate(messages, partial)
 
+    @property
+    def parallel(self) -> bool:
+        return hasattr(self.inner, "translate_each")
+
+    def translate_each(self, conversations: list[list[dict]], lengths: list[int],
+                       on_piece: Callable[[int, str, bool], None]) -> list[str]:
+        while self._urgent.is_set():
+            time.sleep(0.01)
+        with self._lock:
+            def piece(index: int, text: str, done: bool) -> None:
+                if self._urgent.is_set():
+                    raise Yielded()
+                on_piece(index, text, done)
+
+            return self.inner.translate_each(conversations, lengths, piece)
+
 
 def default_dubber(pipeline: "Pipeline"):
     from .dub import Dubber
@@ -125,6 +142,7 @@ class Pipeline:
         self._threads: list[threading.Thread] = []
         self._translator: Translator | None = None
         self._shared: SharedTranslator | None = None
+        self._parallel_failed = False
         self._load_lock = threading.Lock()
         self._translator_key: tuple | None = None
         self._line_id = 0
@@ -362,11 +380,11 @@ class Pipeline:
         settings = self.store.settings
         return text, settings.source_lang, settings.target_lang
 
-    def _publish_screen(self, blocks: list[Block], ms: int) -> None:
+    def _publish_screen(self, blocks: list[Block], ms: int, ocr_timing: dict | None = None) -> None:
         with self._screen_lock:
             self._screen_blocks = blocks
         self._screen_changed.set()
-        self.emit({"type": "screen", "ms": ms, "blocks": [
+        self.emit({"type": "screen", "ms": ms, "ocr": ocr_timing or {}, "blocks": [
             {"text": b.text, "box": b.box, "line_height": b.line_height, "bg": b.bg, "fg": b.fg,
              "translation": self._cache.get(self._cache_key(b.text))}
             for b in blocks
@@ -420,13 +438,13 @@ class Pipeline:
                 if signature != _signature(shown):
                     if seen >= settings.stable_ticks or settled:
                         shown = blocks
-                        self._publish_screen(shown, ms)
+                        self._publish_screen(shown, ms, getattr(ocr, "timing", None))
                     else:
                         # Hide what moved or changed straight away; show the new layout once it holds still.
                         still = [b for b in shown if _key(b) in signature]
                         if len(still) != len(shown):
                             shown = still
-                            self._publish_screen(shown, ms)
+                            self._publish_screen(shown, ms, getattr(ocr, "timing", None))
 
                 self._stop.wait(max(0.0, settings.screen_interval_s - (time.monotonic() - started)))
         finally:
@@ -434,6 +452,8 @@ class Pipeline:
 
     def _screen_translate_loop(self) -> None:
         translator = self._ready_translator()
+        if translator.parallel:
+            self._warm_up(translator)
         while not self._stop.is_set():
             self._screen_changed.clear()
             with self._screen_lock:
@@ -444,10 +464,57 @@ class Pipeline:
                 continue
             batch = _take_batch(pending)
             try:
+                if len(batch) > 1 and translator.parallel and not self._parallel_failed:
+                    try:
+                        self._translate_each(translator, batch)
+                        continue
+                    except (RuntimeError, ValueError) as exc:
+                        print(f"Translating pieces side by side failed ({exc}); translating them as a list", flush=True)
+                        self._parallel_failed = True
                 for text in batch if len(batch) == 1 else self._translate_batch(translator, batch):
                     self._translate_block(translator, text)
             except Yielded:
                 continue
+
+    def _warm_up(self, translator: SharedTranslator) -> None:
+        """Load the instructions and set up the GPU work once, so the first real screen is as quick as the rest."""
+        settings = self.store.settings
+        sample = ["OK", "Menu"]
+        conversations = [build_screen_messages(i, sample, [], settings.source_lang, settings.target_lang,
+                                               settings.glossary, settings.notes) for i in range(len(sample))]
+        try:
+            translator.translate_each(conversations, [len(text) for text in sample], lambda *_: None)
+        except (RuntimeError, ValueError, Yielded) as exc:
+            print(f"Warming up side-by-side translation failed: {exc}", flush=True)
+
+    def _translate_each(self, translator: SharedTranslator, texts: list[str]) -> None:
+        """Every piece as its own translation, all decoded side by side; each shows as soon as it is done."""
+        settings = self.store.settings
+        history = self.context.turns()[-4:]
+        conversations = [
+            build_screen_messages(index, texts, history, settings.source_lang, settings.target_lang, settings.glossary,
+                                  settings.notes)
+            for index in range(len(texts))
+        ]
+        started = time.monotonic()
+        finished: list[tuple[str, str]] = []
+
+        def piece(index: int, translation: str, done: bool) -> None:
+            source = texts[index]
+            translation = strip_item_letter(translation, index)
+            if not done:
+                self.emit({"type": "screen_text", "source": source, "translation": translation, "final": False})
+                return
+            translation = label_speaker(source, translation)
+            self._remember(source, translation)
+            finished.append((source, translation))
+            self.emit({"type": "screen_text", "source": source, "translation": translation, "final": True,
+                       "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history),
+                       "batch": len(texts)})
+
+        translator.translate_each(conversations, [len(text) for text in texts], piece)
+        for source, translation in finished:
+            self.context.add(source, translation)
 
     def _translate_batch(self, translator: Translator, texts: list[str]) -> list[str]:
         """Translate several blocks in one call; returns the ones the model skipped, to be done one by one."""

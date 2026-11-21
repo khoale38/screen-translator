@@ -269,3 +269,69 @@ def test_an_overlay_that_connects_late_gets_the_screen_with_every_known_translat
     assert [b["translation"] for b in hub.screen_snapshot()["blocks"]] == ["Menu", "Hello"]
     hub.emit({"type": "status", "state": "stopped", "error": ""})
     assert hub.screen_snapshot() is None
+
+
+def test_each_screen_item_gets_the_same_prompt_up_to_the_item_it_asks_for():
+    from screen_translator.translator import build_screen_messages, strip_item_letter
+
+    screen = ["Settings", "Lose the cops.\nNow"]
+    first, second = (build_screen_messages(i, screen, [], "en", "vi") for i in range(2))
+    assert first[0] == second[0]
+    assert first[-1]["content"] == "A. Settings\nB. Lose the cops. / Now\n\nTranslate item A."
+    assert second[-1]["content"].endswith("Translate item B.")
+    assert strip_item_letter("B. Cắt đuôi cảnh sát.", 1) == "Cắt đuôi cảnh sát."
+    assert strip_item_letter("Bắt đầu", 1) == "Bắt đầu"
+
+
+class SideBySideTranslator(EchoTranslator):
+    """Translates screen items side by side; echoes the item letter like small models do."""
+
+    def __init__(self):
+        super().__init__()
+        self.parallel_calls = []
+
+    def translate_each(self, conversations, lengths, on_piece):
+        self.parallel_calls.append(len(conversations))
+        results = []
+        for index, messages in enumerate(conversations):
+            content = messages[-1]["content"]
+            letter = content.rsplit("Translate item ", 1)[1].rstrip(".")
+            item = next(line[3:] for line in content.splitlines() if line.startswith(f"{letter}. "))
+            on_piece(index, f"{letter}. EN(", False)
+            on_piece(index, f"{letter}. EN({item})", True)
+            results.append(f"EN({item})")
+        return results
+
+
+async def test_whole_screen_translates_its_pieces_side_by_side_when_the_model_can(store):
+    menu = ("ファイル", (0.05, 0.02, 0.1, 0.03))
+    first = ("こんにちは", (0.3, 0.4, 0.3, 0.05))
+    store.update({"scope": "screen", "min_text_px": 0, "screen_rect": {"left": 0, "top": 0, "width": 16, "height": 16},
+                  "screen_interval_s": 0.01})
+    translator = SideBySideTranslator()
+
+    def factory(store, emit):
+        pipeline = make_pipeline_factory([""], translator)(store, emit)
+        pipeline.ocr_factory = lambda: ScriptedScreenOcr([[menu, first]])
+        pipeline.capture_factory = FakeScreenCapture
+        return pipeline
+
+    app = create_app(store, factory, FakeScreenCapture)
+    async with TestClient(TestServer(app, port=store.settings.port)) as client:
+        events = []
+        ws = await client.ws_connect("/ws")
+
+        async def reader():
+            async for msg in ws:
+                events.append(json.loads(msg.data))
+
+        task = asyncio.create_task(reader())
+        await client.post("/api/start", json={})
+        await wait_for(lambda: sum(e["type"] == "screen_text" and e["final"] for e in events) >= 2)
+        await client.post("/api/stop", json={})
+        await ws.close()
+        task.cancel()
+
+    finals = {e["source"]: e["translation"] for e in events if e["type"] == "screen_text" and e["final"]}
+    assert finals == {"ファイル": "EN(ファイル)", "こんにちは": "EN(こんにちは)"}
+    assert translator.parallel_calls == [2, 2] and translator.calls == []

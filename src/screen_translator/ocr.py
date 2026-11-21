@@ -119,6 +119,7 @@ class RapidOcr:
         self._engines: dict[str, object] = {}
         self._gpu = gpu
         self.device = "CPU"
+        self.timing: dict[str, int] = {}
 
     def _engine(self, lang: str):
         group = RAPID_GROUPS.get(lang, "multi")
@@ -153,6 +154,9 @@ class RapidOcr:
             self._gpu, self._engines = False, {}
             result = self._engine(lang)(image)
         self.device = _ort_device(self._engines[RAPID_GROUPS.get(lang, "multi")])
+        steps = list(getattr(result, "elapse_list", None) or [])
+        if len(steps) >= 3 and all(isinstance(v, float) for v in (steps[0], steps[2])):
+            self.timing = {"find": round(steps[0] * 1000), "read": round(steps[2] * 1000)}
         if result.boxes is None or result.txts is None:
             return []
         lines = []

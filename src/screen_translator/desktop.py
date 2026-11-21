@@ -841,7 +841,10 @@ class MainWindow(QWidget):
             self.screen_overlay.skip = self.frameGeometry()
             self.screen_overlay.set_blocks(event["blocks"])
             if event["blocks"]:
-                self.show_speed(read=f"reading the screen {event['ms']} ms")
+                parts = event.get("ocr") or {}
+                detail = (f" (finding text {parts['find']} ms, reading it {parts['read']} ms)"
+                          if "find" in parts and "read" in parts else "")
+                self.show_speed(read=f"reading the screen {event['ms']} ms{detail}")
         elif kind == "screen_text" and self.running:
             self.screen_overlay.set_translation(event["source"], event["translation"], event["final"])
             if event["final"] and "ms" in event:

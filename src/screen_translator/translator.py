@@ -71,6 +71,37 @@ def build_batch_messages(
     return messages
 
 
+SCREEN_LETTERS = "ABCDEFGHIJKL"
+SCREEN_NOTE = ("\n\nThe latest message lists the text seen on one screen, each item marked with a letter. Translate "
+               "only the item it asks for, using the others as context, and reply with just that translation.")
+
+
+def build_screen_messages(
+    index: int,
+    screen: list[str],
+    history: list[Turn],
+    source_lang: str,
+    target_lang: str,
+    glossary: dict[str, str] | None = None,
+    notes: str = "",
+) -> list[dict]:
+    """Item `index` of a screen's text, to be translated on its own with the whole screen as context.
+
+    Every item of a screen gets the same prompt up to the closing "Translate item C.", so all of them share that
+    prompt and are decoded side by side.
+    """
+    messages = build_messages("", history, source_lang, target_lang, glossary, notes)
+    messages[0]["content"] += SCREEN_NOTE
+    listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
+    messages[-1]["content"] = f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}."
+    return messages
+
+
+def strip_item_letter(text: str, index: int) -> str:
+    """Small models sometimes repeat the item's letter ("C. Settings"); the translation is what follows it."""
+    return re.sub(rf"^\s*{SCREEN_LETTERS[index]}\s*[.):]\s*", "", text)
+
+
 def parse_numbered(raw: str, count: int, complete: bool = True) -> dict[int, str]:
     """Numbered lines of a batch reply; without `complete` the last line may still be streaming and is left out."""
     lines = raw.splitlines()
@@ -136,10 +167,40 @@ class LlamaTranslator:
         )
         self.temperature = 0.2
         self._snapshots: dict[tuple[int, ...], object] = {}
+        self._parallel = None
 
     def close(self) -> None:
         self._snapshots.clear()
+        if self._parallel is not None:
+            self._parallel.close()
         self._llm.close()
+
+    def translate_each(self, conversations: list[list[dict]], lengths: list[int],
+                       on_piece: Callable[[int, str, bool], None] | None = None) -> list[str]:
+        """Translate several pieces at once; `lengths` are the source lengths, which cap each output."""
+        from .parallel import ParallelDecoder
+
+        if self._parallel is None:
+            self._parallel = ParallelDecoder(self._llm)
+        prompts = [self._tokens(messages)[1] for messages in conversations]
+        _, probe = self._tokens(conversations[0][:1] + [{"role": "user", "content": "\u2063"}])
+        instructions = next((i for i, (a, b) in enumerate(zip(prompts[0], probe)) if a != b), 0)
+        stop = {self._llm.token_eos()}
+        for marker in (b"<|im_end|>", b"<end_of_turn>", b"<|endoftext|>"):
+            token = self._llm.tokenize(marker, add_bos=False, special=True)
+            if len(token) == 1:
+                stop.add(token[0])
+        text = lambda tokens: clean_output(self._llm.detokenize(tokens).decode("utf-8", "ignore"))
+        shown: dict[int, str] = {}
+
+        def step(index: int, tokens: list[int], done: bool) -> None:
+            current = text(tokens)
+            if on_piece and (done or current != shown.get(index)):
+                shown[index] = current
+                on_piece(index, current, done)
+
+        outputs = self._parallel.run(prompts, instructions, [24 + 3 * n for n in lengths], stop, step)
+        return [text(tokens) for tokens in outputs]
 
     def _tokens(self, messages: list[dict]):
         # Reasoning models (Qwen3/3.5) honour this flag in their own template; others ignore it.
