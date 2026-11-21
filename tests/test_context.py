@@ -12,11 +12,14 @@ class Clock:
 
 def test_context_keeps_recent_lines_and_forgets_after_ttl():
     clock = Clock()
-    ctx = ContextWindow(max_turns=3, ttl_s=60, clock=clock)
-    for i in range(5):
+    ctx = ContextWindow(max_turns=4, ttl_s=60, clock=clock)
+    for i in range(4):
         ctx.add(f"s{i}", f"t{i}")
         clock.now += 10
-    assert [t.source for t in ctx.turns()] == ["s2", "s3", "s4"]
+    assert [t.source for t in ctx.turns()] == ["s0", "s1", "s2", "s3"]
+    ctx.add("s4", "t4")
+    clock.now += 10
+    assert [t.source for t in ctx.turns()] == ["s3", "s4"]
     clock.now += 45
     assert [t.source for t in ctx.turns()] == ["s4"]
     clock.now += 100

@@ -46,14 +46,15 @@ def run_dialogue(translator, notes=NOTES):
 
 def test_restoring_the_saved_state_keeps_translations_identical_and_is_faster(translator, monkeypatch):
     translator._snapshots.clear()
+    translator._turn_snapshots.clear()
     monkeypatch.setattr(translator, "min_shared_tokens", 10**9)
     plain, plain_waits = run_dialogue(translator)
-    assert translator._snapshots == {}
+    assert translator._snapshots == {} and translator._turn_snapshots == {}
 
     monkeypatch.setattr(translator, "min_shared_tokens", LlamaTranslator.min_shared_tokens)
     restores = []
-    load_state = translator._llm.load_state
-    monkeypatch.setattr(translator._llm, "load_state", lambda state: restores.append(1) or load_state(state))
+    restore = translator._restore
+    monkeypatch.setattr(translator, "_restore", lambda key, state: restores.append(len(key)) or restore(key, state))
     fast, fast_waits = run_dialogue(translator)
 
     print(f"\nfirst word, lines 2+: re-read {median(plain_waits[1:]) * 1000:.0f} ms, "
@@ -61,8 +62,9 @@ def test_restoring_the_saved_state_keeps_translations_identical_and_is_faster(tr
     for source, a, b in zip(LINES, plain, fast):
         print(f"  {source!r}: {a!r} | {b!r}")
     assert fast == plain
-    assert len(translator._snapshots) == 1
+    assert len(translator._snapshots) == 1 and len(translator._turn_snapshots) == 2
     assert len(restores) == len(LINES) - 1
+    assert restores == sorted(restores), "each line resumes after the previous line, not the instructions"
     assert median(fast_waits[1:]) < 0.8 * median(plain_waits[1:])
 
 

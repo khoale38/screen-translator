@@ -31,8 +31,10 @@ class ContextWindow:
         cutoff = self._clock() - self.ttl_s
         while self._turns and self._turns[0].at < cutoff:
             self._turns.popleft()
-        while len(self._turns) > self.max_turns:
-            self._turns.popleft()
+        if len(self._turns) > self.max_turns:
+            # Dropping half at once keeps the start of the prompt, and so the saved model state, for several lines.
+            while len(self._turns) > max(1, self.max_turns // 2):
+                self._turns.popleft()
 
     def turns(self) -> list[Turn]:
         with self._lock:

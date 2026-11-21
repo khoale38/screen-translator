@@ -105,7 +105,7 @@ class Settings:
     capture_interval_s: float = 0.4
     stable_ticks: int = 2
     min_text_chars: int = 2
-    context_lines: int = 8
+    context_lines: int = 12
     context_ttl_s: float = 300.0
     glossary: dict[str, str] = field(default_factory=dict)
     notes: str = ""
@@ -128,6 +128,9 @@ class Settings:
         # The old default, saved into every settings file; nothing in the window sets it.
         if values.get("screen_interval_s") == 1.0:
             del values["screen_interval_s"]
+        # The old default, saved into every settings file; 12 costs no extra time now that earlier lines stay read.
+        if values.get("context_lines") == 8:
+            del values["context_lines"]
         region = values.get("region")
         if isinstance(region, dict):
             values["region"] = Region(**{k: float(region[k]) for k in ("left", "top", "width", "height")})

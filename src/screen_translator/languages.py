@@ -24,6 +24,23 @@ LANGUAGES: dict[str, str] = {
 }
 
 
+# How each language picks pronouns and forms of address, which English leaves out and small models get wrong.
+ADDRESS: dict[str, str] = {
+    "vi": (
+        "Vietnamese pronouns: never use the archaic \"ta\" for \"I\" unless a king, master or villain speaks grandly. "
+        "Friends, gang members and rivals of the same age say tao/mày when rough, tui/ông or tớ/cậu when friendly; "
+        "family and older-younger pairs keep one pair both ways: the older one says anh, chị or chú for "
+        "\"I\" and em or cháu for \"you\", the younger one says em or cháu for \"I\"; strangers and polite speech use tôi with anh, chị, bạn or "
+        "ông. \"We\" is chúng ta when it includes the listener, chúng tôi when it does not. Terms like homie, dog, "
+        "bro or man mean a friend: drop them or say \"ông bạn\", \"anh em\", never \"con chó\"."
+    ),
+    "ja": "Japanese: casual speech between friends, です/ます to strangers and superiors; pick 俺, 僕 or 私 to fit "
+          "the speaker, and use names or あなた/お前/君 to fit the relationship.",
+    "ko": "Korean: 반말 between close friends and to younger people, 존댓말 to strangers, elders and superiors.",
+    "th": "Thai: pick ผม/ฉัน/กู and คุณ/เธอ/มึง from the speaker's gender and how close or rough the two are.",
+}
+
+
 def name(code: str) -> str:
     return LANGUAGES.get(code, code)
 

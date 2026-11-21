@@ -23,6 +23,8 @@ def build_messages(
         f"You translate on-screen text (subtitles, game dialogue, UI, chat) from {source} into {target}, live.\n"
         f"Rules:\n"
         f"- Reply with only the {target} translation of the latest message. No notes, quotes, romanization or alternatives.\n"
+        f"- Keep character names as names: write them in their usual Latin spelling (ユキ is Yuki, 김민수 is Kim Min-su) "
+        f"and never translate their meaning.\n"
         f"- Earlier messages are the lines that were on screen just before, with your translations. Use them to keep "
         f"names, pronouns, gender, tone, terminology and each speaker's voice consistent.\n"
         f"- Translate what the line means, not word by word. Idioms, slang, game objectives and film dialogue must "
@@ -34,8 +36,14 @@ def build_messages(
         f"Korean and Chinese), work out who or what is meant from the earlier lines and state it.\n"
         f"- If the latest message continues the previous one, translate it so it reads naturally after it.\n"
         f"- If the first line is only a speaker's name, reply as \"Name: translation\" on one line.\n"
-        f"- If the text is already in {target}, repeat it unchanged."
+        f"- If the text is already in {target}, repeat it unchanged.\n"
+        f"- Choose pronouns and forms of address from who is talking to whom: their gender, age, rank, closeness "
+        f"and mood, worked out from names, the earlier lines and the background notes. A line usually answers the "
+        f"one before it, so its listener is usually the previous speaker. Once two characters address each other "
+        f"one way, keep it unless their relationship changes."
     )
+    if address := languages.ADDRESS.get(target_lang):
+        system += f"\n- {address}"
     if glossary:
         terms = "\n".join(f"- {src} → {dst}" for src, dst in glossary.items() if src.strip())
         system += f"\n\nAlways translate these terms exactly as given:\n{terms}"
@@ -144,11 +152,13 @@ class Translator(Protocol):
 class LlamaTranslator:
     """llama.cpp backed translator.
 
-    Qwen3.5's hybrid layers cannot be trimmed back to a shared prompt start, so llama.cpp re-reads the whole prompt
-    for every line (about 1 s). Instead the state after the instructions is saved once and restored per line.
+    Qwen3.5's hybrid layers cannot be trimmed back to a shared prompt start, so llama.cpp would re-read the whole
+    prompt for every line. Instead the state after the instructions, and after each line's message, is saved and
+    restored, so a new line only reads itself and the previous line's translation.
     """
 
     max_snapshots = 3
+    max_turn_snapshots = 2
     min_shared_tokens = 64
 
     def __init__(self, model_path: str, gpu_layers: int = -1, n_ctx: int = 4096) -> None:
@@ -165,12 +175,15 @@ class LlamaTranslator:
             eos_token=token_text(self._llm.token_eos()),
             bos_token=token_text(self._llm.token_bos()),
         )
-        self.temperature = 0.2
+        # Sampling picks a different pronoun from line to line; the likeliest word keeps characters consistent.
+        self.temperature = 0.0
         self._snapshots: dict[tuple[int, ...], object] = {}
+        self._turn_snapshots: dict[tuple[int, ...], object] = {}
         self._parallel = None
 
     def close(self) -> None:
         self._snapshots.clear()
+        self._turn_snapshots.clear()
         if self._parallel is not None:
             self._parallel.close()
         self._llm.close()
@@ -187,8 +200,7 @@ class LlamaTranslator:
         if self._parallel is None:
             self._parallel = ParallelDecoder(self._llm)
         prompts = [self._tokens(messages)[1] for messages in conversations]
-        _, probe = self._tokens(conversations[0][:1] + [{"role": "user", "content": "\u2063"}])
-        instructions = next((i for i, (a, b) in enumerate(zip(prompts[0], probe)) if a != b), 0)
+        instructions = self._shared(prompts[0], conversations[0][:1] + [{"role": "user", "content": "\u2063"}])
         stop = {self._llm.token_eos()}
         for marker in (b"<|im_end|>", b"<end_of_turn>", b"<|endoftext|>"):
             token = self._llm.tokenize(marker, add_bos=False, special=True)
@@ -211,9 +223,15 @@ class LlamaTranslator:
         formatted = self._format(messages=messages, enable_thinking=False)
         return formatted, self._llm.tokenize(formatted.prompt.encode("utf-8"), add_bos=False, special=True)
 
+    def _shared(self, tokens: list[int], messages: list[dict]) -> int:
+        """How many leading tokens of `tokens` the prompt for `messages` would start with too."""
+        _, probe = self._tokens(messages)
+        return next((i for i, (a, b) in enumerate(zip(tokens, probe)) if a != b), min(len(tokens), len(probe)))
+
     def translate(self, messages: list[dict], on_partial: Callable[[str], None] | None = None) -> str:
         formatted, tokens = self._tokens(messages)
         self._resume(tokens)
+        self._save_turn(messages, tokens)
         budget = min(1024, 64 + 3 * len(messages[-1]["content"]))
         raw = ""
         shown = ""
@@ -228,22 +246,71 @@ class LlamaTranslator:
         self._save_instructions(messages, tokens)
         return clean_output(raw)
 
+    def _snapshot(self):
+        # Llama.save_state also copies a 500 MB table of scores this app never reads; the sequence alone takes ms.
+        import ctypes
+
+        import llama_cpp as lib
+
+        ctx = self._llm._ctx.ctx
+        size = lib.llama_state_seq_get_size(ctx, 0)
+        buffer = (ctypes.c_uint8 * size)()
+        used = lib.llama_state_seq_get_data(ctx, buffer, size, 0)
+        return (ctypes.c_uint8 * used).from_buffer_copy(buffer, 0) if used < size else buffer
+
+    def _restore(self, key: tuple[int, ...], state) -> None:
+        import llama_cpp as lib
+
+        ctx = self._llm._ctx.ctx
+        lib.llama_memory_seq_rm(lib.llama_get_memory(ctx), 0, -1, -1)
+        if lib.llama_state_seq_set_data(ctx, state, len(state), 0) != len(state):
+            self._llm.reset()
+            return
+        self._llm.input_ids[: len(key)] = key
+        self._llm.n_tokens = len(key)
+        self._llm._requires_eval = True
+
+    def _holds(self, tokens: list[int] | tuple[int, ...]) -> bool:
+        """Whether the model's memory is exactly a start of `tokens`, so reading on from it is safe."""
+        n = self._llm.n_tokens
+        return n <= len(tokens) and list(self._llm.input_ids[:n]) == list(tokens[:n])
+
     def _resume(self, tokens: list[int]) -> None:
-        matches = [key for key in self._snapshots if len(key) < len(tokens) and tuple(tokens[: len(key)]) == key]
-        if matches:
-            key = max(matches, key=len)
-            self._snapshots[key] = self._snapshots.pop(key)
-            self._llm.load_state(self._snapshots[key])
+        saved = [(store, key) for store in (self._snapshots, self._turn_snapshots) for key in store
+                 if len(key) < len(tokens) and tuple(tokens[: len(key)]) == key]
+        if not saved:
+            return
+        store, key = max(saved, key=lambda item: len(item[1]))
+        if self._holds(tokens) and self._llm.n_tokens >= len(key):
+            return
+        store[key] = store.pop(key)
+        self._restore(key, store[key])
+
+    def _evaluate_to(self, key: tuple[int, ...]) -> None:
+        if not self._holds(key):
+            self._llm.reset()
+        self._llm.eval(list(key[self._llm.n_tokens:]))
+
+    def _save_turn(self, messages: list[dict], tokens: list[int]) -> None:
+        """Save the state at the end of this line's message, where the next line's prompt will part from this one."""
+        later = [messages + [{"role": "assistant", "content": filler}, {"role": "user", "content": filler}]
+                 for filler in ("\u2063", "A")]
+        shared = min(self._shared(tokens, probe) for probe in later)
+        key = tuple(tokens[:shared])
+        if shared < self.min_shared_tokens or shared >= len(tokens) or key in self._turn_snapshots:
+            return
+        self._evaluate_to(key)
+        self._turn_snapshots[key] = self._snapshot()
+        while len(self._turn_snapshots) > self.max_turn_snapshots:
+            self._turn_snapshots.pop(next(iter(self._turn_snapshots)))
 
     def _save_instructions(self, messages: list[dict], tokens: list[int]) -> None:
         """Snapshot the prompt up to the first message, after this line so it is not delayed; once per instruction set."""
-        _, probe = self._tokens(messages[:1] + [{"role": "user", "content": "\u2063"}])
-        shared = next((i for i, (a, b) in enumerate(zip(tokens, probe)) if a != b), min(len(tokens), len(probe)))
+        shared = self._shared(tokens, messages[:1] + [{"role": "user", "content": "\u2063"}])
         key = tuple(tokens[:shared])
         if shared < self.min_shared_tokens or key in self._snapshots:
             return
-        self._llm.reset()
-        self._llm.eval(list(key))
-        self._snapshots[key] = self._llm.save_state()
+        self._evaluate_to(key)
+        self._snapshots[key] = self._snapshot()
         while len(self._snapshots) > self.max_snapshots:
             self._snapshots.pop(next(iter(self._snapshots)))
