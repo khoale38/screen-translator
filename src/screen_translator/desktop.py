@@ -495,6 +495,7 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
+        self.model.currentIndexChanged.connect(lambda _i: self.refresh_model())
         self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model(),
                                                 self.show_dub()))
         self.dub.toggled.connect(lambda on: (self.api.call("/api/settings", {"dub": on}), self.show_dub(),
@@ -657,6 +658,9 @@ class MainWindow(QWidget):
         if (hasattr(self, "dub") and self.listening() and self.dub.isChecked() and voices and not voices["downloaded"]
                 and self.target_lang.currentData().split("-")[0] in voices.get("languages", [])):
             return "voices", "natural voices", voices["size"]
+        qwen = [m for m in state.get("models", []) if m["key"] in ("qwen3.5-4b", "qwen3.5-2b")]
+        if self.target_lang.currentData() == "vi" and qwen and not any(m["downloaded"] for m in qwen):
+            return qwen[0]["key"], "the anh/em/mày/tao helper", qwen[0]["size"]
         return None
 
     def refresh_model(self) -> None:
@@ -837,6 +841,10 @@ class MainWindow(QWidget):
 
     def on_event(self, event: dict) -> None:
         kind = event["type"]
+        if kind == "relationships":
+            if event.get("error"):
+                self.status.setText(event["error"])
+            return
         if kind == "line" and self.running:
             area = event.get("area", 0)
             if area == "speech":

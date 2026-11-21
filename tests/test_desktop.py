@@ -388,3 +388,14 @@ def test_dubbing_offers_natural_voices_for_languages_they_speak(app, tmp_path):
     window.target_lang.setCurrentIndex(window.target_lang.findData("zh"))
     window.refresh_model()
     assert not window.download.isVisibleTo(window)
+
+
+def test_switching_to_a_model_not_yet_downloaded_offers_its_download(app, tmp_path):
+    window, api = make_window(tmp_path, scope="area", areas=[[100, 100, 400, 60]])
+    keys = [window.model.itemData(i) for i in range(window.model.count())]
+    api.state["models"] = [{"key": k, "label": k, "size": 1_500_000_000, "downloaded": k == keys[0]} for k in keys]
+    window.model.setCurrentIndex(0)
+    window.refresh_model()
+    assert not window.download.isVisibleTo(window)
+    window.model.setCurrentIndex(1)
+    assert window.download.isVisibleTo(window) and window.download.text() == "Download model (1.5 GB)"

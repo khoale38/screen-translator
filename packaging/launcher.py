@@ -95,10 +95,31 @@ def _self_test() -> int:
         if not result or not all(results):
             print(f"Self-test failed: {spec.key} returned no translation", flush=True)
             return 1
-    if not _speech_self_test():
+    if not _relationship_self_test() or not _speech_self_test():
         return 1
     print("Self-test passed", flush=True)
     return 0
+
+
+def _relationship_self_test() -> bool:
+    import time
+
+    from screen_translator.address import QUESTION, RELATIONS, parse_facts, vietnamese
+    from screen_translator.pipeline import default_judge
+
+    started = time.perf_counter()
+    judge = default_judge()
+    answer = judge.answer(QUESTION.format(
+        notes="GTA V", lines="Franklin: Yo, what's good, homie?\nLamar: Damn, you trippin', fool.",
+        a="Franklin", b="Lamar", relations=", ".join(f'"{r}"' for r in RELATIONS)))
+    judge.close()
+    facts = parse_facts(answer)
+    print(f"Relationship: {facts or answer!r} in {time.perf_counter() - started:.2f} s", flush=True)
+    if not facts:
+        print("Self-test failed: the relationship model gave no facts", flush=True)
+        return False
+    print(f"Pronouns: Franklin to Lamar {' / '.join(vietnamese(facts, 'Franklin', 'Lamar'))}", flush=True)
+    return True
 
 
 def _speech_self_test() -> bool:

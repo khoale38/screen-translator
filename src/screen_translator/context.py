@@ -12,6 +12,7 @@ class Turn:
     source: str
     translation: str
     at: float
+    note: str = ""
 
 
 class ContextWindow:
@@ -41,11 +42,11 @@ class ContextWindow:
             self._prune()
             return list(self._turns)
 
-    def add(self, source: str, translation: str, replace_last: bool = False) -> None:
+    def add(self, source: str, translation: str, replace_last: bool = False, note: str = "") -> None:
         with self._lock:
             if replace_last and self._turns:
                 self._turns.pop()
-            self._turns.append(Turn(source, translation, self._clock()))
+            self._turns.append(Turn(source, translation, self._clock(), note))
             self._prune()
 
     def clear(self) -> None:

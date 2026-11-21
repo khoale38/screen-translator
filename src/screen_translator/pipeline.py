@@ -13,6 +13,7 @@ import numpy as np
 from . import diagnostics
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
+from .address import Relationships
 from .context import ContextWindow
 from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
@@ -120,6 +121,16 @@ def default_dubber(pipeline: "Pipeline"):
     return Dubber(lambda: pipeline.store.settings, emit=pipeline.emit)
 
 
+def default_judge():
+    """The model that works out how characters are related; on the CPU so the game keeps the graphics card."""
+    from .models import MODELS
+
+    for key in ("qwen3.5-4b", "qwen3.5-2b"):
+        if key in MODELS and MODELS[key].downloaded:
+            return LlamaTranslator(str(MODELS[key].path), gpu_layers=0, n_ctx=2048)
+    raise FileNotFoundError("No Qwen model is downloaded.")
+
+
 def default_translator(settings: Settings) -> Translator:
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
@@ -136,6 +147,7 @@ class Pipeline:
         audio_factory: Callable[[], object] = default_audio,
         recognizer_factory: Callable[[], tuple] = default_recognizer,
         dubber_factory: Callable[["Pipeline"], object] = default_dubber,
+        judge_factory: Callable[[], object] = default_judge,
     ) -> None:
         self.store = store
         self.emit = diagnostics.recording(emit)
@@ -148,6 +160,7 @@ class Pipeline:
         self.dubber_factory = dubber_factory
         self._dubber = None
         self.context = ContextWindow(store.settings.context_lines, store.settings.context_ttl_s)
+        self.relationships = Relationships(judge_factory, lambda: self.store.settings, self.emit)
         self._events: queue.Queue[TextEvent] = queue.Queue()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
@@ -222,6 +235,7 @@ class Pipeline:
     def shutdown(self) -> None:
         """Free the model before interpreter exit; llama.cpp's Metal backend aborts if it is still alive."""
         self.stop()
+        self.relationships.close()
         close = getattr(self._translator, "close", None)
         if close:
             close()
@@ -229,6 +243,7 @@ class Pipeline:
 
     def clear_context(self) -> None:
         self.context.clear()
+        self.relationships.clear()
         self._cache.clear()
         self._reset_stabilizer.set()
         self.emit({"type": "clear"})
@@ -375,7 +390,7 @@ class Pipeline:
             history = history[:-1]
         line_id = self._line_id if extends else self._line_id + 1
         messages = build_messages(event.text, history, settings.source_lang, settings.target_lang,
-                                  settings.glossary, settings.notes)
+                                  settings.glossary, settings.notes, address=self.relationships.address(event.text))
         started = time.monotonic()
         first: list[int] = []
 
@@ -406,12 +421,15 @@ class Pipeline:
         else:
             self._line_id += 1
         line_id = self._line_id
+        address = self.relationships.address(event.text)
+        note = address.note() if address else ""
 
         preview = self._previews.pop(event.area, None)
         if preview and similar(preview[0], event.text, 0.92):
             _source, translation, ms, first_ms = preview
             self._remember(event.text, translation)
-            self.context.add(event.text, translation, replace_last=replace)
+            self.context.add(event.text, translation, replace_last=replace, note=note)
+            self.relationships.heard(event.text)
             self.emit({
                 "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
                 "final": True, "line_height": event.line_height, "ms": ms, "context_lines": len(history),
@@ -421,6 +439,7 @@ class Pipeline:
 
         known = None if replace else self._cache.get(self._cache_key(event.text))
         if known is not None:
+            self.relationships.heard(event.text)
             self.emit({
                 "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": known,
                 "final": True, "line_height": event.line_height, "ms": 0, "context_lines": len(history),
@@ -429,7 +448,7 @@ class Pipeline:
 
         messages = build_messages(
             event.text, history, settings.source_lang, settings.target_lang,
-            settings.glossary, settings.notes,
+            settings.glossary, settings.notes, address=address,
         )
         started = time.monotonic()
         first: list[int] = []
@@ -445,7 +464,8 @@ class Pipeline:
         partial("")
         translation = label_speaker(event.text, translator.translate(messages, partial))
         self._remember(event.text, translation)
-        self.context.add(event.text, translation, replace_last=replace)
+        self.context.add(event.text, translation, replace_last=replace, note=note)
+        self.relationships.heard(event.text)
         self.emit({
             "type": "line", "id": line_id, "area": event.area, "source": event.text, "translation": translation,
             "final": True, "line_height": event.line_height,
@@ -645,8 +665,9 @@ class Pipeline:
     def _translate_block(self, translator: Translator, text: str) -> None:
         settings = self.store.settings
         history = self.context.turns()
+        address = self.relationships.address(text)
         messages = build_messages(text, history, settings.source_lang, settings.target_lang,
-                                  settings.glossary, settings.notes)
+                                  settings.glossary, settings.notes, address=address)
         started = time.monotonic()
 
         def partial(translation: str) -> None:
@@ -654,7 +675,8 @@ class Pipeline:
 
         translation = label_speaker(text, translator.translate(messages, partial))
         self._remember(text, translation)
-        self.context.add(text, translation)
+        self.context.add(text, translation, note=address.note() if address else "")
+        self.relationships.heard(text)
         self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
                    "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})
 
@@ -730,7 +752,8 @@ class Pipeline:
                 done = (heard["id"], _bare(text), translation)
             if heard["final"]:
                 self._remember(text, translation)
-                self.context.add(text, translation)
+                address = self.relationships.address(text)
+                self.context.add(text, translation, note=address.note() if address else "")
                 self._speech_line(heard, translation, True, ms=round((time.monotonic() - heard["at"]) * 1000),
                                   context_lines=len(self.context.turns()) - 1)
                 if settings.dub:
@@ -754,7 +777,7 @@ class Pipeline:
         if known is not None:
             return known
         messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
-                                  settings.glossary, settings.notes)
+                                  settings.glossary, settings.notes, address=self.relationships.address(heard["text"]))
 
         started = time.monotonic()
 

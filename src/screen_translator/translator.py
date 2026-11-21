@@ -16,6 +16,8 @@ def build_messages(
     target_lang: str,
     glossary: dict[str, str] | None = None,
     notes: str = "",
+    *,
+    address=None,
 ) -> list[dict]:
     target = languages.name(target_lang)
     source = "whatever language it is in" if source_lang == "auto" else languages.name(source_lang)
@@ -44,8 +46,8 @@ def build_messages(
         f"one before it, so its listener is usually the previous speaker. Once two characters address each other "
         f"one way, keep it unless their relationship changes."
     )
-    if address := languages.ADDRESS.get(target_lang):
-        system += f"\n- {address}"
+    if rules := languages.ADDRESS.get(target_lang):
+        system += f"\n- {rules}"
     if glossary:
         terms = "\n".join(f"- {src} → {dst}" for src, dst in glossary.items() if src.strip())
         system += f"\n\nAlways translate these terms exactly as given:\n{terms}"
@@ -53,13 +55,25 @@ def build_messages(
         system += f"\n\nBackground on what is being shown:\n{notes.strip()}"
 
     # The plain facts ride along for translation models that take their own short prompt instead (see for_hy_mt).
+    terms = address.terms(source_lang) if address else {}
     messages = [{"role": "system", "content": system, "target": target, "glossary": dict(glossary or {}),
-                 "notes": notes.strip()}]
+                 "notes": notes.strip(), "address_terms": terms,
+                 "address_zh": (f"{address.speaker}对{address.listener}说话，翻译成越南语时，{address.speaker}自称"
+                                f"“{address.me}”，称对方“{address.you}”。") if address else ""}]
     for turn in history:
-        messages.append({"role": "user", "content": turn.source})
+        messages.append(_asking(turn.source, turn.note))
         messages.append({"role": "assistant", "content": turn.translation})
-    messages.append({"role": "user", "content": current})
+    messages.append(_asking(current, address.note() if address else ""))
     return messages
+
+
+def _asking(text: str, note: str) -> dict:
+    return {"role": "user", "content": with_note(text, note), "item": text} if note else {"role": "user", "content": text}
+
+
+def with_note(text: str, note: str) -> str:
+    """The line with how its speaker addresses the listener; history keeps the same text so saved state still fits."""
+    return f"{text}\n\n(Translator's note: {note})" if note else text
 
 
 _NUMBERED = re.compile(r"^\s*(\d+)\s*[.)、:：]\s*(.*?)\s*$")
@@ -118,13 +132,15 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     """
     facts, last = messages[0], messages[-1]
     text = last.get("item", last["content"])
-    terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in facts.get("glossary", {}).items() if src.strip())
+    glossary = {**facts.get("address_terms", {}), **facts.get("glossary", {})}
+    terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in glossary.items() if src.strip())
     parts = [f"参考下面的翻译：\n{terms}"] if terms else []
-    if facts.get("notes"):
-        parts.append(f"背景：{facts['notes']}")
+    background = "\n".join(filter(None, (facts.get("notes"), facts.get("address_zh"))))
+    if background:
+        parts.append(f"背景：{background}")
     turns = messages[1:-1]
     if turns:
-        parts.append("前面的对话：\n" + "\n".join(f"{asked['content']}\n{answered['content']}"
+        parts.append("前面的对话：\n" + "\n".join(f"{asked.get('item', asked['content'])}\n{answered['content']}"
                                                for asked, answered in zip(turns[::2], turns[1::2])))
     parts.append("屏幕上的文字：\n" + "\n".join(last.get("screen", [text])))
     prompt = "\n".join(parts) + (f"\n参考上面的信息，把下面的文本翻译成{facts['target']}，注意不需要翻译上文，"
@@ -285,6 +301,14 @@ class LlamaTranslator:
         if not self._hy_mt:
             self._save_instructions(messages, tokens)
         return clean_output(raw)
+
+    def answer(self, question: str, max_tokens: int = 120) -> str:
+        """A one-off question with no history, for jobs other than translating."""
+        _formatted, tokens = self._tokens([{"role": "user", "content": question}])
+        if not self._holds(tokens):
+            self._llm.reset()
+        result = self._llm.create_completion(tokens, max_tokens=max_tokens, temperature=0.0)
+        return clean_output(result["choices"][0]["text"])
 
     def warm_up(self, messages: list[dict]) -> None:
         if self._hy_mt:
