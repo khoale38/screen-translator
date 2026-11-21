@@ -33,6 +33,9 @@ if ($test.ExitCode -ne 0) { exit $test.ExitCode }
 if (-not (Select-String -Path $log -Pattern "^Speech \(" -Quiet)) {
     Write-Error "The self-test did not recognize speech; is the speech model in $env:SCREEN_TRANSLATOR_HOME\models\speech?"
 }
+if (-not (Select-String -Path $log -Pattern "^Side by side:" -Quiet)) {
+    Write-Error "The self-test did not translate side by side"
+}
 if (-not (Select-String -Path $log -Pattern "^Translation:" -Quiet)) {
     Write-Error "The self-test did not translate anything; is the test model in $env:SCREEN_TRANSLATOR_HOME\models?"
 }

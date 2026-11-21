@@ -84,7 +84,17 @@ def _self_test() -> int:
         started = time.perf_counter()
         result = translator.translate(build_messages(line, [], "ja", "en"))
         print(f"Translation: {line} -> {result!r} in {time.perf_counter() - started:.2f} s", flush=True)
+        from screen_translator.translator import build_screen_messages
+
+        screen = ["設定", "ユキはまだ帰ってこないの？", "ミッション失敗"]
+        started = time.perf_counter()
+        results = translator.translate_each(
+            [build_screen_messages(i, screen, [], "ja", "en") for i in range(len(screen))], [len(t) for t in screen])
+        print(f"Side by side: {results!r} in {time.perf_counter() - started:.2f} s", flush=True)
         translator.close()
+        if not all(results):
+            print("Self-test failed: side-by-side translation returned nothing", flush=True)
+            return 1
     if not _speech_self_test():
         return 1
     print("Self-test passed", flush=True)
