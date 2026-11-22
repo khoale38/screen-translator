@@ -9,6 +9,8 @@ $loader = Get-Command vulkan-1.dll -ErrorAction SilentlyContinue
 # An unreachable proxy makes any OCR model download fail, so the test proves the first run works offline.
 $env:HTTP_PROXY = "http://127.0.0.1:9"
 $env:HTTPS_PROXY = "http://127.0.0.1:9"
+# Except Claude, which the test must reach to prove the online model works from the built app.
+$env:NO_PROXY = "api.anthropic.com"
 Remove-Item -Recurse -Force (Join-Path $env:SCREEN_TRANSLATOR_HOME "ocr-models") -ErrorAction SilentlyContinue
 # Windows' built-in voice reads a line, so speech recognition is checked on real speech.
 Add-Type -AssemblyName System.Speech
