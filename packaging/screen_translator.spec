@@ -15,7 +15,11 @@ ICONS = os.path.join(SPECPATH, "icons")
 
 datas = collect_data_files("screen_translator") + collect_data_files("llama_cpp")
 binaries = collect_dynamic_libs("llama_cpp")
-hiddenimports = collect_submodules("screen_translator") + collect_submodules("anthropic") + collect_submodules(
+# The SDK picks its HTTP backend and the system certificate store at run time, out of sight of PyInstaller.
+hiddenimports = collect_submodules("screen_translator") + [
+    name for package in ("anthropic", "httpx2", "httpcore2", "truststore", "h11", "anyio")
+    for name in collect_submodules(package)
+] + collect_submodules(
     "llama_cpp", filter=lambda name: not name.startswith("llama_cpp.server")
 )
 

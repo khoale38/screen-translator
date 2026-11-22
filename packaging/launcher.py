@@ -108,7 +108,8 @@ def _online_self_test() -> bool:
     try:
         ClaudeTranslator("sk-ant-self-test").translate([{"role": "user", "content": "OK"}])
     except OnlineHiccup as exc:
-        print(f"Online: skipped, {exc}", flush=True)
+        cause = exc.__cause__.__cause__ if exc.__cause__ else None
+        print(f"Online: skipped, {exc} ({cause!r})", flush=True)
         return True
     except OnlineError as exc:
         print(f"Online: Claude answered ({exc})", flush=True)
