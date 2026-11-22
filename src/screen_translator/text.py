@@ -104,8 +104,9 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     # OCR boxes vary in height for the same font, so a size change alone only counts when it is large or spaced out.
     if gap > 0.6 * height or ratio < 0.6 or (ratio < 0.75 and gap > 0.3 * height):
         return True
-    is_label = len(above_text) <= 12 and above_width < 0.4 * below_width
-    return is_label and gap > 0.15 * height
+    # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
+    short = len(above_text) <= 20 and len(above_text.split()) <= 3 and not above_text.rstrip().endswith(_ENDS)
+    return short and above_width < 0.6 * below_width and gap > -0.5 * height
 
 
 @dataclass
@@ -240,13 +241,30 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
         columns = [l for l in words if is_vertical(l, width, height)] or words
         blocks.append(Block(text, (left, top, right - left, bottom - top),
                             median(char_size(l, width, height) for l in columns), vertical=vertical))
-    # Manga is read right to left, so its bubbles are listed that way within each band.
-    leftward = sum(b.vertical for b in blocks) * 2 > len(blocks)
-    blocks.sort(key=lambda b: (round(b.box[1] * 50), -b.box[0] if leftward else b.box[0]))
+    if sum(b.vertical for b in blocks) * 2 > len(blocks):
+        return _manga_order(blocks)
+    blocks.sort(key=lambda b: (round(b.box[1] * 50), b.box[0]))
     return blocks
 
 
-_MID_PHRASE = re.compile(r"[、，,]$|[でにをはがのとへもや]$")
+def _manga_order(blocks: list[Block]) -> list[Block]:
+    """Rows of bubbles that overlap in height, top to bottom, each read right to left, as manga is."""
+    rows: list[list[Block]] = []
+    for block in sorted(blocks, key=lambda b: b.box[1]):
+        top, bottom = block.box[1], block.box[1] + block.box[3]
+        row = rows[-1] if rows else None
+        if row:
+            row_top, row_bottom = min(b.box[1] for b in row), max(b.box[1] + b.box[3] for b in row)
+            shared = min(bottom, row_bottom) - max(top, row_top)
+            if shared >= 0.4 * min(block.box[3], row_bottom - row_top):
+                row.append(block)
+                continue
+        rows.append([block])
+    return [block for row in rows for block in sorted(row, key=lambda b: -b.box[0])]
+
+
+_MID_PHRASE = re.compile(r"[、，,;:\-]$|[でにをはがのとへもや]$|\b(the|a|an|to|of|and|with|in|on|for|or|your|my)$", re.I)
+_ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
 
 
 def _cjk(text: str) -> bool:
@@ -270,10 +288,11 @@ def _same_block(a: tuple, b: tuple) -> bool:
     gap = lower[1] - (upper[1] + upper[3])
     overlap = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
     same_size = ratio >= 0.75 or (ratio >= 0.6 and gap <= 0.3 * height)
-    # Only a full row, or one that stops mid-phrase, wraps onto the next; other short rows stacked up are menu
-    # items, list entries or chat lines.
-    wraps = (len(upper[5].replace(" ", "")) >= (8 if _cjk(upper[5]) else 14) or _MID_PHRASE.search(upper[5])
-             or lower[5][:1].islower())
+    # Lines of one paragraph or speech bubble sit close together; more widely spaced rows join only when the upper
+    # one stops mid-phrase, so menu items, list entries and chat lines stay apart.
+    text = upper[5].rstrip()
+    wraps = (gap <= 0.25 * height or _MID_PHRASE.search(text) or lower[5][:1].islower()
+             or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)))
     return wraps and same_size and -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
 
 

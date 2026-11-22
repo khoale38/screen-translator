@@ -53,6 +53,13 @@ def test_clean_output_strips_thinking_and_wrapping_quotes():
     assert clean_output("<think>\nhmm\n</think>\n\n\"She went.\"") == "She went."
     assert clean_output("<think>still thinking") == ""
     assert clean_output("「行こう」") == "「行こう」"
+    assert clean_output("“Đi thôi!”") == "Đi thôi!"
+
+
+def test_a_dropped_speaker_label_is_put_back():
+    assert label_speaker("Lamar: You owe me.", "Mày nợ tao.") == "Lamar: Mày nợ tao."
+    assert label_speaker("Lamar: You owe me.", "Lamar: Mày nợ tao.") == "Lamar: Mày nợ tao."
+    assert label_speaker("Objective: reach the bank", "Mục tiêu: đến ngân hàng") == "Mục tiêu: đến ngân hàng"
 
 
 def test_label_speaker_joins_a_name_line_onto_the_translation():

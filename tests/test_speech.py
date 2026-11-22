@@ -200,12 +200,26 @@ def test_lines_already_in_the_target_language_are_not_dubbed_over_the_original(s
     assert dubber.lines == []
 
 
-def test_after_a_few_seconds_a_short_breath_ends_the_utterance():
-    segmenter = Segmenter(FakeVad(), partial_s=100, long_s=1.0, short_silence_s=0.06, pad_s=0)
-    early = [segmenter.feed(b) for b in [block(0.9)] * 10 + [block(0.0)] * 2]
-    assert not any(r and r.final for r in early)
-    late = [segmenter.feed(b) for b in [block(0.9)] * 30 + [block(0.0)] * 2]
-    assert any(r and r.final for r in late)
+def test_long_speech_ends_at_a_breath_but_not_at_the_catch_of_a_japanese_tsu():
+    segmenter = Segmenter(FakeVad(), partial_s=100, long_s=1.0, breath_s=0.15, very_long_s=3.0,
+                          short_silence_s=0.06, pad_s=0)
+    feed = lambda blocks: [r for r in (segmenter.feed(b) for b in blocks) if r and r.final]
+    assert not feed([block(0.9)] * 40 + [block(0.0)] * 3 + [block(0.9)])
+    [cut] = feed([block(0.0)] * 5)
+    assert cut.cut == "breath"
+    assert feed([block(0.9)] * 100 + [block(0.0)] * 2)[0].cut == "breath"
+
+
+def test_a_new_voice_of_the_other_sex_after_a_short_pause_starts_a_new_utterance():
+    def pitch(samples):
+        return 120.0 if samples[0] > 0.95 else 220.0
+
+    man, woman = np.full(CHUNK, 0.99, np.float32), block(0.9)
+    segmenter = Segmenter(FakeVad(), partial_s=100, pad_s=0, pitch=pitch)
+    results = [segmenter.feed(b) for b in [woman] * 20 + [block(0.0)] * 6 + [man] * 14]
+    [turn] = [r for r in results if r and r.final]
+    assert turn.cut == "turn" and len(turn.samples) == 20 * CHUNK
+    assert segmenter.speaking
 
 
 class CountingRecognizer:

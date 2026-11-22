@@ -4,6 +4,7 @@ import re
 from typing import Callable, Protocol
 
 from . import languages
+from .address import _LABEL, body_of, speaker_of
 from .context import Turn
 
 _THINK = re.compile(r"<think>.*?</think>", re.S)
@@ -34,8 +35,8 @@ def build_messages(
         f"- Translate what the line means, not word by word. Idioms, slang, game objectives and film dialogue must "
         f"become what a native {target} speaker would actually say in that situation (e.g. \"hit the books\" means "
         f"study hard, not strike books). Keep it as short and punchy as the original.\n"        f"- Sound like a native {target} speaker talking, not a textbook: casual lines stay casual, with the "
-        f"particles, interjections, slang and swearing people really use; formal lines stay formal. Insults and "
-        f"curses keep their force.\n"
+        f"particles, interjections and slang people really use; formal lines stay formal. Insults and curses keep "
+        f"their force, but never add swearing or insults the original does not have.\n"
         f"- Keep controller buttons, keys and on-screen labels such as L1, R2, X, Enter or Esc exactly as written, "
         f"and keep holding a button distinct from pressing or tapping it.\n"
         f"- Keep every number, time, price and stat abbreviation (HP, MP, Lv, ATK, EXP) exactly as written; never "
@@ -131,7 +132,9 @@ def build_screen_messages(
     messages = build_messages("", history, source_lang, target_lang, glossary, notes)
     messages[0]["content"] += SCREEN_NOTE
     listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
-    messages[-1].update(content=f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}.", item=screen[index],
+    # Quoting the item spares a small model looking its letter up, where it often lands on a neighbour.
+    item = " / ".join(screen[index].splitlines())
+    messages[-1].update(content=f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}: {item}", item=screen[index],
                         screen=screen)
     return messages
 
@@ -143,11 +146,13 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     own, a short line loses its subject ("ユキはまだ？" became "hasn't returned yet?").
     """
     facts, last = messages[0], messages[-1]
-    text = last.get("item", last["content"])
+    # Without its "Name:" label, which HY-MT would otherwise translate, replacing the name with a pronoun.
+    text = body_of(last.get("item", last["content"]))
     glossary = {**facts.get("address_terms", {}), **facts.get("glossary", {})}
     terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in glossary.items() if src.strip())
     parts = [f"参考下面的翻译：\n{terms}"] if terms else []
-    background = "\n".join(filter(None, (facts.get("notes"), facts.get("address_zh"))))
+    screen_note = "这是游戏或应用界面上的文字（菜单、按钮、标签）。数字、时间和价格保持原样。" if "screen" in last else ""
+    background = "\n".join(filter(None, (facts.get("notes"), screen_note, facts.get("address_zh"))))
     if background:
         parts.append(f"背景：{background}")
     turns = messages[1:-1]
@@ -166,8 +171,12 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
 
 
 def strip_item_letter(text: str, index: int) -> str:
-    """Small models sometimes repeat the item's letter ("C. Settings"); the translation is what follows it."""
-    return re.sub(rf"^\s*{SCREEN_LETTERS[index]}\s*[.):]\s*", "", text)
+    """Small models sometimes repeat a letter ("C. Settings") or the instruction; the translation is what follows."""
+    text = re.sub(r"^\s*(?:translate\s+)?item\s+[A-L]\s*[:.]\s*", "", text, flags=re.I)
+    own = list(re.finditer(rf"(?<![\w])\b{SCREEN_LETTERS[index]}\s*:\s+", text))
+    if own and own[-1].start() > 0:
+        text = text[own[-1].end():]
+    return re.sub(rf"^\s*[{SCREEN_LETTERS}]\s*[.):]\s+", "", text)
 
 
 def parse_numbered(raw: str, count: int, complete: bool = True) -> dict[int, str]:
@@ -188,13 +197,22 @@ def clean_output(raw: str) -> str:
     if "<think>" in text:
         text = text.split("<think>", 1)[0]
     text = text.strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+    pairs = {'"': '"', "'": "'", "“": "”", "‘": "’"}
+    if len(text) >= 2 and pairs.get(text[0]) == text[-1]:
         text = text[1:-1].strip()
     return text
 
 
 def label_speaker(source: str, translation: str) -> str:
-    """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line"."""
+    """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line".
+
+    A "Name: line" source whose label the model dropped gets the name back, so it is clear who speaks.
+    """
+    name = speaker_of(source)
+    if name and source.lstrip().startswith(name) and not _LABEL.match(translation.strip()):
+        rest = source.strip()[len(name):].lstrip()
+        if rest[:1] in (":", "："):
+            return f"{name}: {translation.strip()}"
     label, _, rest = source.partition("\n")
     if not rest or len(label) > 12:
         return translation

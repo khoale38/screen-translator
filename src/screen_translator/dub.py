@@ -261,6 +261,7 @@ class Line:
     pitch: float
     seconds: float = 0.0
     heard_at: float = 0.0
+    paused: bool = True
 
 
 class Dubber:
@@ -358,8 +359,8 @@ class Dubber:
                                                "under Settings → Time & language → Speech."})
             return None
         waiting = self._waiting()
-        # With nothing queued behind it a line may run into the pause after it instead of being hurried.
-        fit_s = line.seconds * (1.0 if waiting else 1.5)
+        # A line the speaker paused after, with nothing queued behind it, may run into the pause instead of hurrying.
+        fit_s = line.seconds * (1.5 if line.paused and not waiting else 1.0)
         how = delivery(line.emotion, line.pitch, voice.gender or gender, waiting, fit_s)
         started = time.monotonic()
         audio, rate = voices.synthesize(line.text, voice, how)

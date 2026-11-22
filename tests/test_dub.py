@@ -177,6 +177,8 @@ def test_speech_tells_the_translator_who_is_speaking_by_their_voice():
 
     pipeline = Pipeline.__new__(Pipeline)
     pipeline._last_voice = None
-    assert pipeline._voice_note({"id": 1, "pitch": 210.0}) == "The latest line is spoken by a woman."
-    assert pipeline._voice_note({"id": 2, "pitch": 110.0}).endswith("a different speaker from the line before.")
+    pipeline._previous_voice = ""
+    assert pipeline._voice_note({"id": 1, "pitch": 210.0}).startswith("Voice: a woman.")
+    assert pipeline._voice_note({"id": 2, "pitch": 110.0}).startswith("Voice: a man (the line before was a woman's).")
+    assert pipeline._voice_note({"id": 2, "pitch": 115.0}).startswith("Voice: a man (the line before was a woman's).")
     assert pipeline._voice_note({"id": 3, "pitch": 0.0}) == ""

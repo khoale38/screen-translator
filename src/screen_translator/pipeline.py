@@ -191,6 +191,7 @@ class Pipeline:
         self._heard: dict | None = None
         self._finals: deque[dict] = deque()
         self._last_voice: tuple[int, str] | None = None
+        self._previous_voice = ""
         self._heard_changed = threading.Event()
         self.state = "stopped"
         self.last_error = ""
@@ -549,6 +550,7 @@ class Pipeline:
                         if len(b.text) >= settings.min_text_chars
                         and b.line_height * screen_height >= settings.min_text_px
                         and not already_in(settings.target_lang, b.text)
+                        and not _cut_off(b, frame.height)
                     ]
                     self._report_devices(ocr)
                     for b in blocks:
@@ -558,8 +560,8 @@ class Pipeline:
                     # A second look straight after OCR: if nothing moved, publish now instead of after the next tick.
                     after = thumbnail(grab())
                     settled = not changed(thumb, after)
-                    thumb = after
-                previous_thumb = thumb
+                    # Compared with the last screen read, not the last tick, so slow changes such as a countdown add up.
+                    previous_thumb = after
 
                 # Stable means the same words: over a moving game scene the boxes never quite hold still.
                 texts = _texts(blocks)
@@ -594,7 +596,8 @@ class Pipeline:
                 continue
             batch = _take_batch(pending)
             try:
-                if len(batch) > 1 and translator.parallel and not self._parallel_failed:
+                # A lone leftover from a busy screen goes side by side too; alone it would take the slow path.
+                if translator.parallel and not self._parallel_failed and (len(batch) > 1 or len(blocks) > 1):
                     try:
                         self._translate_each(translator, batch)
                         continue
@@ -724,6 +727,10 @@ class Pipeline:
                 heard = segmenter.feed(block)
                 if heard is None:
                     continue
+                pitch = pitch_hz(heard.samples)
+                # Crowd noise passes the VAD but has no voice in it; the recognizer would hear "Yeah." in it.
+                if heard.final and not pitch and len(heard.samples) < RATE:
+                    continue
                 started = time.monotonic()
                 result = recognizer.recognize(heard.samples, self.store.settings.source_lang)
                 text, spoken = normalize(result[0]), result[1]
@@ -732,8 +739,7 @@ class Pipeline:
                            "ms": round((time.monotonic() - started) * 1000)})
                 entry = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
                          "lang": spoken, "emotion": emotion, "at": time.monotonic(),
-                         "pitch": pitch_hz(heard.samples),
-                         "seconds": len(heard.samples) / RATE}
+                         "pitch": pitch, "seconds": len(heard.samples) / RATE, "paused": heard.cut == "pause"}
                 with self._heard_lock:
                     # Every finished sentence is kept; of a sentence still being spoken only the newest guess is.
                     if heard.final:
@@ -800,7 +806,8 @@ class Pipeline:
         if self._dubber is None:
             self._dubber = self.dubber_factory(self)
         self._dubber.say(Line(translation, self.store.settings.target_lang, heard.get("emotion", ""),
-                              heard.get("pitch", 0.0), heard.get("seconds", 0.0), heard.get("at", 0.0)))
+                              heard.get("pitch", 0.0), heard.get("seconds", 0.0), heard.get("at", 0.0),
+                              heard.get("paused", True)))
 
     def _speech_line(self, heard: dict, translation: str, final: bool, **extra) -> None:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
@@ -811,10 +818,13 @@ class Pipeline:
         gender = gender_of(heard.get("pitch", 0.0))
         if not gender:
             return ""
-        before, self._last_voice = self._last_voice, (heard["id"], gender)
-        changed = before and before[0] != heard["id"] and before[1] != gender
-        return (f"The latest line is spoken by a {'man' if gender == 'male' else 'woman'}"
-                + (", a different speaker from the line before." if changed else "."))
+        if self._last_voice and self._last_voice[0] != heard["id"]:
+            self._previous_voice = self._last_voice[1]
+        self._last_voice = (heard["id"], gender)
+        person = "man" if gender == "male" else "woman"
+        before = self._previous_voice
+        switched = f" (the line before was a {'man' if before == 'male' else 'woman'}'s)" if before and before != gender else ""
+        return f"Voice: a {person}{switched}. Use this only to choose the speaker's pronouns for themselves."
 
     def _translate_speech(self, translator: Translator, heard: dict) -> str:
         settings = self.store.settings
@@ -844,6 +854,12 @@ class Pipeline:
             self._speech_line(heard, translation, False)
 
         return label_speaker(heard["text"], translator.translate(messages, partial, urgent=True))
+
+
+def _cut_off(block: Block, frame_height: int) -> bool:
+    """Text touching the top or bottom edge is half out of view, like a webtoon bubble mid-scroll."""
+    edge = min(0.005, 3 / max(1, frame_height))
+    return block.box[1] <= edge or block.box[1] + block.box[3] >= 1 - edge
 
 
 def _spoken_in(target: str, spoken: str) -> bool:

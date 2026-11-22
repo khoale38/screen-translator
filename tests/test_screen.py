@@ -280,10 +280,14 @@ def test_each_screen_item_gets_the_same_prompt_up_to_the_item_it_asks_for():
     screen = ["Settings", "Lose the cops.\nNow"]
     first, second = (build_screen_messages(i, screen, [], "en", "vi") for i in range(2))
     assert first[0] == second[0]
-    assert first[-1]["content"] == "A. Settings\nB. Lose the cops. / Now\n\nTranslate item A."
-    assert second[-1]["content"].endswith("Translate item B.")
+    assert first[-1]["content"] == "A. Settings\nB. Lose the cops. / Now\n\nTranslate item A: Settings"
+    assert second[-1]["content"].endswith("Translate item B: Lose the cops. / Now")
     assert strip_item_letter("B. Cắt đuôi cảnh sát.", 1) == "Cắt đuôi cảnh sát."
+    assert strip_item_letter("C. Cắt đuôi cảnh sát.", 1) == "Cắt đuôi cảnh sát."
+    assert strip_item_letter("Translate item B: Cài đặt", 1) == "Cài đặt"
     assert strip_item_letter("Bắt đầu", 1) == "Bắt đầu"
+    assert strip_item_letter("Tiêu đề J: Phụ đề", 9) == "Phụ đề"
+    assert strip_item_letter("Tỷ lệ 3:2", 1) == "Tỷ lệ 3:2"
 
 
 class SideBySideTranslator(EchoTranslator):
@@ -298,7 +302,7 @@ class SideBySideTranslator(EchoTranslator):
         results = []
         for index, messages in enumerate(conversations):
             content = messages[-1]["content"]
-            letter = content.rsplit("Translate item ", 1)[1].rstrip(".")
+            letter = content.rsplit("Translate item ", 1)[1][0]
             item = next(line[3:] for line in content.splitlines() if line.startswith(f"{letter}. "))
             on_piece(index, f"{letter}. EN(", False)
             on_piece(index, f"{letter}. EN({item})", True)
@@ -391,3 +395,17 @@ def test_a_short_row_that_stops_mid_phrase_still_wraps():
     assert [b.text for b in group_blocks(lines, 1000, 1000)] == ["北の洞窟で賢者に会う"]
     lines = [px("Secure the", 100, 100, 150, 30), px("comms tower", 100, 140, 170, 30)]
     assert [b.text for b in group_blocks(lines, 1000, 1000)] == ["Secure the comms tower"]
+
+
+def test_short_lines_of_one_speech_bubble_stay_together():
+    bubble = [px("WAIT!", 100, 100, 90, 30), px("WHERE ARE", 90, 132, 120, 30), px("YOU GOING?", 85, 164, 130, 30)]
+    assert [b.text for b in group_blocks(bubble, 1000, 1000)] == ["WAIT! WHERE ARE YOU GOING?"]
+    korean = [px("오빠", 100, 100, 60, 30), px("어디 가?", 90, 133, 90, 30)]
+    assert len(group_blocks(korean, 1000, 1000)) == 1
+
+
+def test_manga_rows_are_read_right_to_left_even_when_bubbles_start_at_different_heights():
+    lines = [OcrLine("左の吹き出しです", 0.99, _px(300, 100, 42, 300)),
+             OcrLine("右の吹き出しです", 0.99, _px(900, 160, 42, 300)),
+             OcrLine("下の吹き出しです", 0.99, _px(600, 600, 42, 250))]
+    assert [b.text for b in group_blocks(lines, 1280, 900)] == ["右の吹き出しです", "左の吹き出しです", "下の吹き出しです"]

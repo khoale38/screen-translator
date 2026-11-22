@@ -34,10 +34,14 @@ ROUGH = re.compile(r"\b(damn|shit|fuck\w*|bitch|homie|bro|dude|fool|punk|ass(hol
 # English and Korean titles count only when they call the listener ("Brother, wait!", "오빠, 그 말..."), not when
 # they mention someone ("오빠 편만 들어요"); Japanese and Chinese often use the title for "you" inside the sentence.
 _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|{0}(?=\s*[,!?~…]))"
+# Recognized Korean speech has no spaces or commas: a title opening the line calls someone unless a particle follows.
+_KOREAN_OPENING = r"|^\W*(?:{0})(?!가|는|를|도|의|한테|랑|이|에게|께|하고|님[이은을의])"
 TO_ELDER = {
-    "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|아저씨|오빠|형(?:님)?)") + r"|兄さん|兄ちゃん|お兄|兄貴|"
+    "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|아저씨|오빠|형(?:님)?)")
+                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|"
                        r"哥哥|师兄", re.I),
-    "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|언니|누나)") + r"|姉さん|姉ちゃん|お姉|姐姐|师姐", re.I),
+    "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|언니|누나)") + _KOREAN_OPENING.format("언니|누나")
+                         + r"|姉さん|姉ちゃん|お姉|姐姐|师姐", re.I),
     "": re.compile(r"先輩|せんぱい|선배(?:님)?|学长|学姐"),
 }
 SERVING = re.compile(r"^\W*welcome\b(?! back| home)|いらっしゃいませ|お客様|손님|어서 오세요|欢迎光临", re.I)
@@ -56,6 +60,7 @@ ROLES = {
     "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸",
                                    re.I),
 }
+PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|grandma|grandmother|granny|mom|mum|mother)\b|공주|할머니|엄마|"
                            r"어머니|おばあ|お母|母さん|祖母|奶奶|外婆|妈妈|公主", re.I)
 MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|grandpa|grandfather|dad|father)\b|왕자|할아버지|아빠|아버지|おじい|"
@@ -108,7 +113,8 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     senior = facts.get("senior", "")
     rough = facts.get("rough") is True
     gender = lambda who: facts.get(f"{who} gender", "unknown")
-    elder = lambda who: "chị" if gender(who) == "female" else "anh"
+    # With the elder's gender unknown, only the junior's "em" is certain; the model picks anh or chị.
+    elder = lambda who: {"female": "chị", "male": "anh"}.get(gender(who), "")
     female = lambda who: gender(who) == "female"
     top = senior if senior in (speaker, listener) else older if older in (speaker, listener) else ""
     ranked = {
@@ -122,7 +128,7 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     if relation.startswith("master") and top:
         return ("ta", "con") if top == speaker else ("đệ tử", "sư phụ")
     if relation.startswith("ruler") and top:
-        return ("ta", "ngươi") if top == speaker else ("thần", "người")
+        return ("ta", "ngươi") if top == speaker else ("thần", facts.get("royal", "bệ hạ"))
     if "customer" in relation:
         if senior == listener:
             return "tôi", {"female": "chị", "male": "anh"}.get(gender(listener), "bạn")
@@ -148,14 +154,16 @@ class Address:
     you: str
 
     def note(self) -> str:
-        return (f'{self.speaker} is talking to {self.listener}: in Vietnamese {self.speaker} says "{self.me}" '
-                f'for I/me and "{self.you}" for you.')
+        words = [f'"{word}" for {role}' for word, role in ((self.me, "I/me"), (self.you, "you")) if word]
+        return f'{self.speaker} is talking to {self.listener}: in Vietnamese {self.speaker} says {" and ".join(words)}.'
+
 
     def terms(self, source_lang: str) -> dict[str, str]:
         """Glossary entries for translation models that follow terms but not instructions (HY-MT)."""
         langs = [source_lang] if source_lang in SELF_WORDS else list(SELF_WORDS)
-        terms = {word: self.me for lang in langs for word in SELF_WORDS[lang]}
-        terms.update({word: self.you for lang in langs for word in YOU_WORDS[lang]})
+        terms = {word: self.me for lang in langs for word in SELF_WORDS[lang]} if self.me else {}
+        if self.you:
+            terms.update({word: self.you for lang in langs for word in YOU_WORDS[lang]})
         return terms
 
 
@@ -164,6 +172,12 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     line = body_of(line)
     if SERVING.search(line):
         return {"relation": "staff and customer", "senior": speaker, "guess": True}
+    for role, cue in ROLES.items():
+        if calls_by(cue, line):
+            facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
+            title = cue.search(line).group(0)
+            gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
+            return {**facts, f"{listener} gender": gender} if gender else facts
     for gender, cue in TO_ELDER.items():
         if cue.search(line):
             facts = {"relation": "school senior and junior", "older": listener, "guess": True}
@@ -171,6 +185,19 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     if ROUGH.search(line):
         return {"relation": "friends", "rough": True, "guess": True}
     return None
+
+
+def calls_by(cue: re.Pattern, line: str) -> bool:
+    """Whether a title in the line calls the listener ("Mom, I'm home", "Your Highness!") rather than names someone."""
+    for match in cue.finditer(line):
+        before, after = line[:match.start()], line[match.end():]
+        if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after):
+            continue
+        opening = not before.strip(" \"'「『(-—…")
+        closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
+        if opening or closing:
+            return True
+    return False
 
 
 def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
@@ -186,7 +213,7 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
     for said_by, line in said:
         other = b if said_by == a else a if said_by == b else None
         if other and other not in roles:
-            role = next((role for role, cue in ROLES.items() if cue.search(body_of(line))), None)
+            role = next((role for role, cue in ROLES.items() if calls_by(cue, body_of(line))), None)
             if role:
                 roles[other] = role
     facts = dict(facts)
@@ -198,7 +225,8 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
     enemies = str(facts.get("relation", "")).startswith("rivals")
     if len(roles) == 1 and not enemies:
         [(senior, role)] = roles.items()
-        return {**facts, "relation": role, "senior": senior}
+        royal = "điện hạ" if any(PRINCELY.search(text) for text in [senior, *(line for _w, line in said)]) else "bệ hạ"
+        return {**facts, "relation": role, "senior": senior, "royal": royal}
     relation = str(facts.get("relation", ""))
     if relation.startswith(("teacher", "master")):
         return {**facts, "relation": "school senior and junior", "senior": "neither"}
@@ -229,6 +257,12 @@ def parse_facts(answer: str) -> dict | None:
     return facts if isinstance(facts, dict) and facts.get("relation") else None
 
 
+def _calls_name(line: str, name: str) -> bool:
+    """A name opening the line or set off by punctuation calls that person; one inside the sentence only mentions them."""
+    suffix = r"(?:さん|君|くん|ちゃん|様|先輩|先生|-sensei|-san|-kun|-chan|아|야|씨)?"
+    return bool(re.search(rf"(?:^|[,、，!！?？]\s*){re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)", line.strip()))
+
+
 class Relationships:
     """Keeps the pronouns for each pair of speakers; `judge_factory` returns something with `answer(question)`."""
 
@@ -257,7 +291,7 @@ class Relationships:
     def _listener(self, speaker: str, text: str = "") -> str | None:
         """Whoever the line calls by name, else the last other character who has said a few lines."""
         body = body_of(text)
-        named = [who for who in self._spoken if who != speaker and who in body]
+        named = [who for who in self._spoken if who != speaker and _calls_name(body, who)]
         if named:
             return max(named, key=len)
         cutoff = self.clock() - self.window_s

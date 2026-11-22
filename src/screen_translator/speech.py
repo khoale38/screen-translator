@@ -10,9 +10,11 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 import numpy as np
+
+from .dub import MALE_BELOW_HZ
 
 RATE = 16000
 CHUNK = 512  # 32 ms, the block size Silero VAD expects at 16 kHz
@@ -175,31 +177,44 @@ class Utterance:
     samples: np.ndarray
     final: bool
     ending: bool = False
+    # Why a final utterance ended: "pause", "breath", "turn" (another voice took over) or "max".
+    cut: str = ""
 
 
 class Segmenter:
     """Cuts a stream of 32 ms blocks into utterances.
 
     An utterance ends after `silence_s` without speech, or at `max_s`. Fast talkers barely pause, so once an
-    utterance is `long_s` old a breath of `short_silence_s` ends it too, at a comma or full stop rather than mid-phrase. While someone is still talking it also hands
-    out the speech so far every `partial_s`, and once more the moment the voice drops, so its translation is usually
-    done by the time the utterance is confirmed finished.
+    utterance is `long_s` old a breath of `breath_s` ends it too, and after `very_long_s` an even shorter
+    `short_silence_s`; the breath is longer than the catch of a Japanese っ, which would otherwise split a word.
+    A pause of `turn_s` also ends it when the voice after it is a man's and the one before a woman's, or the other way
+    round. While someone is still talking it hands out the speech so far every `partial_s`, and once more the moment
+    the voice drops, so its translation is usually done by the time the utterance is confirmed finished.
     """
 
     def __init__(self, vad, threshold: float = 0.5, silence_s: float = 0.45, max_s: float = 8.0,
-                 partial_s: float = 0.5, pad_s: float = 0.2, long_s: float = 3.0, short_silence_s: float = 0.08) -> None:
+                 partial_s: float = 0.5, pad_s: float = 0.2, long_s: float = 3.0, breath_s: float = 0.15,
+                 very_long_s: float = 5.0, short_silence_s: float = 0.08, turn_s: float = 0.15,
+                 pitch: Callable[[np.ndarray], float] | None = None) -> None:
+        blocks = lambda seconds: max(1, round(seconds * RATE / CHUNK))
         self.vad = vad
         self.threshold = threshold
-        self.silence_blocks = max(1, round(silence_s * RATE / CHUNK))
+        self.silence_blocks = blocks(silence_s)
         self.max_blocks = round(max_s * RATE / CHUNK)
         self.long_blocks = round(long_s * RATE / CHUNK)
-        self.short_silence_blocks = max(1, round(short_silence_s * RATE / CHUNK))
-        self.partial_blocks = max(1, round(partial_s * RATE / CHUNK))
+        self.breath_blocks = blocks(breath_s)
+        self.very_long_blocks = round(very_long_s * RATE / CHUNK)
+        self.short_silence_blocks = blocks(short_silence_s)
+        self.turn_blocks = blocks(turn_s)
+        self.turn_check_blocks = blocks(0.4)
+        self.partial_blocks = blocks(partial_s)
         self.pad_blocks = round(pad_s * RATE / CHUNK)
+        self.pitch = pitch or pitch_hz
         self._before: list[np.ndarray] = []
         self._speech: list[np.ndarray] = []
         self._quiet = 0
         self._since_partial = 0
+        self._turn: tuple[int, int] | None = None
 
     @property
     def speaking(self) -> bool:
@@ -213,27 +228,54 @@ class Segmenter:
                 return None
             self._speech, self._before = self._before + [chunk], []
             self._quiet = self._since_partial = 0
+            self._turn = None
             return None
         self._speech.append(chunk)
-        self._quiet = 0 if voiced else self._quiet + 1
-        needed = self.short_silence_blocks if len(self._speech) >= self.long_blocks else self.silence_blocks
-        if self._quiet >= needed or len(self._speech) >= self.max_blocks:
-            return self._finish()
+        if voiced:
+            if self._quiet >= self.turn_blocks:
+                self._turn = (len(self._speech) - 1 - self._quiet, len(self._speech) - 1)
+            self._quiet = 0
+        else:
+            self._quiet += 1
+        length = len(self._speech)
+        needed = (self.short_silence_blocks if length >= self.very_long_blocks
+                  else self.breath_blocks if length >= self.long_blocks else self.silence_blocks)
+        if self._quiet >= needed:
+            return self._finish("pause" if needed == self.silence_blocks else "breath")
+        if length >= self.max_blocks:
+            return self._finish("max")
+        if self._turn and length - self._turn[1] >= self.turn_check_blocks:
+            handed_over = self._new_voice()
+            if handed_over:
+                return handed_over
         self._since_partial += 1
         if self._since_partial >= self.partial_blocks or self._quiet == 1:
             self._since_partial = 0
             return Utterance(np.concatenate(self._speech), final=False, ending=self._quiet == 1)
         return None
 
-    def flush(self) -> Utterance | None:
-        return self._finish() if self._speech else None
+    def _new_voice(self) -> Utterance | None:
+        """The speech before the last pause, if a voice of the other sex started after it."""
+        pause, resumed = self._turn
+        self._turn = None
+        before = self.pitch(np.concatenate(self._speech[max(0, pause - 16):pause]))
+        after = self.pitch(np.concatenate(self._speech[resumed:]))
+        if not before or not after or (before < MALE_BELOW_HZ) == (after < MALE_BELOW_HZ):
+            return None
+        samples = np.concatenate(self._speech[:pause + min(self.pad_blocks, resumed - pause)])
+        self._speech = self._speech[max(pause, resumed - self.pad_blocks):]
+        self._since_partial = 0
+        return Utterance(samples, final=True, cut="turn")
 
-    def _finish(self) -> Utterance:
+    def flush(self) -> Utterance | None:
+        return self._finish("pause") if self._speech else None
+
+    def _finish(self, cut: str) -> Utterance:
         keep = len(self._speech) - max(0, self._quiet - self.pad_blocks)
         samples = np.concatenate(self._speech[:keep])
-        self._speech, self._quiet, self._since_partial = [], 0, 0
+        self._speech, self._quiet, self._since_partial, self._turn = [], 0, 0, None
         self.vad.reset()
-        return Utterance(samples, final=True)
+        return Utterance(samples, final=True, cut=cut)
 
 
 def default_recognizer() -> tuple[SenseVoice, Vad]:

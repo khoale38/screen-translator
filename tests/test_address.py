@@ -30,8 +30,9 @@ def test_facts_become_vietnamese_pronouns_both_ways():
 def test_a_plain_cue_settles_who_is_older_when_the_model_could_not():
     cues = {**guess_facts("先輩、待ってください！", "Mika", "Ryu"), "pair": ("Mika", "Ryu")}
     judged = {"relation": "friends", "older": "unknown", "rough": False}
-    assert vietnamese(merged(judged, cues), "Mika", "Ryu") == ("em", "anh")
-    assert vietnamese(merged({**judged, "older": "Ryu"}, cues), "Ryu", "Mika") == ("anh", "em")
+    assert vietnamese(merged(judged, cues), "Mika", "Ryu") == ("em", "")
+    assert vietnamese(merged({**judged, "Ryu gender": "male"}, cues), "Mika", "Ryu") == ("em", "anh")
+    assert vietnamese(merged({**judged, "older": "Ryu", "Ryu gender": "male"}, cues), "Ryu", "Mika") == ("anh", "em")
 
 
 class Judge:
@@ -90,7 +91,7 @@ def test_the_pronouns_ride_with_the_line_and_stay_in_the_history():
     [hy] = for_hy_mt(messages)
     assert "I 翻译成 tao\n" in hy["content"] and "you 翻译成 mày\n" in hy["content"]
     assert "Lamar对Franklin说话" in hy["content"] and "Translator's note" not in hy["content"]
-    assert hy["content"].endswith("\nLamar: You owe me.")
+    assert hy["content"].endswith("\nYou owe me.") and "Lamar: You owe me." not in hy["content"]
 
 
 def test_speech_without_a_name_still_follows_a_clear_cue():
@@ -104,7 +105,9 @@ def test_a_cue_said_before_the_reply_counts_for_the_reply():
     settings = types.SimpleNamespace(target_lang="vi", notes="")
     rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
     rel.heard("ミカ：先輩、待ってください！")
-    assert rel.address("リュウ：なんだよ、忙しいんだ。") == Address("リュウ", "ミカ", "anh", "em")
+    reply = rel.address("リュウ：なんだよ、忙しいんだ。")
+    assert reply == Address("リュウ", "ミカ", "", "em")
+    assert reply.note() == 'リュウ is talking to ミカ: in Vietnamese リュウ says "em" for you.'
     rel.close()
 
 
@@ -112,7 +115,7 @@ def test_titles_in_names_and_polite_sir_do_not_make_a_shop():
     assert guess_facts("Sir Aldric: The gate must hold.", "Sir Aldric", "Mira") is None
     assert guess_facts("Mira: Yes, sir, at once.", "Mira", "Aldric") is None
     assert guess_facts("Welcome! What can I get you?", "Clerk", "Kai")["senior"] == "Clerk"
-    assert guess_facts("Welcome back, prince.", "Guard", "Kai") is None
+    assert guess_facts("Welcome back, prince.", "Guard", "Kai")["relation"] == "ruler and subject"
 
 
 def test_family_teachers_masters_and_rulers_get_their_own_pronouns():
@@ -156,7 +159,7 @@ def test_titles_settle_roles_the_judge_gets_wrong():
     wrong = {"relation": "ruler and subject", "senior": "Sir Aldric", "older": "Sir Aldric"}
     facts = settled(wrong, "Princess Elena", "Sir Aldric", [])
     assert facts["senior"] == "Princess Elena" and facts["Princess Elena gender"] == "female"
-    assert vietnamese(facts, "Sir Aldric", "Princess Elena") == ("thần", "người")
+    assert vietnamese(facts, "Sir Aldric", "Princess Elena") == ("thần", "điện hạ")
     senpai = settled({"relation": "teacher and student", "senior": "ミサキ", "older": "ミサキ", "ミサキ gender": "female"},
                      "ハルト", "ミサキ", [("ハルト", "ハルト：すみません、ミサキ先輩！")])
     assert vietnamese(senpai, "ハルト", "ミサキ") == ("em", "chị")
@@ -194,3 +197,26 @@ def test_an_enemy_calling_someone_master_is_still_an_enemy():
 
     facts = settled({"relation": "rivals or enemies", "rough": True}, "血刀老祖", "师父", [])
     assert vietnamese(facts, "血刀老祖", "师父") == ("tao", "mày")
+
+
+def test_titles_count_only_when_they_call_someone_and_family_words_work_in_speech():
+    from screen_translator.address import settled
+
+    mentioned = settled({"relation": "friends"}, "Ren", "Haruto", [("Ren", "Ren: My mom says hi.")])
+    assert mentioned["relation"] == "friends"
+    called = settled({"relation": "friends"}, "Tuấn", "Hoa", [("Tuấn", "Tuấn: Mom, I'm home!")])
+    assert called["relation"] == "parent and child" and called["senior"] == "Hoa"
+    assert vietnamese(guess_facts("Mom, I'm home!", "the speaker", "the listener"), "the speaker", "the listener") \
+        == ("con", "mẹ")
+    assert guess_facts("엄마가 오빠 기다리다가 주무셨어", "지은", "민준") is None
+    assert guess_facts("오빠왜전화안받았어", "지은", "민준")["older"] == "민준"
+
+
+def test_only_a_name_that_calls_someone_picks_the_listener():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("Ren: Hey.", "Haruto: Hi.", "Ren: Ready?", "Haruto: Yes.", "Misaki: Morning."):
+        rel.heard(line)
+    assert rel._listener("Ren", "Ren: Misaki, wait up!") == "Misaki"
+    assert rel._listener("Ren", "Ren: I saw Misaki at the station.") == "Haruto"
+    rel.close()
