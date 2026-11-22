@@ -95,10 +95,26 @@ def _self_test() -> int:
         if not result or not all(results):
             print(f"Self-test failed: {spec.key} returned no translation", flush=True)
             return 1
-    if not _relationship_self_test() or not _speech_self_test():
+    if not _online_self_test() or not _relationship_self_test() or not _speech_self_test():
         return 1
     print("Self-test passed", flush=True)
     return 0
+
+
+def _online_self_test() -> bool:
+    """A made-up key must reach Claude and be turned away, which proves the SDK and HTTPS work in the bundle."""
+    from screen_translator.online import ClaudeTranslator, OnlineError, OnlineHiccup
+
+    try:
+        ClaudeTranslator("sk-ant-self-test").translate([{"role": "user", "content": "OK"}])
+    except OnlineHiccup as exc:
+        print(f"Online: skipped, {exc}", flush=True)
+        return True
+    except OnlineError as exc:
+        print(f"Online: Claude answered ({exc})", flush=True)
+        return True
+    print("Self-test failed: Claude accepted a made-up key", flush=True)
+    return False
 
 
 def _relationship_self_test() -> bool:

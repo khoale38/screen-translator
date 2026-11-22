@@ -10,7 +10,7 @@ from typing import Callable
 
 from aiohttp import WSMsgType, web
 
-from . import diagnostics, languages, natural_voices
+from . import diagnostics, languages, natural_voices, online
 from .capture import ScreenCapture, ensure_screen_permission
 from .config import SettingsStore
 from .models import DOWNLOADS, MODELS, NATURAL_VOICES, SPEECH, DownloadCancelled, NotEnoughSpace, check_space, download_all
@@ -127,7 +127,8 @@ def create_app(
 
     def state() -> dict:
         return {
-            "settings": store.settings.to_dict(),
+            "settings": {**store.settings.to_dict(), "online_key": ""},
+            "online_key_set": bool(online.api_key(store.settings)),
             "status": hub.status,
             "running": pipeline.running,
             "languages": languages.LANGUAGES,
@@ -135,7 +136,7 @@ def create_app(
             "models": [
                 {"key": m.key, "label": m.label, "size": m.size_bytes, "downloaded": m.downloaded}
                 for m in MODELS.values()
-            ],
+            ] + [{"key": online.KEY, "label": online.LABEL, "size": 0, "downloaded": True, "online": True}],
             "speech": {"label": SPEECH.label, "size": SPEECH.size_bytes, "downloaded": SPEECH.downloaded},
             "voices": {"label": NATURAL_VOICES.label, "size": NATURAL_VOICES.size_bytes,
                        "downloaded": NATURAL_VOICES.downloaded,
@@ -164,7 +165,7 @@ def create_app(
     async def start(_: web.Request) -> web.Response:
         try:
             await asyncio.to_thread(pipeline.start)
-        except (FileNotFoundError, PermissionError) as exc:
+        except (FileNotFoundError, PermissionError, online.OnlineError) as exc:
             return web.json_response({"error": str(exc)}, status=409)
         return web.json_response(state())
 

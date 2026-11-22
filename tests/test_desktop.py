@@ -399,3 +399,19 @@ def test_switching_to_a_model_not_yet_downloaded_offers_its_download(app, tmp_pa
     assert not window.download.isVisibleTo(window)
     window.model.setCurrentIndex(1)
     assert window.download.isVisibleTo(window) and window.download.text() == "Download model (1.5 GB)"
+
+
+def test_choosing_claude_asks_for_a_key_and_needs_no_download(app, tmp_path):
+    from screen_translator import online
+
+    window, api = make_window(tmp_path, scope="area", areas=[[100, 100, 400, 60]], target_lang="vi")
+    api.state["models"] = [{"key": "qwen3.5-4b", "label": "Qwen", "size": 2_700_000_000, "downloaded": False},
+                           {"key": online.KEY, "label": online.LABEL, "size": 0, "downloaded": True}]
+    window.model.setCurrentIndex(0)
+    window.refresh_model()
+    assert not window.online_key.isVisibleTo(window) and window.download.isVisibleTo(window)
+    window.model.setCurrentIndex(window.model.findData(online.KEY))
+    assert window.online_key.isVisibleTo(window) and not window.download.isVisibleTo(window)
+    window.online_key.setText(" sk-ant-test ")
+    window.online_key.editingFinished.emit()
+    assert ("/api/settings", {"online_key": "sk-ant-test"}) in api.posts

@@ -47,7 +47,7 @@ Answer questions about {a} and {b} with JSON only:
  "older": "{a}" or "{b}" or "same age" or "unknown",
  "{a} gender": "male" or "female" or "unknown",
  "{b} gender": "male" or "female" or "unknown",
- "rough": true if they swear, insult or talk like street or gang members, else false}}"""
+ "rough": true if they talk to each other crudely: swearing, insults, threats, gangster, thug or delinquent talk, or rude banter between close friends, else false}}"""
 
 
 def _looks_like_name(label: str) -> bool:
@@ -146,8 +146,11 @@ class Relationships:
     """Keeps the pronouns for each pair of speakers; `judge_factory` returns something with `answer(question)`."""
 
     def __init__(self, judge_factory: Callable[[], object], settings: Callable, emit: Callable[[dict], None],
-                 clock: Callable[[], float] = time.monotonic, window_s: float = 120.0) -> None:
+                 clock: Callable[[], float] = time.monotonic, window_s: float = 120.0,
+                 judge_key: Callable[[], object] = lambda: None) -> None:
         self.judge_factory = judge_factory
+        self.judge_key = judge_key
+        self._judge_made_for = None
         self.settings = settings
         self.emit = emit
         self.clock = clock
@@ -200,8 +203,11 @@ class Relationships:
 
     def heard(self, text: str) -> None:
         """A line that was shown and kept; a new pair of speakers, or one with more to go on, gets judged."""
-        if self.settings().target_lang not in SUPPORTED or self._unavailable:
+        if self.settings().target_lang not in SUPPORTED:
             return
+        if self._unavailable and self.judge_key() == self._judge_made_for:
+            return
+        self._unavailable = False
         speaker = speaker_of(text)
         with self._lock:
             listener = self._listener(speaker) if speaker else None
@@ -230,13 +236,14 @@ class Relationships:
                 return
             first, second, lines = job
             try:
-                self._judge = self._judge or self.judge_factory()
+                self._use_judge(self.judge_key())
                 started = time.monotonic()
                 answer = self._judge.answer(QUESTION.format(
                     notes=self.settings().notes or "none", lines="\n".join(lines), a=first, b=second,
                     relations=", ".join(f'"{r}"' for r in RELATIONS)))
             except FileNotFoundError:
                 self._unavailable = True
+                self._judge_made_for = self.judge_key()
                 self.emit({"type": "relationships", "error": "Download Qwen3.5 4B to pick pronouns from who is "
                                                               "talking to whom."})
                 continue
@@ -255,6 +262,19 @@ class Relationships:
                            "address": [" / ".join(vietnamese(facts, first, second)),
                                        " / ".join(vietnamese(facts, second, first))]})
 
+    def _use_judge(self, key) -> None:
+        if self._judge is not None and key == self._judge_made_for:
+            return
+        self._close_judge()
+        self._judge = self.judge_factory()
+        self._judge_made_for = key
+
+    def _close_judge(self) -> None:
+        close = getattr(self._judge, "close", None)
+        if close:
+            close()
+        self._judge = None
+
     def clear(self) -> None:
         with self._lock:
             self._lines.clear()
@@ -272,7 +292,4 @@ class Relationships:
             if self._thread.is_alive():
                 return
             self._thread = None
-        close = getattr(self._judge, "close", None)
-        if close:
-            close()
-        self._judge = None
+        self._close_judge()

@@ -111,6 +111,7 @@ class Settings:
     notes: str = ""
     model: str = "qwen3.5-4b"
     custom_model_path: str = ""
+    online_key: str = ""
     gpu_layers: int = -1
     check_updates: bool = True
     listen: bool = False

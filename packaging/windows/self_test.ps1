@@ -36,6 +36,9 @@ if (-not (Select-String -Path $log -Pattern "^Speech \(" -Quiet)) {
 if (-not (Select-String -Path $log -Pattern "^Side by side:" -Quiet)) {
     Write-Error "The self-test did not translate side by side"
 }
+if (-not (Select-String -Path $log -Pattern "^Online: Claude answered" -Quiet)) {
+    Write-Error "The self-test could not reach Claude"
+}
 if (-not (Select-String -Path $log -Pattern "^Pronouns: " -Quiet)) {
     Write-Error "The self-test did not work out a relationship"
 }

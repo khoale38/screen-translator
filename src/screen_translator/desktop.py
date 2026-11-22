@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
-from . import languages, updates
+from . import languages, online, updates
 from .appearance import Style, paint_patch, paint_translation, pixel_font, place_translation, text_sizes
 from .capture import exclude_window_from_capture
 from .config import SettingsStore
@@ -392,6 +392,13 @@ class MainWindow(QWidget):
         self.model = QComboBox()
         for spec in MODELS.values():
             self.model.addItem(spec.label, spec.key)
+        self.model.addItem(online.LABEL, online.KEY)
+        self.online_key = QLineEdit()
+        self.online_key.setEchoMode(QLineEdit.Password)
+        self.online_key.setPlaceholderText("sk-ant-… from console.anthropic.com")
+        self.online_key.setToolTip("Lines are sent to Claude to translate, and Anthropic bills this key for them. "
+                                   "The key is kept only in this PC's settings file.")
+        self.online_key_label = QLabel("API key")
         self.position = QComboBox()
         self.position.addItem("Over the text", "cover")
         self.position.addItem("Below the text", "below")
@@ -456,7 +463,8 @@ class MainWindow(QWidget):
         rows = ((QLabel("Translate"), self.scope), (QLabel(""), self.listen), (QLabel(""), self.dub),
                 (self.dub_label, self.dub_row), (self.screen_label, self.screen_pick),
                 (QLabel("From"), self.source_lang), (QLabel("To"), self.target_lang),
-                (QLabel("Model"), self.model), (QLabel("Overlay"), self.overlay_row),
+                (QLabel("Model"), self.model), (self.online_key_label, self.online_key),
+                (QLabel("Overlay"), self.overlay_row),
                 (self.min_text_label, self.min_text),
                 (QLabel("Watching"), self.notes))
         for row, (label, field) in enumerate(rows):
@@ -495,7 +503,9 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
-        self.model.currentIndexChanged.connect(lambda _i: self.refresh_model())
+        self.model.currentIndexChanged.connect(lambda _i: (self.refresh_model(), self.show_online()))
+        self.online_key.editingFinished.connect(
+            lambda: self.api.call("/api/settings", {"online_key": self.online_key.text().strip()}))
         self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model(),
                                                 self.show_dub()))
         self.dub.toggled.connect(lambda on: (self.api.call("/api/settings", {"dub": on}), self.show_dub(),
@@ -529,6 +539,8 @@ class MainWindow(QWidget):
             combo.setCurrentIndex(max(0, combo.findData(value)))
             combo.blockSignals(False)
         self.notes.setText(s.notes)
+        self.online_key.setText(s.online_key)
+        self.show_online()
         for widget, value, fallback in ((self.position, s.overlay_mode, "cover"), (self.text_size, s.text_size, "x1")):
             widget.blockSignals(True)
             widget.setCurrentIndex(widget.findData(value if widget.findData(value) >= 0 else fallback))
@@ -645,6 +657,11 @@ class MainWindow(QWidget):
         name = self.screen_pick.currentData()
         return next((s for s in QGuiApplication.screens() if s.name() == name), None) or QGuiApplication.primaryScreen()
 
+    def show_online(self) -> None:
+        chosen = self.model.currentData() == online.KEY
+        self.online_key.setVisible(chosen)
+        self.online_key_label.setVisible(chosen)
+
     def missing_download(self) -> tuple[str, str, int] | None:
         """(key, label, size) of the next file Start needs, if any."""
         state = self.api.call("/api/state")
@@ -659,7 +676,8 @@ class MainWindow(QWidget):
                 and self.target_lang.currentData().split("-")[0] in voices.get("languages", [])):
             return "voices", "natural voices", voices["size"]
         qwen = [m for m in state.get("models", []) if m["key"] in ("qwen3.5-4b", "qwen3.5-2b")]
-        if self.target_lang.currentData() == "vi" and qwen and not any(m["downloaded"] for m in qwen):
+        if (self.target_lang.currentData() == "vi" and self.model.currentData() != online.KEY and qwen
+                and not any(m["downloaded"] for m in qwen)):
             return qwen[0]["key"], "the anh/em/mày/tao helper", qwen[0]["size"]
         return None
 
@@ -786,6 +804,8 @@ class MainWindow(QWidget):
             self.set_running(False)
             return
         self.select.setChecked(False)
+        if self.model.currentData() == online.KEY:
+            self.api.call("/api/settings", {"online_key": self.online_key.text().strip()})
         if self.whole_screen():
             geometry = self.chosen_screen().geometry()
             self.api.call("/api/settings", {"screen_rect": native_rect(geometry), "screen_height": geometry.height()})
@@ -844,6 +864,9 @@ class MainWindow(QWidget):
         if kind == "relationships":
             if event.get("error"):
                 self.status.setText(event["error"])
+            return
+        if kind == "notice":
+            self.status.setText(event["text"])
             return
         if kind == "line" and self.running:
             area = event.get("area", 0)

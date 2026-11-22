@@ -1,6 +1,6 @@
 # Screen Translator
 
-Real-time translation of the text on your screen: game dialogue, hard-subbed video, mission objectives, menus. It can also listen to what's being said in a game or video and subtitle it. The translation is drawn right over the original text, or added to OBS as live subtitles. It runs **entirely on your computer**: on-device OCR, a local LLM through llama.cpp, no account, no API keys, and the text you read never leaves your computer.
+Real-time translation of the text on your screen: game dialogue, hard-subbed video, mission objectives, menus. It can also listen to what's being said in a game or video and subtitle it. The translation is drawn right over the original text, or added to OBS as live subtitles. It runs **entirely on your computer**: on-device OCR, a local LLM through llama.cpp, no account, no API keys, and the text you read never leaves your computer. For interpreter-quality translation you can instead pick the optional online **Claude** model with your own API key.
 
 Unlike line-by-line translators, it **keeps context**. Every new line is translated together with the last few lines and their translations, so names, pronouns, gender, tone and sentences split across screens stay consistent.
 
@@ -89,7 +89,7 @@ Add any of these to the Browser Source URL, `http://127.0.0.1:8765/overlay?…`:
 
 ## Models
 
-All models run locally through llama.cpp. Pick one in the app, or point **Custom GGUF file** (under **Glossary & more…**) at any chat model you already have.
+All models except Claude run locally through llama.cpp. Pick one in the app, or point **Custom GGUF file** (under **Glossary & more…**) at any chat model you already have.
 
 | Model | Size | Notes |
 |---|---|---|
@@ -97,6 +97,8 @@ All models run locally through llama.cpp. Pick one in the app, or point **Custom
 | Qwen3.5 2B | 2.0 GB | fastest, for 8 GB machines, weaker with slang |
 | Qwen3.5 9B | 5.7 GB | best quality, needs 16 GB RAM |
 | Gemma 3 4B | 2.5 GB | widest language coverage (Gemma terms of use) |
+
+**Claude (online)** is the one model that doesn't run on your computer. It gives interpreter-quality translation and works out how characters address each other (anh/em, tao/mày and so on) from the whole conversation, in any game, film, anime or video. Pick it under **Model** and paste an Anthropic API key from [console.anthropic.com](https://console.anthropic.com); Anthropic bills that key for each line. With it, the lines you translate and your **Watching** notes are sent to Anthropic. The key is kept only in the app's settings file.
 
 Models are stored in the `models` folder inside the folder you installed to (or unzipped the portable version to), and uninstalling removes them. If that folder is read-only, such as an all-users install under Program Files, they go to `%LOCALAPPDATA%\ScreenTranslator\models` instead. Models downloaded by an earlier version are moved over the first time you start.
 
@@ -108,7 +110,7 @@ Models are stored in the `models` folder inside the folder you installed to (or 
 4. **Translate with context**: a local model gets your glossary, the **Watching** notes and the recent lines as conversation history. Context expires after 5 minutes by default, and **Forget context** clears it. Whole-screen mode translates up to 12 pieces of text at once, side by side on the graphics card, so a screen takes about as long as its longest piece and each piece appears as soon as it's done. For a whole screen in under a second on a mid-range card such as an RTX 2060, pick **Qwen3.5 2B**; the 4B model takes one to two seconds but handles slang better.
 5. **Show**: the translation streams onto the screen as it's written, and over a local WebSocket to the OBS overlay.
 
-Everything listens on `127.0.0.1` only and rejects requests from other websites. The only other network traffic is the model download and, once at startup, a check of this repository's latest release; turn the check off with **Check for updates at startup** in the 文A icon's menu.
+Everything listens on `127.0.0.1` only and rejects requests from other websites. The only other network traffic is the model download, lines sent to Claude if you pick it, and, once at startup, a check of this repository's latest release; turn the check off with **Check for updates at startup** in the 文A icon's menu.
 
 ## From source
 

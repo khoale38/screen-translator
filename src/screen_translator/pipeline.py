@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from . import diagnostics
+from . import diagnostics, online
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .address import Relationships
@@ -121,10 +121,12 @@ def default_dubber(pipeline: "Pipeline"):
     return Dubber(lambda: pipeline.store.settings, emit=pipeline.emit)
 
 
-def default_judge():
+def default_judge(settings: Settings | None = None):
     """The model that works out how characters are related; on the CPU so the game keeps the graphics card."""
     from .models import MODELS
 
+    if settings is not None and online.is_online(settings):
+        return online.ClaudeTranslator(online.api_key(settings))
     for key in ("qwen3.5-4b", "qwen3.5-2b"):
         if key in MODELS and MODELS[key].downloaded:
             return LlamaTranslator(str(MODELS[key].path), gpu_layers=0, n_ctx=2048)
@@ -132,6 +134,8 @@ def default_judge():
 
 
 def default_translator(settings: Settings) -> Translator:
+    if online.is_online(settings):
+        return online.ClaudeTranslator(online.api_key(settings))
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
 
@@ -147,7 +151,7 @@ class Pipeline:
         audio_factory: Callable[[], object] = default_audio,
         recognizer_factory: Callable[[], tuple] = default_recognizer,
         dubber_factory: Callable[["Pipeline"], object] = default_dubber,
-        judge_factory: Callable[[], object] = default_judge,
+        judge_factory: Callable[[Settings], object] = default_judge,
     ) -> None:
         self.store = store
         self.emit = diagnostics.recording(emit)
@@ -160,7 +164,8 @@ class Pipeline:
         self.dubber_factory = dubber_factory
         self._dubber = None
         self.context = ContextWindow(store.settings.context_lines, store.settings.context_ttl_s)
-        self.relationships = Relationships(judge_factory, lambda: self.store.settings, self.emit)
+        self.relationships = Relationships(lambda: judge_factory(self.store.settings), lambda: self.store.settings,
+                                           self.emit, judge_key=lambda: online.is_online(self.store.settings))
         self._events: queue.Queue[TextEvent] = queue.Queue()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
@@ -198,7 +203,10 @@ class Pipeline:
         if self.running:
             return
         settings = self.store.settings
-        resolve_model(settings)
+        if not online.is_online(settings):
+            resolve_model(settings)
+        elif not online.api_key(settings):
+            raise online.OnlineError(online.MISSING_KEY)
         if settings.listen:
             from .models import SPEECH
 
@@ -259,7 +267,7 @@ class Pipeline:
             traceback.print_exc()
             diagnostics.log.exception("%s stopped", threading.current_thread().name)
             self._stop.set()
-            self._set_state("error", f"{type(exc).__name__}: {exc}")
+            self._set_state("error", str(exc) if isinstance(exc, online.OnlineError) else f"{type(exc).__name__}: {exc}")
 
     def _wait_for_translator(self) -> bool:
         while not self._translator_ready.wait(0.2):
@@ -323,7 +331,7 @@ class Pipeline:
 
     def _load_translator(self) -> SharedTranslator:
         settings = self.store.settings
-        key = (settings.model, settings.custom_model_path, settings.gpu_layers)
+        key = (settings.model, settings.custom_model_path, settings.gpu_layers, online.api_key(settings))
         with self._load_lock:
             if self._translator is None or self._translator_key != key:
                 self._set_state("loading")
@@ -365,6 +373,8 @@ class Pipeline:
                     self._translate(translator, event)
             except Superseded:
                 continue
+            except online.OnlineHiccup as exc:
+                self._hiccup(exc)
             except Yielded:
                 with self._events.mutex:
                     self._events.queue.appendleft(event)
@@ -590,6 +600,13 @@ class Pipeline:
                     self._translate_block(translator, text)
             except (Yielded, Superseded):
                 continue
+            except online.OnlineHiccup as exc:
+                self._hiccup(exc)
+                self._screen_changed.wait(2.0)
+
+    def _hiccup(self, exc: Exception) -> None:
+        diagnostics.log.warning("Skipped a line: %s", exc)
+        self.emit({"type": "notice", "text": str(exc)})
 
     def _warm_up(self, translator: SharedTranslator) -> None:
         """Load the instructions and set up the GPU work once, so the first real screen is as quick as the rest."""
@@ -748,6 +765,9 @@ class Pipeline:
                 try:
                     translation = self._translate_speech(translator, heard)
                 except Superseded:
+                    continue
+                except online.OnlineHiccup as exc:
+                    self._hiccup(exc)
                     continue
                 done = (heard["id"], _bare(text), translation)
             if heard["final"]:
