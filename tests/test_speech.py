@@ -98,7 +98,7 @@ def run_speech(store, audio, recognizer, translator, seconds=3.0, dubber=None, f
 
 
 def speech(voiced_blocks):
-    return [block(0.0)] * 3 + [block(0.9)] * voiced_blocks + [block(0.0)] * 12
+    return [block(0.0)] * 3 + [block(0.9)] * voiced_blocks + [block(0.0)] * 20
 
 
 def test_a_sentence_is_translated_once_when_the_live_caption_already_matched_it(store):
@@ -122,7 +122,7 @@ def test_speech_already_in_the_target_language_is_shown_as_said(store):
 class SlowOnShortText(EchoTranslator):
     def translate(self, messages, on_partial=None):
         self.calls.append(messages)
-        text = messages[-1]["content"]
+        text = messages[-1].get("item", messages[-1]["content"])
         if text == "待って":
             for _ in range(100):
                 time.sleep(0.02)
@@ -209,13 +209,16 @@ def test_after_a_few_seconds_a_short_breath_ends_the_utterance():
 
 
 class CountingRecognizer:
+    """Names each utterance by its order: live captions grow, a new utterance starts short again."""
+
     def __init__(self):
-        self.finals = 0
+        self.count, self.last = 0, 10 ** 9
 
     def recognize(self, samples, lang):
-        if len(samples) // CHUNK >= 13:
-            self.finals += 1
-        return f"line {self.finals}", "ja", ""
+        if len(samples) < self.last:
+            self.count += 1
+        self.last = len(samples)
+        return f"line {self.count}", "ja", ""
 
 
 class SlowTranslator(EchoTranslator):
@@ -225,8 +228,9 @@ class SlowTranslator(EchoTranslator):
 
 
 def test_finished_sentences_that_arrive_while_translating_are_all_kept(store):
-    audio = FakeAudio([block(0.9)] * 10 + [block(0.0)] * 9 + [block(0.9)] * 10 + [block(0.0)] * 9
-                      + [block(0.9)] * 10 + [block(0.0)] * 12, delay=0.002)
+    audio = FakeAudio([block(0.9)] * 10 + [block(0.0)] * 16 + [block(0.9)] * 10 + [block(0.0)] * 16
+                      + [block(0.9)] * 10 + [block(0.0)] * 20, delay=0.002)
     events, _ = run_speech(store, audio, CountingRecognizer(), SlowTranslator(), seconds=4.0, finals=3)
     finals = [e["source"] for e in events if e["type"] == "line" and e["final"]]
     assert finals[:3] == ["line 1", "line 2", "line 3"]
+

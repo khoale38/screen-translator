@@ -147,3 +147,36 @@ def test_dubbed_speech_asks_for_an_interpreters_condensed_line():
     assert "at most 9 words" in messages[-1]["content"] and messages[-1]["item"] == "I have a bucket, I have a sponge."
     assert "不超过9个词" in for_hy_mt(messages)[0]["content"]
     assert "不超过" not in for_hy_mt(build_messages("Hi", [], "en", "vi"))[0]["content"]
+
+
+class SlowVoices:
+    """Speaks everything at 4 s regardless of pace, like a voice that cannot be hurried any further."""
+
+    def __init__(self, voice_id):
+        self.voices = [Voice(voice_id, "Voice", "vi", "female")]
+        self.calls = []
+
+    def synthesize(self, text, voice, how):
+        self.calls.append(how)
+        return np.zeros(4 * 16000, np.float32), 16000
+
+
+def test_a_natural_voice_already_fitted_to_its_line_is_not_voiced_again():
+    for voice_id, calls in (("natural:vi:F1", 1), ("an", 2)):
+        voices, played = SlowVoices(voice_id), []
+        dubber = Dubber(lambda: SimpleNamespace(dub_voice="", dub_original="keep"), voices_factory=lambda: voices,
+                        player=lambda audio, rate: played.append(1), original_sound=Ducking)
+        dubber.say(Line("Trưởng bộ môn đã rất giận.", "vi", "", 200.0, seconds=2.0))
+        wait(lambda: played)
+        dubber.close()
+        assert len(voices.calls) == calls
+
+
+def test_speech_tells_the_translator_who_is_speaking_by_their_voice():
+    from screen_translator.pipeline import Pipeline
+
+    pipeline = Pipeline.__new__(Pipeline)
+    pipeline._last_voice = None
+    assert pipeline._voice_note({"id": 1, "pitch": 210.0}) == "The latest line is spoken by a woman."
+    assert pipeline._voice_note({"id": 2, "pitch": 110.0}).endswith("a different speaker from the line before.")
+    assert pipeline._voice_note({"id": 3, "pitch": 0.0}) == ""

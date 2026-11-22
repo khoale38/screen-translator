@@ -28,6 +28,7 @@ class Recognition(NamedTuple):
 
 SENSEVOICE_LANGS = {"zh": "zh", "zh-Hant": "zh", "en": "en", "ja": "ja", "ko": "ko", "yue": "yue"}
 _SPECIAL = re.compile(r"<\|[^|]*\|>")
+# Hangul is included: SenseVoice spaces Korean between syllables ("받 았 어"), which reads worse than no spaces.
 _CJK = "\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff00-\uffef"
 _CJK_GAP = re.compile(f"(?<=[{_CJK}]) (?=[{_CJK}0-9])|(?<=[0-9]) (?=[{_CJK}])")
 
@@ -185,7 +186,7 @@ class Segmenter:
     done by the time the utterance is confirmed finished.
     """
 
-    def __init__(self, vad, threshold: float = 0.5, silence_s: float = 0.25, max_s: float = 8.0,
+    def __init__(self, vad, threshold: float = 0.5, silence_s: float = 0.45, max_s: float = 8.0,
                  partial_s: float = 0.5, pad_s: float = 0.2, long_s: float = 3.0, short_silence_s: float = 0.08) -> None:
         self.vad = vad
         self.threshold = threshold

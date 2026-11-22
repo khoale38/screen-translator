@@ -359,3 +359,35 @@ def test_manga_columns_make_one_bubble_read_right_to_left():
     bubble = blocks["今日こそあいつをぶっ倒してやる!"]
     assert bubble.vertical and round(bubble.line_height * 900) == 43
     assert not blocks["第3話 約束の場所"].vertical
+
+
+def test_centred_columns_furigana_and_a_short_last_column_stay_in_one_bubble():
+    lines = [
+        OcrLine("今日は本当に", 0.99, _px(500, 100, 42, 250)),
+        OcrLine("ほんとう", 0.99, _px(543, 160, 18, 80)),
+        OcrLine("楽しかった", 0.99, _px(452, 120, 42, 210)),
+        OcrLine("よ。", 0.99, _px(404, 200, 42, 60)),
+        OcrLine("だ", 0.99, _px(356, 205, 42, 42)),
+    ]
+    [bubble] = group_blocks(lines, 1280, 900)
+    assert bubble.text == "今日は本当に楽しかったよ。だ" and bubble.vertical
+    assert bubble.box[0] + bubble.box[2] >= (543 + 18) / 1280 - 1e-9
+
+
+def test_manga_bubbles_are_listed_right_to_left():
+    lines = [OcrLine("右の吹き出し", 0.99, _px(900, 100, 42, 250)), OcrLine("左の吹き出し", 0.99, _px(300, 105, 42, 250))]
+    assert [b.text for b in group_blocks(lines, 1280, 900)] == ["右の吹き出し", "左の吹き出し"]
+
+
+def test_menu_items_and_a_button_icon_gap_do_not_merge():
+    menu = [px("New Game", 100, 100, 160, 30), px("Load Game", 100, 150, 170, 30), px("Options", 100, 200, 130, 30)]
+    assert [b.text for b in group_blocks(menu, 1000, 1000)] == ["New Game", "Load Game", "Options"]
+    prompt = [px("Press", 100, 500, 80, 30), px("to interact", 220, 500, 150, 30)]
+    assert len(group_blocks(prompt, 1000, 1000)) == 2
+
+
+def test_a_short_row_that_stops_mid_phrase_still_wraps():
+    lines = [px("北の洞窟で", 100, 100, 150, 30), px("賢者に会う", 100, 140, 150, 30)]
+    assert [b.text for b in group_blocks(lines, 1000, 1000)] == ["北の洞窟で賢者に会う"]
+    lines = [px("Secure the", 100, 100, 150, 30), px("comms tower", 100, 140, 170, 30)]
+    assert [b.text for b in group_blocks(lines, 1000, 1000)] == ["Secure the comms tower"]

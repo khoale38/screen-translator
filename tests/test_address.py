@@ -106,3 +106,91 @@ def test_a_cue_said_before_the_reply_counts_for_the_reply():
     rel.heard("ミカ：先輩、待ってください！")
     assert rel.address("リュウ：なんだよ、忙しいんだ。") == Address("リュウ", "ミカ", "anh", "em")
     rel.close()
+
+
+def test_titles_in_names_and_polite_sir_do_not_make_a_shop():
+    assert guess_facts("Sir Aldric: The gate must hold.", "Sir Aldric", "Mira") is None
+    assert guess_facts("Mira: Yes, sir, at once.", "Mira", "Aldric") is None
+    assert guess_facts("Welcome! What can I get you?", "Clerk", "Kai")["senior"] == "Clerk"
+    assert guess_facts("Welcome back, prince.", "Guard", "Kai") is None
+
+
+def test_family_teachers_masters_and_rulers_get_their_own_pronouns():
+    mom = {"relation": "parent and child", "senior": "Mẹ Hoa", "Mẹ Hoa gender": "female"}
+    assert vietnamese(mom, "Mẹ Hoa", "Tuấn") == ("mẹ", "con")
+    assert vietnamese(mom, "Tuấn", "Mẹ Hoa") == ("con", "mẹ")
+    grandma = {"relation": "grandparent and grandchild", "older": "Bà", "Bà gender": "female"}
+    assert vietnamese(grandma, "Bà", "Minh") == ("bà", "cháu")
+    teacher = {"relation": "teacher and student", "senior": "Tanaka", "Tanaka gender": "male"}
+    assert vietnamese(teacher, "Haruto", "Tanaka") == ("em", "thầy")
+    master = {"relation": "master and disciple", "senior": "Sư phụ"}
+    assert vietnamese(master, "Sư phụ", "Lâm") == ("ta", "con")
+    assert vietnamese(master, "Lâm", "Sư phụ") == ("đệ tử", "sư phụ")
+    shop = {"relation": "staff and customer", "senior": "Clerk", "Kai gender": "male"}
+    assert vietnamese(shop, "Clerk", "Kai") == ("tôi", "quý khách")
+    assert vietnamese(shop, "Kai", "Clerk") == ("tôi", "bạn")
+
+
+def test_elder_titles_count_only_when_they_call_the_listener():
+    assert guess_facts("Brother, wait!", "Linh", "Minh")["older"] == "Minh"
+    assert guess_facts("My brother is sick today.", "Linh", "Minh") is None
+    assert guess_facts("형사님, 이쪽입니다.", "A", "B") is None
+    senpai = guess_facts("先輩、待って！", "Mika", "Aoi")
+    assert senpai["older"] == "Aoi" and "Aoi gender" not in senpai
+    assert guess_facts("お前、宿題は？", "Teacher", "Haruto") is None
+
+
+def test_the_listener_is_whoever_the_line_calls_by_name():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("Haruto: Morning.", "Misaki: Morning!", "Haruto: Ready?", "Misaki: Yes.", "Tanaka: Sit down."):
+        rel.heard(line)
+    assert rel._listener("Misaki", "Misaki: Tanaka-sensei, sorry I am late!") == "Tanaka"
+    assert rel._listener("Misaki", "Misaki: Sorry I am late!") == "Haruto"
+    rel.close()
+
+
+def test_titles_settle_roles_the_judge_gets_wrong():
+    from screen_translator.address import settled
+
+    wrong = {"relation": "ruler and subject", "senior": "Sir Aldric", "older": "Sir Aldric"}
+    facts = settled(wrong, "Princess Elena", "Sir Aldric", [])
+    assert facts["senior"] == "Princess Elena" and facts["Princess Elena gender"] == "female"
+    assert vietnamese(facts, "Sir Aldric", "Princess Elena") == ("thần", "người")
+    senpai = settled({"relation": "teacher and student", "senior": "ミサキ", "older": "ミサキ", "ミサキ gender": "female"},
+                     "ハルト", "ミサキ", [("ハルト", "ハルト：すみません、ミサキ先輩！")])
+    assert vietnamese(senpai, "ハルト", "ミサキ") == ("em", "chị")
+    teacher = settled({"relation": "coworkers"}, "ミサキ", "田中先生", [("ミサキ", "ミサキ：すみません、田中先生。")])
+    assert vietnamese(teacher, "ミサキ", "田中先生") == ("em", "thầy")
+    assert vietnamese({"relation": "rivals or enemies", "B gender": "female"}, "A", "B") == ("tôi", "chị")
+
+
+def test_a_title_gives_pronouns_before_the_judge_answers():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    rel.heard("Grandma: Did you eat?")
+    assert rel.address("Minjun: Not yet, Grandma.") == Address("Minjun", "Grandma", "cháu", "bà")
+    rel.close()
+
+
+def test_a_title_said_to_someone_else_does_not_count_for_the_pair():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("할머니: 밥은 먹었니?", "민준: 네, 할머니.", "할머니: 그래.", "지은: 오빠!"):
+        rel.heard(line)
+    pair = frozenset(("지은", "민준"))
+    assert all("할머니" not in line for _who, line in rel._said(pair))
+    rel.close()
+
+
+def test_korean_titles_mentioning_someone_else_are_not_cues():
+    assert guess_facts("할머니는 맨날 오빠 편만 들어요.", "지은", "할머니") is None
+    assert guess_facts("오빠, 그 말 지난달에도 했거든?", "지은", "민준")["older"] == "민준"
+    assert guess_facts("고마워, 오빠!", "지은", "민준")["older"] == "민준"
+
+
+def test_an_enemy_calling_someone_master_is_still_an_enemy():
+    from screen_translator.address import settled
+
+    facts = settled({"relation": "rivals or enemies", "rough": True}, "血刀老祖", "师父", [])
+    assert vietnamese(facts, "血刀老祖", "师父") == ("tao", "mày")

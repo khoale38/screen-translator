@@ -19,6 +19,7 @@ def build_messages(
     *,
     address=None,
     budget: str = "",
+    aside: str = "",
 ) -> list[dict]:
     target = languages.name(target_lang)
     source = "whatever language it is in" if source_lang == "auto" else languages.name(source_lang)
@@ -37,6 +38,8 @@ def build_messages(
         f"curses keep their force.\n"
         f"- Keep controller buttons, keys and on-screen labels such as L1, R2, X, Enter or Esc exactly as written, "
         f"and keep holding a button distinct from pressing or tapping it.\n"
+        f"- Keep every number, time, price and stat abbreviation (HP, MP, Lv, ATK, EXP) exactly as written; never "
+        f"change, add or drop a digit.\n"
         f"- Write complete, natural {target}. When the source leaves out a subject or object (common in Japanese, "
         f"Korean and Chinese), work out who or what is meant from the earlier lines and state it.\n"
         f"- If the latest message continues the previous one, translate it so it reads naturally after it.\n"
@@ -64,16 +67,16 @@ def build_messages(
     for turn in history:
         messages.append(_asking(turn.source, turn.note))
         messages.append({"role": "assistant", "content": turn.translation})
-    note = " ".join(filter(None, (address.note() if address else "", dub_note(budget))))
+    note = " ".join(filter(None, (aside, address.note() if address else "", dub_note(budget))))
     messages.append(_asking(current, note))
     return messages
 
 
 def dub_note(budget: str) -> str:
     """Speech that will be dubbed must fit the time its speaker took, as a simultaneous interpreter's would."""
-    return (f"This line will be dubbed over the speaker, so it must be said in the time they took: use at most "
-            f"{budget}. Condense like a simultaneous interpreter: keep the meaning, names and tone, drop filler, "
-            f"repetition and hedging.") if budget else ""
+    return (f"This line will be dubbed over the speaker, so it must be said in the time they took: at most "
+            f"{budget}. If a faithful translation fits, give that; if not, condense like a simultaneous interpreter: "
+            f"keep the meaning, names and tone, drop only filler, repetition and hedging.") if budget else ""
 
 
 def _asking(text: str, note: str) -> dict:
@@ -151,7 +154,9 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     if turns:
         parts.append("前面的对话：\n" + "\n".join(f"{asked.get('item', asked['content'])}\n{answered['content']}"
                                                for asked, answered in zip(turns[::2], turns[1::2])))
-    parts.append("屏幕上的文字：\n" + "\n".join(last.get("screen", [text])))
+    # Shown a whole screen, the 1.8B model translates the wrong item or all of them, so a screen item comes alone.
+    if "screen" not in last:
+        parts.append("屏幕上的文字：\n" + text)
     brief = ""
     if facts.get("budget"):
         count, unit = facts["budget"].split()

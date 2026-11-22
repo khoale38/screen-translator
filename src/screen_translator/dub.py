@@ -40,7 +40,7 @@ ORIGINAL_SOUND = {"duck": 0.25, "mute": 0.0, "keep": 1.0}
 
 MAX_PACE = 1.7
 # A line heard longer ago than this is skipped once a newer one waits, so the voice stays with the speaker.
-STALE_S = 5.0
+STALE_S = 10.0
 # How much the natural voices say per second at normal pace, measured; zh, ja and th in characters, others in words.
 SPOKEN_PER_S = {"vi": 2.2, "en": 3.2, "es": 2.7, "ko": 1.9, "ja": 5.5, "zh": 5.0, "th": 7.0}
 CHARACTER_LANGS = {"ja", "zh", "th"}
@@ -49,7 +49,7 @@ CHARACTER_LANGS = {"ja", "zh", "th"}
 def speakable(target: str, seconds: float) -> str:
     """How much a dub can say in `seconds` at the fastest pace that still sounds natural, e.g. "12 words"."""
     lang = _base(target)
-    count = max(3, round(seconds * SPOKEN_PER_S.get(lang, 2.7) * MAX_PACE * 0.9))
+    count = max(4, round(seconds * SPOKEN_PER_S.get(lang, 2.7) * MAX_PACE * 0.9))
     return f"{count} characters" if lang in CHARACTER_LANGS else f"{count} words"
 
 REGIONS = {"US": "US", "GB": "UK", "AU": "Australian", "IE": "Irish", "IN": "Indian", "ZA": "South African",
@@ -357,10 +357,14 @@ class Dubber:
             self.emit({"type": "dub", "error": f"No voice for {line.target} is installed. On Windows, add one "
                                                "under Settings → Time & language → Speech."})
             return None
-        how = delivery(line.emotion, line.pitch, voice.gender or gender, self._waiting(), line.seconds)
+        waiting = self._waiting()
+        # With nothing queued behind it a line may run into the pause after it instead of being hurried.
+        fit_s = line.seconds * (1.0 if waiting else 1.5)
+        how = delivery(line.emotion, line.pitch, voice.gender or gender, waiting, fit_s)
         started = time.monotonic()
         audio, rate = voices.synthesize(line.text, voice, how)
-        if how.fit_s and len(audio) / rate > 1.05 * how.fit_s and how.pace < MAX_PACE:
+        fitted_already = voice.id.startswith("natural:")
+        if how.fit_s and not fitted_already and len(audio) / rate > 1.05 * how.fit_s and how.pace < MAX_PACE:
             faster = min(MAX_PACE, how.pace * len(audio) / rate / how.fit_s)
             audio, rate = voices.synthesize(line.text, voice, Delivery(faster, how.pitch, how.loudness))
         self.emit({"type": "dub", "voice": voice.name, "ms": round((time.monotonic() - started) * 1000),

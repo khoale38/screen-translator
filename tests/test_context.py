@@ -77,3 +77,9 @@ def test_hy_mt_screen_requests_share_everything_but_the_item():
     a, b = (for_hy_mt(build_screen_messages(i, screen, [], "ja", "vi"))[0]["content"] for i in range(2))
     assert a.endswith("\n設定") and b.endswith("\nミッション失敗")
     assert a.rsplit("\n", 1)[0] == b.rsplit("\n", 1)[0]
+
+
+def test_hy_mt_is_not_shown_the_rest_of_the_screen():
+    screen = ["設定", "ミッション失敗", "Lv 41"]
+    prompt = for_hy_mt(build_screen_messages(1, screen, [], "ja", "vi"))[0]["content"]
+    assert "設定" not in prompt and "Lv 41" not in prompt and prompt.endswith("\nミッション失敗")

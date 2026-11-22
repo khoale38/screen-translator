@@ -32,12 +32,16 @@ def _join(left: str, right: str) -> str:
     return f"{left} {right}"
 
 
-def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3) -> list[OcrLine]:
-    """Drop HUD icons and dot rows that OCR reads as text: keep lines with at least two letters, minus edge symbols."""
+def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: bool = False) -> list[OcrLine]:
+    """Drop HUD icons and dot rows that OCR reads as text: keep lines with at least two letters, minus edge symbols.
+
+    With `lone_cjk`, a single CJK character is kept too, such as the short last column of a manga bubble (だ。).
+    """
     kept = []
     for line in lines:
         text = BUTTON_MISREAD.sub(r"\g<1>1", line.text.strip().strip(_DECORATION + " "))
-        if line.confidence >= min_confidence and sum(ch.isalpha() for ch in text) >= 2:
+        letters = sum(ch.isalpha() for ch in text)
+        if line.confidence >= min_confidence and (letters >= 2 or (lone_cjk and letters and _SPACELESS.search(text))):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
 
@@ -52,11 +56,14 @@ def char_size(line: OcrLine, width: int = 1, height: int = 1) -> float:
     return line.box[2] * width / height if is_vertical(line, width, height) else line.box[3]
 
 
-def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, height: int = 1) -> str:
-    kept = clean_lines(lines, min_confidence)
+def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, height: int = 1,
+             lone_cjk: bool = False, vertical: bool | None = None) -> str:
+    kept = clean_lines(lines, min_confidence, lone_cjk)
     if not kept:
         return ""
-    if sum(is_vertical(line, width, height) for line in kept) * 2 > len(kept):
+    if vertical is None:
+        vertical = sum(is_vertical(line, width, height) for line in kept) * 2 > len(kept)
+    if vertical:
         text = ""
         for line in sorted(kept, key=lambda line: -(line.box[0] + line.box[2])):
             text = _join(text, line.text.strip())
@@ -169,10 +176,36 @@ class Block:
     vertical: bool = False
 
 
+def _orientation(line: OcrLine, width: int, height: int) -> str:
+    """"v" for a column, "h" for a row, "?" for one or two CJK characters that could belong to either."""
+    if is_vertical(line, width, height):
+        return "v"
+    text = line.text.strip()
+    aspect = line.box[3] * height / max(1e-9, line.box[2] * width)
+    return "?" if len(text) <= 2 and _SPACELESS.search(text) and 0.6 <= aspect <= 1.6 else "h"
+
+
+def _ruby(pixels: list[tuple]) -> dict[int, int]:
+    """Furigana: a thin column hugging a wider one, whose reading it spells out; maps each to the column it reads."""
+    found = {}
+    for i, a in enumerate(pixels):
+        if a[4] != "v":
+            continue
+        for j, b in enumerate(pixels):
+            if i == j or b[4] != "v" or a[2] >= 0.6 * b[2]:
+                continue
+            gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
+            if gap <= 0.5 * b[2] and a[1] >= b[1] - 0.5 * b[2] and a[1] + a[3] <= b[1] + b[3] + 0.5 * b[2]:
+                found[i] = j
+                break
+    return found
+
+
 def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_confidence: float = 0.3) -> list[Block]:
-    kept = clean_lines(lines, min_confidence)
-    pixels = [(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height, is_vertical(l, width, height))
-              for l in kept]
+    kept = clean_lines(lines, min_confidence, lone_cjk=True)
+    pixels = [(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height,
+               _orientation(l, width, height), l.text.strip()) for l in kept]
+    ruby = _ruby(pixels)
     parent = list(range(len(kept)))
 
     def root(i: int) -> int:
@@ -183,8 +216,10 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
 
     for i in range(len(kept)):
         for j in range(i + 1, len(kept)):
-            if _same_block(pixels[i], pixels[j]):
+            if i not in ruby and j not in ruby and _same_block(pixels[i], pixels[j]):
                 parent[root(i)] = root(j)
+    for small, base in ruby.items():
+        parent[root(small)] = root(base)
 
     groups: dict[int, list[int]] = {}
     for i in range(len(kept)):
@@ -193,16 +228,29 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
     blocks = []
     for members in groups.values():
         group = [kept[i] for i in members]
+        words = [kept[i] for i in members if i not in ruby]
         left = min(l.box[0] for l in group)
         top = min(l.box[1] for l in group)
         right = max(l.box[0] + l.box[2] for l in group)
         bottom = max(l.box[1] + l.box[3] for l in group)
-        blocks.append(Block(normalize(assemble(group, min_confidence, width, height)),
-                            (left, top, right - left, bottom - top),
-                            median(char_size(l, width, height) for l in group),
-                            vertical=pixels[members[0]][4]))
-    blocks.sort(key=lambda b: (round(b.box[1] * 50), b.box[0]))
+        vertical = any(pixels[i][4] == "v" for i in members)
+        text = normalize(assemble(words, min_confidence, width, height, lone_cjk=True, vertical=vertical))
+        if sum(ch.isalpha() for ch in text) < 2:
+            continue
+        columns = [l for l in words if is_vertical(l, width, height)] or words
+        blocks.append(Block(text, (left, top, right - left, bottom - top),
+                            median(char_size(l, width, height) for l in columns), vertical=vertical))
+    # Manga is read right to left, so its bubbles are listed that way within each band.
+    leftward = sum(b.vertical for b in blocks) * 2 > len(blocks)
+    blocks.sort(key=lambda b: (round(b.box[1] * 50), -b.box[0] if leftward else b.box[0]))
     return blocks
+
+
+_MID_PHRASE = re.compile(r"[、，,]$|[でにをはがのとへもや]$")
+
+
+def _cjk(text: str) -> bool:
+    return bool(_SPACELESS.search(text))
 
 
 def _same_block(a: tuple, b: tuple) -> bool:
@@ -210,23 +258,27 @@ def _same_block(a: tuple, b: tuple) -> bool:
 
     Vertical text is the other way round: neighbouring columns of one speech bubble belong together.
     """
-    if a[4] or b[4]:
-        return a[4] and b[4] and _same_bubble(a, b)
+    if "v" in (a[4], b[4]):
+        return a[4] in "v?" and b[4] in "v?" and _same_bubble(a, b)
     height = max(a[3], b[3])
     ratio = min(a[3], b[3]) / height
     if abs((a[1] + a[3] / 2) - (b[1] + b[3] / 2)) < height / 2:
         gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
-        return ratio >= 0.7 and gap < 0.8 * height
+        # A wider hole on one row is usually a button icon or a gap between separate labels.
+        return ratio >= 0.7 and gap < 0.6 * height
     upper, lower = (a, b) if a[1] < b[1] else (b, a)
     gap = lower[1] - (upper[1] + upper[3])
     overlap = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
     same_size = ratio >= 0.75 or (ratio >= 0.6 and gap <= 0.3 * height)
-    return same_size and -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
+    # Only a full row, or one that stops mid-phrase, wraps onto the next; other short rows stacked up are menu
+    # items, list entries or chat lines.
+    wraps = (len(upper[5].replace(" ", "")) >= (8 if _cjk(upper[5]) else 14) or _MID_PHRASE.search(upper[5])
+             or lower[5][:1].islower())
+    return wraps and same_size and -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
 
 
 def _same_bubble(a: tuple, b: tuple) -> bool:
     size = max(a[2], b[2])
     gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
     overlap = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
-    return min(a[2], b[2]) >= 0.6 * size and -0.2 * size <= gap <= 0.8 * size and overlap >= 0.3 * min(a[3], b[3]) \
-        and abs(a[1] - b[1]) <= 1.5 * size
+    return min(a[2], b[2]) >= 0.6 * size and -0.2 * size <= gap <= 0.8 * size and overlap >= 0.3 * min(a[3], b[3])

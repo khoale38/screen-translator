@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Callable
 import numpy as np
 
 from . import diagnostics, online
-from .dub import speakable
+from .dub import gender_of, speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .address import Relationships
@@ -190,6 +190,7 @@ class Pipeline:
         self._heard_lock = threading.Lock()
         self._heard: dict | None = None
         self._finals: deque[dict] = deque()
+        self._last_voice: tuple[int, str] | None = None
         self._heard_changed = threading.Event()
         self.state = "stopped"
         self.last_error = ""
@@ -731,7 +732,7 @@ class Pipeline:
                            "ms": round((time.monotonic() - started) * 1000)})
                 entry = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
                          "lang": spoken, "emotion": emotion, "at": time.monotonic(),
-                         "pitch": pitch_hz(heard.samples) if heard.final else 0.0,
+                         "pitch": pitch_hz(heard.samples),
                          "seconds": len(heard.samples) / RATE}
                 with self._heard_lock:
                     # Every finished sentence is kept; of a sentence still being spoken only the newest guess is.
@@ -805,15 +806,26 @@ class Pipeline:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
                    "translation": translation, "final": final, **extra})
 
+    def _voice_note(self, heard: dict) -> str:
+        """Speech has no speaker names, but the voice says whether a man or a woman is talking, and when it changes."""
+        gender = gender_of(heard.get("pitch", 0.0))
+        if not gender:
+            return ""
+        before, self._last_voice = self._last_voice, (heard["id"], gender)
+        changed = before and before[0] != heard["id"] and before[1] != gender
+        return (f"The latest line is spoken by a {'man' if gender == 'male' else 'woman'}"
+                + (", a different speaker from the line before." if changed else "."))
+
     def _translate_speech(self, translator: Translator, heard: dict) -> str:
         settings = self.store.settings
         known = self._cache.get(self._cache_key(heard["text"]))
         if known is not None:
             return known
         budget = speakable(settings.target_lang, heard.get("seconds", 0.0)) if settings.dub else ""
+        # On the line itself, not in the notes: the notes open the prompt, and changing them rereads all of it.
         messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
                                   settings.glossary, settings.notes, address=self.relationships.address(heard["text"]),
-                                  budget=budget)
+                                  budget=budget, aside=self._voice_note(heard))
 
         started = time.monotonic()
 
