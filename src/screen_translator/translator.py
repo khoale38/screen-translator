@@ -125,6 +125,7 @@ def build_screen_messages(
     target_lang: str,
     glossary: dict[str, str] | None = None,
     notes: str = "",
+    note: str = "",
 ) -> list[dict]:
     """Item `index` of a screen's text, to be translated on its own with the whole screen as context.
 
@@ -136,8 +137,8 @@ def build_screen_messages(
     listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
     # Quoting the item spares a small model looking its letter up, where it often lands on a neighbour.
     item = " / ".join(screen[index].splitlines())
-    messages[-1].update(content=f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}: {item}", item=screen[index],
-                        screen=screen)
+    content = with_note(f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}: {item}", note)
+    messages[-1].update(content=content, item=screen[index], screen=screen)
     return messages
 
 

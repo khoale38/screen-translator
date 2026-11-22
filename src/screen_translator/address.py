@@ -60,6 +60,7 @@ ROLES = {
     "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸",
                                    re.I),
 }
+YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아", re.I)
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|grandma|grandmother|granny|mom|mum|mother)\b|공주|할머니|엄마|"
                            r"어머니|おばあ|お母|母さん|祖母|奶奶|外婆|妈妈|公主", re.I)
@@ -82,9 +83,9 @@ Answer questions about {a} and {b} with JSON only:
 
 
 def _looks_like_name(label: str) -> bool:
-    """One or two words, each capitalised unless written in a script without capitals ("Big Smoke", "リュウ")."""
+    """One to three words, each capitalised unless written in a script without capitals ("Big Smoke", "リュウ")."""
     words = label.split()
-    return 0 < len(words) <= 2 and all(word[0].isupper() or not word[0].isascii() for word in words)
+    return 0 < len(words) <= 3 and len(label) <= 24 and all(word[0].isupper() or not word[0].isascii() for word in words)
 
 
 def body_of(text: str) -> str:
@@ -183,8 +184,12 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         if calls_by(cue, line):
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
             title = cue.search(line).group(0)
+            if role.startswith("ruler"):
+                facts["royal"] = "điện hạ" if PRINCELY.search(title) else "bệ hạ"
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
+    if YOUNGER.search(line):
+        return {"relation": "siblings or cousins", "older": speaker, "guess": True}
     for gender, cue in TO_ELDER.items():
         found = cue.search(line)
         if found and not _MENTIONED.search(line[:found.start()]):
@@ -199,7 +204,8 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
     """Whether a title in the line calls the listener ("Mom, I'm home", "Your Highness!") rather than names someone."""
     for match in cue.finditer(line):
         before, after = line[:match.start()], line[match.end():]
-        if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after) or _MENTIONED.search(before):
+        honorific = _HONORIFIC.fullmatch(match.group(0).strip()) and re.search(r"\byour\s+$", before, re.I)
+        if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after) or (_MENTIONED.search(before) and not honorific):
             continue
         opening = not before.strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
@@ -213,7 +219,9 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
 
 # Words before a title that make it a mention: "your mother", "like a mother", "手紙には", "우리 엄마".
 _MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says)\s+|"
-                        r"の|には|って|と|우리\s*|내\s*|네\s*)$", re.I)
+                        r"の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|见)$", re.I)
+# Titles that only ever come with "your", so "Your Majesty" calls the ruler where "your mother" only mentions one.
+_HONORIFIC = re.compile(r"(?:majesty|highness|grace|excellency|lordship|ladyship)", re.I)
 
 
 def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
@@ -321,8 +329,10 @@ class Relationships:
         cutoff = self.clock() - self.window_s
         recent = [who for who, _text, at, _to in reversed(self._lines) if who and who != speaker and at >= cutoff]
         if not self._spoken[speaker]:
-            # A newcomer's first line answers whoever just spoke.
-            return recent[0] if recent else None
+            # A newcomer's first line answers whoever just spoke, unless it calls someone by a title ("Grandpa!").
+            calls_a_title = any(calls_by(cue, body) for cue in ROLES.values()) or any(
+                cue.search(body) for cue in TO_ELDER.values())
+            return None if calls_a_title else recent[0] if recent else None
         return next((who for who in recent if self._spoken[who] >= 2), recent[0] if recent else None)
 
     def address(self, text: str) -> Address | None:
@@ -361,8 +371,9 @@ class Relationships:
                     continue
                 guess = guess_facts(line, who, other)
                 known = self._cues.get(pair, {})
-                # One insult between siblings does not make them street rivals.
-                if guess and guess.get("rough") and (known.get("older") or known.get("senior")):
+                # One insult between siblings, or one rough line at all, does not make two people street rivals.
+                rough_lines = sum(1 for w, l, _a, t in self._lines if w in pair and ROUGH.search(body_of(l)))
+                if guess and guess.get("rough") and (known.get("older") or known.get("senior") or rough_lines < 2):
                     continue
                 if guess and (guess.get("older") or not known.get("older")):
                     self._cues[pair] = {**guess, "pair": tuple(pair)}

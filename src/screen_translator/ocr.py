@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import numpy as np
+
 from .capture import Frame
 from .config import data_dir
 
@@ -145,6 +147,11 @@ class RapidOcr:
 
     def recognize(self, frame: Frame, lang: str) -> list[OcrLine]:
         image = frame.array()[:, :, :3]
+        # The detector splits rows and repeats letters on very wide, short crops such as one subtitle line; a margin of
+        # the edge colour above and below gives it room.
+        pad = min(250, max(0, frame.width // 4 - frame.height) // 2)
+        if pad:
+            image = np.pad(image, ((pad, pad), (0, 0), (0, 0)), mode="edge")
         try:
             result = self._engine(lang)(image)
         except Exception:
@@ -161,7 +168,7 @@ class RapidOcr:
             return []
         lines = []
         for box, text, score in zip(result.boxes, result.txts, result.scores):
-            xs, ys = box[:, 0], box[:, 1]
+            xs, ys = box[:, 0], np.clip(box[:, 1] - pad, 0, frame.height)
             x0, y0 = float(xs.min()) / frame.width, float(ys.min()) / frame.height
             w, h = float(xs.max()) / frame.width - x0, float(ys.max()) / frame.height - y0
             lines.append(OcrLine(text, float(score), (x0, y0, w, h)))

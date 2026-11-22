@@ -69,6 +69,8 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
             text = _join(text, line.text.strip())
         return text
 
+    kept = [line for i, line in enumerate(kept)
+            if _ruby_row_base([(l.box[0], l.box[1], l.box[2], l.box[3], "h", l.text) for l in kept], i) is None]
     kept.sort(key=lambda line: line.box[1] + line.box[3] / 2)
     rows: list[list[OcrLine]] = []
     for line in kept:
@@ -79,6 +81,8 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                 rows[-1].append(line)
                 continue
         rows.append([line])
+    # Text far apart on one baseline is separate, such as a choice menu beside the dialogue.
+    rows = [segment for row in rows for segment in _split_wide_gaps(row)]
 
     paragraphs: list[str] = []
     previous: tuple[str, OcrLine, float] | None = None
@@ -88,12 +92,26 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         for line in ordered:
             row_text = _join(row_text, line.text.strip())
         width = ordered[-1].box[0] + ordered[-1].box[2] - ordered[0].box[0]
-        if previous is not None and not _starts_new_paragraph(*previous, row[0], width):
+        same_baseline = previous is not None and abs(
+            (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
+        if previous is not None and not same_baseline and not _starts_new_paragraph(*previous, row[0], width):
             paragraphs[-1] = _join(paragraphs[-1], row_text)
         else:
             paragraphs.append(row_text)
         previous = (row_text, row[0], width)
     return "\n".join(paragraphs)
+
+
+def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
+    ordered = sorted(row, key=lambda item: item.box[0])
+    segments = [[ordered[0]]]
+    for line in ordered[1:]:
+        last = segments[-1][-1]
+        if line.box[0] - (last.box[0] + last.box[2]) > 3 * max(line.box[3], last.box[3]):
+            segments.append([line])
+        else:
+            segments[-1].append(line)
+    return segments
 
 
 def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, below: OcrLine, below_width: float) -> bool:
@@ -104,7 +122,7 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     # OCR boxes vary in height for the same font, so a size change alone only counts when it is large or spaced out.
     if gap > 0.6 * height or ratio < 0.6 or (ratio < 0.75 and gap > 0.3 * height):
         return True
-    if _ENTRY_START.match(below.text):
+    if _separate_entries(above_text, below.text):
         return True
     # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
     return _name_like(above_text) and above_width < 0.6 * below_width and gap > -0.5 * height
@@ -203,7 +221,10 @@ def _ruby(pixels: list[tuple]) -> dict[int, int]:
     """Furigana: a thin column hugging a wider one, whose reading it spells out; maps each to the column it reads."""
     found = {}
     for i, a in enumerate(pixels):
-        if a[4] != "v":
+        if a[4] == "h" or a[4] == "?":
+            below = _ruby_row_base(pixels, i)
+            if below is not None:
+                found[i] = below
             continue
         for j, b in enumerate(pixels):
             if i == j or b[4] != "v" or a[2] >= 0.6 * b[2]:
@@ -213,6 +234,21 @@ def _ruby(pixels: list[tuple]) -> dict[int, int]:
                 found[i] = j
                 break
     return found
+
+
+def _ruby_row_base(pixels: list[tuple], i: int) -> int | None:
+    """The row a small kana-only row sits right on top of, as furigana over horizontal text does."""
+    a = pixels[i]
+    if not _KANA_ONLY.fullmatch(a[5]):
+        return None
+    for j, b in enumerate(pixels):
+        if j == i or b[4] == "v" or a[3] >= 0.65 * b[3]:
+            continue
+        gap = b[1] - (a[1] + a[3])
+        inside = a[0] >= b[0] - 0.5 * b[3] and a[0] + a[2] <= b[0] + b[2] + 0.5 * b[3]
+        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside:
+            return j
+    return None
 
 
 def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_confidence: float = 0.3) -> list[Block]:
@@ -257,7 +293,42 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
     if sum(b.vertical for b in blocks) * 2 > len(blocks):
         return _manga_order(blocks)
     blocks.sort(key=lambda b: (round(b.box[1] * 50), b.box[0]))
-    return blocks
+    return _with_name_boxes(blocks)
+
+
+def _with_name_boxes(blocks: list[Block]) -> list[Block]:
+    """A visual novel's name tab joined to the dialogue right under it, as "Name\nline", so the speaker is known."""
+    merged: list[Block] = []
+    used: set[int] = set()
+    for i, name in enumerate(blocks):
+        if i in used:
+            continue
+        dialogue = None
+        if _name_like(name.text) and not name.vertical:
+            for j, block in enumerate(blocks):
+                if j == i or j in used or block.vertical:
+                    continue
+                spoken = len(block.text) >= max(12, 2 * len(name.text))
+                same_size = 0.6 * block.line_height <= name.line_height <= 1.3 * block.line_height
+                if not (spoken and same_size):
+                    continue
+                drop = block.box[1] - (name.box[1] + name.box[3])
+                lined_up = abs(block.box[0] - name.box[0]) <= 3 * block.line_height \
+                    or block.box[0] <= name.box[0] <= block.box[0] + block.box[2]
+                if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up:
+                    dialogue = j
+                    break
+        if dialogue is None:
+            merged.append(name)
+            continue
+        block = blocks[dialogue]
+        used.add(dialogue)
+        left, top = min(name.box[0], block.box[0]), min(name.box[1], block.box[1])
+        right = max(name.box[0] + name.box[2], block.box[0] + block.box[2])
+        bottom = max(name.box[1] + name.box[3], block.box[1] + block.box[3])
+        merged.append(Block(f"{name.text}\n{block.text}", (left, top, right - left, bottom - top), block.line_height,
+                            block.bg, block.fg))
+    return merged
 
 
 def _manga_order(blocks: list[Block]) -> list[Block]:
@@ -276,10 +347,29 @@ def _manga_order(blocks: list[Block]) -> list[Block]:
     return [block for row in rows for block in sorted(row, key=lambda b: -b.box[0])]
 
 
+_KANA_ONLY = re.compile("[\u3041-\u30ff]+")
 _MID_PHRASE = re.compile(r"[、，,;:\-]$|[でにをはがのとへもや]$|\b(the|a|an|to|of|and|with|in|on|for|or|your|my)$", re.I)
 _ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
 _STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")
-_ENTRY_START = re.compile(r"^\s*(?:[-–－]\s|\[[^\]]{1,20}\]|[^\s:：\[\]]{1,24}:\s|[^\s:：\[\]]{1,12}：)")
+_ENTRY_START = re.compile(r"^\s*(?:[-–－](?:\s|(?=[^\d\s]))|[+\-−]\d|\d+%|\[[^\]]{1,20}\]|[^\s:：\[\]]{1,24}:\s|"
+                          r"[^\s:：\[\]]{1,12}：)")
+
+
+def _short(text: str) -> bool:
+    return len(text.replace(" ", "")) <= 8 if _cjk(text) else len(text.split()) <= 3
+
+
+def _separate_entries(upper: str, lower: str) -> bool:
+    """HUD stats, chat lines or two speakers in one subtitle, rather than one sentence wrapped onto the next row.
+
+    A row ending in a number counts only over another number ("HP 76" / "MP 40", not "Only 3" / "tickets left?!"),
+    and a tag, name or dash only after a row that ends or is itself an entry, not mid-sentence.
+    """
+    upper = upper.rstrip()
+    if _STAT_END.search(upper) and re.search(r"\d", lower) and _short(upper):
+        return True
+    return bool(_ENTRY_START.match(lower)) and (
+        upper.endswith(_ENDS) or bool(_STAT_END.search(upper)) or bool(_ENTRY_START.match(upper)) or _short(upper))
 
 
 def _cjk(text: str) -> bool:
@@ -308,7 +398,7 @@ def _same_block(a: tuple, b: tuple) -> bool:
     # A stat ending the upper row, or a tag, name, or dash starting the lower one, marks separate entries: HUD stacks,
     # chat lines, two speakers in one subtitle.
     text = upper[5].rstrip()
-    if _STAT_END.search(text) or _ENTRY_START.match(lower[5]):
+    if _separate_entries(text, lower[5]):
         return False
     mid_phrase = _MID_PHRASE.search(text) and not re.fullmatch(r"[A-Za-z]+", text)
     wraps = (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower()

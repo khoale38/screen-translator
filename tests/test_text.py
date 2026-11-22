@@ -150,3 +150,10 @@ def test_short_bubble_lines_are_not_name_boxes_but_dashes_and_chat_lines_split()
 def test_a_first_bubble_line_that_starts_a_sentence_is_not_a_name():
     lines = [OcrLine("Jake is", 0.99, (0.40, 0.30, 0.06, 0.04)), OcrLine("at school, Lily.", 0.99, (0.38, 0.335, 0.12, 0.04))]
     assert assemble(lines) == "Jake is at school, Lily."
+
+
+def test_furigana_rows_and_a_choice_menu_beside_the_dialogue_are_kept_out():
+    lines = [OcrLine("ほんとう", 0.99, (0.30, 0.70, 0.06, 0.014)),
+             OcrLine("本当にありがとう。", 0.99, (0.28, 0.716, 0.25, 0.03)),
+             OcrLine("はい", 0.99, (0.85, 0.716, 0.04, 0.03))]
+    assert assemble(lines) == "本当にありがとう。\nはい"

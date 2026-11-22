@@ -304,6 +304,11 @@ class Dubber:
     def _stale(line: Line) -> bool:
         return bool(line.heard_at) and time.monotonic() - line.heard_at > STALE_S
 
+    @staticmethod
+    def _too_late(line: Line) -> bool:
+        """Long past even with nothing else waiting: dubbing it now would only talk over what comes next."""
+        return bool(line.heard_at) and time.monotonic() - line.heard_at > 2 * STALE_S + line.seconds
+
     def _prepare(self) -> None:
         if sys.platform == "win32":
             sys.coinit_flags = 0
@@ -313,7 +318,7 @@ class Dubber:
             if line is None:
                 self._ready.put(None)
                 return
-            if self._stale(line) and self._waiting():
+            if (self._stale(line) and self._waiting()) or self._too_late(line):
                 continue
             try:
                 voices = voices or self.voices_factory()
@@ -334,7 +339,7 @@ class Dubber:
             with self.original_sound(self.settings().dub_original):
                 while item is not None:
                     line, audio, rate = item
-                    if not (self._stale(line) and self._waiting()):
+                    if not ((self._stale(line) and self._waiting()) or self._too_late(line)):
                         self._quiet_after = time.monotonic() + len(audio) / rate + 0.3
                         try:
                             self.player(audio, rate)

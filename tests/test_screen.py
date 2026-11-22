@@ -420,3 +420,12 @@ def test_hud_stacks_chat_lines_and_toggles_stay_apart():
     assert len(group_blocks(toggle, 1000, 1000)) == 2
     tilted = [px("THIS IS A LONG", 100, 100, 200, 30), px("SPEECH BUBBLE", 100, 118, 200, 30)]
     assert len(group_blocks(tilted, 1000, 1000)) == 1
+
+
+def test_a_name_tab_joins_its_dialogue_and_furigana_and_split_bubbles_behave():
+    tab = [px("ミサキ", 100, 700, 90, 30), px("また遅刻？これで三回目だよ。", 100, 745, 420, 30)]
+    assert [b.text for b in group_blocks(tab, 1000, 1000)] == ["ミサキ\nまた遅刻?これで三回目だよ。"]
+    ruby = [px("ほんとう", 140, 300, 60, 14), px("本当に楽しかった", 120, 316, 220, 30)]
+    assert [b.text for b in group_blocks(ruby, 1000, 1000)] == ["本当に楽しかった"]
+    bubble = [px("Only 3", 100, 100, 90, 30), px("tickets left?!", 90, 133, 140, 30)]
+    assert [b.text for b in group_blocks(bubble, 1000, 1000)] == ["Only 3 tickets left?!"]

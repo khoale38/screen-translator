@@ -253,3 +253,23 @@ def test_a_titled_name_calls_that_person_and_a_newcomer_answers_the_last_speaker
     assert rel._listener("Kai", "Kai: Uncle Joe!") == "Joe"
     assert rel._listener("Ana", "Ana: Nice to meet you.") == "Joe"
     rel.close()
+
+
+def test_your_majesty_little_sister_and_a_princess_in_speech():
+    king = guess_facts("Thank you, Your Majesty. I live to serve.", "the speaker", "the listener")
+    assert vietnamese(king, "the speaker", "the listener") == ("thần", "bệ hạ")
+    princess = guess_facts("Forgive me, Your Highness.", "the speaker", "the listener")
+    assert vietnamese(princess, "the speaker", "the listener") == ("thần", "điện hạ")
+    sibling = guess_facts("Little sister, you forgot your lunch!", "Max", "Lily")
+    assert sibling["older"] == "Max"
+    assert guess_facts("我告诉师兄了", "the speaker", "the listener") is None
+
+
+def test_one_rough_line_does_not_make_rivals_and_a_newcomer_calling_a_title_has_no_listener():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("Kai: Hey.", "Mia: Hi.", "Kai: You fool.", "Mia: Ready?"):
+        rel.heard(line)
+    assert "rough" not in rel._cues.get(frozenset(("Kai", "Mia")), {})
+    assert rel._listener("Ana", "Ana: Grandpa! You're back!") is None
+    rel.close()

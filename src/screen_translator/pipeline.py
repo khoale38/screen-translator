@@ -13,10 +13,11 @@ from typing import TYPE_CHECKING, Callable
 import numpy as np
 
 from . import diagnostics, online
-from .dub import gender_of, speakable
+from .dub import STALE_S, gender_of, speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .address import _LABEL, Relationships, speaker_of
+from .romanize import NOT_LATIN, romanized
 from .context import ContextWindow
 from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
@@ -638,10 +639,12 @@ class Pipeline:
         """Every piece as its own translation, all decoded side by side; each shows as soon as it is done."""
         settings = self.store.settings
         history = self.context.turns()[-4:]
+        # Dialogue on a game screen ("Name\nline" from a name tab) gets the same who-talks-to-whom pronouns as subtitles.
+        notes = {text: self._address_note(text) for text in texts}
         conversations = [
             build_screen_messages(index, texts, history, settings.source_lang, settings.target_lang, settings.glossary,
-                                  settings.notes)
-            for index in range(len(texts))
+                                  settings.notes, note=notes[text])
+            for index, text in enumerate(texts)
         ]
         started = time.monotonic()
         finished: list[tuple[str, str]] = []
@@ -663,6 +666,9 @@ class Pipeline:
                 return
             if "\n" in source:
                 translation = translation.replace(" / ", "\n")
+            if translation.strip() == source.strip() and romanized(source):
+                # A name HY-MT handed back in kana or hangul, which a Vietnamese viewer cannot read.
+                translation = self._names.setdefault(source.strip(), romanized(source))
             translation = label_speaker(source, translation, self._names)
             self._remember(source, translation)
             left.discard(source)
@@ -672,8 +678,12 @@ class Pipeline:
                        "batch": len(texts), "steps": translator.timing})
 
         translator.translate_each(conversations, [len(text) for text in texts], piece)
-        for source, translation in finished:
-            self.context.add(source, translation)
+        done = dict(finished)
+        for source in texts:
+            if source in done:
+                self.context.add(source, done[source], note=notes[source])
+                if notes[source]:
+                    self.relationships.heard(source)
         for source in retry:
             self._translate_block(translator, source)
 
@@ -751,6 +761,8 @@ class Pipeline:
                 started = time.monotonic()
                 result = recognizer.recognize(heard.samples, self.store.settings.source_lang)
                 text, spoken = normalize(result[0]), result[1]
+                if heard.final and not any(ch.isalnum() for ch in text):
+                    continue
                 emotion = result[2] if len(result) > 2 else ""
                 self.emit({"type": "heard", "id": utterance, "text": text, "final": heard.final, "lang": spoken,
                            "ms": round((time.monotonic() - started) * 1000)})
@@ -772,6 +784,10 @@ class Pipeline:
 
     def _take_heard(self) -> dict | None:
         with self._heard_lock:
+            if self.store.settings.dub:
+                # When translating falls behind the speaker, old sentences give way so the dub stays with the video.
+                while len(self._finals) > 1 and time.monotonic() - self._finals[0]["at"] > STALE_S:
+                    self._finals.popleft()
             if self._finals:
                 heard = self._finals.popleft()
             else:
@@ -798,7 +814,7 @@ class Pipeline:
                 self._speech_line(heard, text, heard["final"], ms=0, context_lines=0)
                 continue
             if done and done[:2] == (heard["id"], _bare(text)):
-                translation = done[2]
+                translation = self._unrepeated(translator, heard, done[2]) if heard["final"] else done[2]
             else:
                 try:
                     translation = self._translate_speech(translator, heard)
@@ -830,18 +846,28 @@ class Pipeline:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
                    "translation": translation, "final": final, **extra})
 
+    def _address_note(self, text: str) -> str:
+        if not speaker_of(text):
+            return ""
+        address = self.relationships.address(text)
+        return address.note() if address and not address.guessed else ""
+
     def _labelled(self, source: str, translation: str, translator) -> str:
         """The translation with its speaker's name, written as the model writes it rather than in kana or hangul."""
         name = speaker_of(source)
         if name:
             match = _LABEL.match(translation.strip())
-            if match:
-                self._names.setdefault(name, match.group(1).strip())
+            written = match.group(1).strip() if match else ""
+            if written and not NOT_LATIN.search(written):
+                self._names.setdefault(name, written)
             elif name not in self._names and not name.isascii():
                 self._names[name] = self._name_in_target(name, translator)
         return label_speaker(source, translation, self._names)
 
     def _name_in_target(self, name: str, translator) -> str:
+        fixed = romanized(name)
+        if fixed:
+            return fixed
         settings = self.store.settings
         messages = build_messages(name, [], settings.source_lang, settings.target_lang,
                                   notes="This is only a character's name: give just the name, in Latin letters.")
@@ -849,7 +875,7 @@ class Pipeline:
             written = translator.translate(messages).strip().splitlines()[0].strip(" .:：\"'")
         except (RuntimeError, ValueError, IndexError, Yielded, Superseded):
             return name
-        return written if 0 < len(written) <= 30 else name
+        return written if 0 < len(written) <= 30 and not NOT_LATIN.search(written) else name
 
     def _voice_note(self, heard: dict) -> str:
         """Speech has no speaker names, but the voice says whether a man or a woman is talking, and when it changes."""
@@ -898,13 +924,19 @@ class Pipeline:
             self._speech_line(heard, translation, False)
 
         translation = translator.translate(messages, partial, urgent=True)
-        earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
-        if heard["final"] and translation in earlier:
-            # Given a long note on a short or garbled line, a small model can repeat an earlier answer instead.
-            plain = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
-                                   settings.glossary, settings.notes)
-            translation = translator.translate(plain, partial, urgent=True)
+        if heard["final"]:
+            translation = self._unrepeated(translator, heard, translation)
         return self._labelled(heard["text"], translation, translator)
+
+    def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
+        """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""
+        earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
+        if translation not in earlier:
+            return translation
+        settings = self.store.settings
+        plain = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
+                               settings.glossary, settings.notes)
+        return translator.translate(plain, urgent=True)
 
 
 def _cut_off(block: Block, frame_height: int) -> bool:

@@ -258,3 +258,16 @@ def test_a_womans_low_phrase_ending_is_not_taken_for_a_man():
     segmenter = Segmenter(FakeVad(), partial_s=100, pad_s=0, pitch=pitch)
     results = [segmenter.feed(b) for b in [voice] * 20 + [block(0.0)] * 6 + [dip] * 14]
     assert not [r for r in results if r and r.final]
+
+
+def test_old_sentences_give_way_when_dubbing_falls_behind(store):
+    from collections import deque
+
+    store.update({"dub": True})
+    pipeline = Pipeline(store, lambda e: None)
+    now = time.monotonic()
+    pipeline._finals = deque([{"id": 1, "at": now - 30}, {"id": 2, "at": now - 20}, {"id": 3, "at": now - 1}])
+    assert pipeline._take_heard()["id"] == 3
+    store.update({"dub": False})
+    pipeline._finals = deque([{"id": 1, "at": now - 30}, {"id": 2, "at": now - 1}])
+    assert pipeline._take_heard()["id"] == 1
