@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .dub import Delivery, Voice
+from .dub import MAX_PACE, Delivery, Voice
 
 LANGS = {"en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi", "hr", "hu", "id", "it",
          "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi"}
@@ -24,6 +24,7 @@ BORROWED = {"ms": "id"}
 # Measured: F1-F5 speak at 158-198 Hz, M1-M5 at 88-129 Hz. The first of each is the one used to match a speaker.
 STYLES = ("F1", "M1", "F2", "M2", "F3", "M3", "F4", "M4", "F5", "M5")
 STEPS = 5
+GAP_S = 0.2
 _SYMBOLS = str.maketrans({"–": "-", "‑": "-", "—": "-", "_": " ", "“": '"', "”": '"', "‘": "'",
                           "’": "'", "´": "'", "`": "'", "[": " ", "]": " ", "|": " ", "/": " ", "#": " ",
                           "→": " ", "←": " ", "♥": "", "☆": "", "♡": "", "©": "", "\\": ""})
@@ -113,13 +114,20 @@ class NaturalVoices:
         chunk = config["ae"]["base_chunk_size"] * config["ttl"]["chunk_compress_factor"]
         latent_dim = config["ttl"]["latent_dim"] * config["ttl"]["chunk_compress_factor"]
         rng = np.random.default_rng()
-        audio = []
+        planned = []
         for piece in pieces(text, lang):
             codes = np.array([ord(c) for c in prepare(piece, lang)])
             ids = indexer[np.minimum(codes, len(indexer) - 1)][None, :]
             text_mask = _mask(np.array([ids.shape[1]]))
             duration = durations.run(None, {"text_ids": ids, "style_dp": dp, "text_mask": text_mask})[0]
-            duration = duration / (1.05 * how.pace)
+            planned.append((ids, text_mask, duration))
+        pace = how.pace
+        if how.fit_s:
+            natural = sum(float(d[0]) for _, _, d in planned) / 1.05 + GAP_S * (len(planned) - 1)
+            pace = min(MAX_PACE, max(pace, natural / how.fit_s))
+        audio = []
+        for ids, text_mask, duration in planned:
+            duration = duration / (1.05 * pace)
             embedded = encoder.run(None, {"text_ids": ids, "style_ttl": ttl, "text_mask": text_mask})[0]
             samples = (duration * rate).astype(np.int64)
             latent_mask = _mask((samples + chunk - 1) // chunk)
@@ -131,6 +139,6 @@ class NaturalVoices:
                     "latent_mask": latent_mask, "current_step": np.array([step], np.float32), "total_step": total,
                 })[0]
             if audio:
-                audio.append(np.zeros(int(0.3 * rate), np.float32))
+                audio.append(np.zeros(int(GAP_S / pace * rate), np.float32))
             audio.append(vocoder.run(None, {"latent": latent})[0][0, : int(samples[0])])
         return np.clip(np.concatenate(audio) * how.loudness, -1, 1).astype(np.float32), rate

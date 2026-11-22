@@ -72,7 +72,7 @@ class LengthRecognizer:
         return (self.short if len(samples) // CHUNK <= self.cutoff else self.long), self.lang, "ANGRY"
 
 
-def run_speech(store, audio, recognizer, translator, seconds=3.0, dubber=None):
+def run_speech(store, audio, recognizer, translator, seconds=3.0, dubber=None, finals=1):
     store.update({"scope": "area", "listen": True, "dub": dubber is not None, "source_lang": "ja",
                   "target_lang": "en"})
     events = []
@@ -88,7 +88,7 @@ def run_speech(store, audio, recognizer, translator, seconds=3.0, dubber=None):
     try:
         pipeline.start()
         deadline = time.monotonic() + seconds
-        while time.monotonic() < deadline and not any(e["type"] == "line" and e["final"] for e in events):
+        while time.monotonic() < deadline and sum(e["type"] == "line" and e["final"] for e in events) < finals:
             time.sleep(0.02)
         time.sleep(0.2)
         pipeline.stop()
@@ -198,3 +198,35 @@ def test_lines_already_in_the_target_language_are_not_dubbed_over_the_original(s
     run_speech(store, FakeAudio(speech(10)), LengthRecognizer("Hold on.", "Hold on.", "en"), EchoTranslator(),
                dubber=dubber)
     assert dubber.lines == []
+
+
+def test_after_a_few_seconds_a_short_breath_ends_the_utterance():
+    segmenter = Segmenter(FakeVad(), partial_s=100, long_s=1.0, short_silence_s=0.06, pad_s=0)
+    early = [segmenter.feed(b) for b in [block(0.9)] * 10 + [block(0.0)] * 2]
+    assert not any(r and r.final for r in early)
+    late = [segmenter.feed(b) for b in [block(0.9)] * 30 + [block(0.0)] * 2]
+    assert any(r and r.final for r in late)
+
+
+class CountingRecognizer:
+    def __init__(self):
+        self.finals = 0
+
+    def recognize(self, samples, lang):
+        if len(samples) // CHUNK >= 13:
+            self.finals += 1
+        return f"line {self.finals}", "ja", ""
+
+
+class SlowTranslator(EchoTranslator):
+    def translate(self, messages, on_partial=None):
+        time.sleep(0.25)
+        return super().translate(messages, on_partial)
+
+
+def test_finished_sentences_that_arrive_while_translating_are_all_kept(store):
+    audio = FakeAudio([block(0.9)] * 10 + [block(0.0)] * 9 + [block(0.9)] * 10 + [block(0.0)] * 9
+                      + [block(0.9)] * 10 + [block(0.0)] * 12, delay=0.002)
+    events, _ = run_speech(store, audio, CountingRecognizer(), SlowTranslator(), seconds=4.0, finals=3)
+    finals = [e["source"] for e in events if e["type"] == "line" and e["final"]]
+    assert finals[:3] == ["line 1", "line 2", "line 3"]

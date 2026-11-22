@@ -430,3 +430,9 @@ def test_choosing_claude_asks_for_a_key_and_needs_no_download(app, tmp_path):
     window.online_key.setText(" sk-ant-test ")
     window.online_key.editingFinished.emit()
     assert ("/api/settings", {"online_key": "sk-ant-test"}) in api.posts
+
+
+def test_dubbing_with_hy_mt_suggests_a_model_that_keeps_up(app, tmp_path):
+    window, api = make_window(tmp_path, listen=True, dub=True, model="hy-mt1.5-1.8b")
+    window.show_dub()
+    assert window.status.text() == desktop.HY_MT_DUB_TIP

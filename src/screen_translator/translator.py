@@ -18,6 +18,7 @@ def build_messages(
     notes: str = "",
     *,
     address=None,
+    budget: str = "",
 ) -> list[dict]:
     target = languages.name(target_lang)
     source = "whatever language it is in" if source_lang == "auto" else languages.name(source_lang)
@@ -57,14 +58,22 @@ def build_messages(
     # The plain facts ride along for translation models that take their own short prompt instead (see for_hy_mt).
     terms = address.terms(source_lang) if address else {}
     messages = [{"role": "system", "content": system, "target": target, "glossary": dict(glossary or {}),
-                 "notes": notes.strip(), "address_terms": terms,
+                 "notes": notes.strip(), "address_terms": terms, "budget": budget,
                  "address_zh": (f"{address.speaker}对{address.listener}说话，翻译成越南语时，{address.speaker}自称"
                                 f"“{address.me}”，称对方“{address.you}”。") if address else ""}]
     for turn in history:
         messages.append(_asking(turn.source, turn.note))
         messages.append({"role": "assistant", "content": turn.translation})
-    messages.append(_asking(current, address.note() if address else ""))
+    note = " ".join(filter(None, (address.note() if address else "", dub_note(budget))))
+    messages.append(_asking(current, note))
     return messages
+
+
+def dub_note(budget: str) -> str:
+    """Speech that will be dubbed must fit the time its speaker took, as a simultaneous interpreter's would."""
+    return (f"This line will be dubbed over the speaker, so it must be said in the time they took: use at most "
+            f"{budget}. Condense like a simultaneous interpreter: keep the meaning, names and tone, drop filler, "
+            f"repetition and hedging.") if budget else ""
 
 
 def _asking(text: str, note: str) -> dict:
@@ -143,7 +152,11 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
         parts.append("前面的对话：\n" + "\n".join(f"{asked.get('item', asked['content'])}\n{answered['content']}"
                                                for asked, answered in zip(turns[::2], turns[1::2])))
     parts.append("屏幕上的文字：\n" + "\n".join(last.get("screen", [text])))
-    prompt = "\n".join(parts) + (f"\n参考上面的信息，把下面的文本翻译成{facts['target']}，注意不需要翻译上文，"
+    brief = ""
+    if facts.get("budget"):
+        count, unit = facts["budget"].split()
+        brief = f"译文用于配音，要像同声传译一样精简口语化，不超过{count}个{'字' if unit == 'characters' else '词'}，"
+    prompt = "\n".join(parts) + (f"\n参考上面的信息，把下面的文本翻译成{facts['target']}，{brief}注意不需要翻译上文，"
                                   f"也不要额外解释：\n{text}")
     return [{"role": "user", "content": prompt}]
 

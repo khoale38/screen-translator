@@ -131,3 +131,19 @@ def test_text_is_prepared_the_way_supertonic_reads_it():
     long = "One sentence here. " * 30
     assert all(len(piece) <= 300 for piece in pieces(long, "en")) and len(pieces(long, "en")) > 1
     assert pieces("短い。", "ja") == ["短い。"]
+
+
+def test_a_dub_may_say_what_fits_the_time_the_speaker_took():
+    from screen_translator.dub import speakable
+
+    assert speakable("vi", 4.0) == "13 words"
+    assert speakable("ja", 2.0).endswith("characters")
+
+
+def test_dubbed_speech_asks_for_an_interpreters_condensed_line():
+    from screen_translator.translator import build_messages, for_hy_mt
+
+    messages = build_messages("I have a bucket, I have a sponge.", [], "en", "vi", budget="9 words")
+    assert "at most 9 words" in messages[-1]["content"] and messages[-1]["item"] == "I have a bucket, I have a sponge."
+    assert "不超过9个词" in for_hy_mt(messages)[0]["content"]
+    assert "不超过" not in for_hy_mt(build_messages("Hi", [], "en", "vi"))[0]["content"]

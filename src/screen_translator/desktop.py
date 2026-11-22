@@ -216,6 +216,10 @@ class TranslationOverlay(QWidget):
         paint_translation(QPainter(self), self.rect(), self.text, self._font_size, self.style, self.final)
 
 
+HY_MT_DUB_TIP = ("HY-MT translates every word, so the voice falls behind people who talk fast. For dubbing, "
+                 "Qwen3.5 4B or Claude shorten lines the way an interpreter does and keep up.")
+
+
 class ScreenOverlay(QWidget):
     """Whole-screen mode: one click-through layer that repaints each translated block over its original text."""
 
@@ -537,7 +541,7 @@ class MainWindow(QWidget):
                            (self.screen_pick, "screen_name"), (self.min_text, "min_text_px")):
             combo.currentIndexChanged.connect(lambda _i, c=combo, k=key: self.api.call("/api/settings", {k: c.currentData()}))
         self.scope.currentIndexChanged.connect(lambda _i: self.show_scope())
-        self.model.currentIndexChanged.connect(lambda _i: (self.refresh_model(), self.show_online()))
+        self.model.currentIndexChanged.connect(lambda _i: (self.refresh_model(), self.show_online(), self.show_dub()))
         self.online_key.editingFinished.connect(
             lambda: self.api.call("/api/settings", {"online_key": self.online_key.text().strip()}))
         self.listen.toggled.connect(lambda on: (self.api.call("/api/settings", {"listen": on}), self.refresh_model(),
@@ -628,6 +632,8 @@ class MainWindow(QWidget):
             widget.setVisible(on)
         if on and self.dub_voice.count() == 0:
             self.refresh_voices()
+        if on and self.model.currentData() == "hy-mt1.5-1.8b":
+            self.status.setText(HY_MT_DUB_TIP)
 
     def refresh_voices(self) -> None:
         if not (self.listening() and self.dub.isChecked()):

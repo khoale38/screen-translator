@@ -46,7 +46,7 @@ class EchoTranslator:
 
     def translate(self, messages, on_partial=None):
         self.calls.append(messages)
-        result = f"EN({messages[-1]['content']})"
+        result = f"EN({messages[-1].get('item', messages[-1]['content'])})"
         if on_partial:
             on_partial(result[:3])
         return result
@@ -133,7 +133,7 @@ async def test_the_log_lists_each_step_with_timings_and_the_settings(store):
 class SlowTranslator(EchoTranslator):
     def translate(self, messages, on_partial=None):
         self.calls.append(messages)
-        result = f"EN({messages[-1]['content']})"
+        result = f"EN({messages[-1].get('item', messages[-1]['content'])})"
         for end in range(1, len(result) + 1):
             time.sleep(0.05)
             if on_partial:

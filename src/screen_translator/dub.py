@@ -38,6 +38,20 @@ EXPRESSION = {
 
 ORIGINAL_SOUND = {"duck": 0.25, "mute": 0.0, "keep": 1.0}
 
+MAX_PACE = 1.7
+# A line heard longer ago than this is skipped once a newer one waits, so the voice stays with the speaker.
+STALE_S = 5.0
+# How much the natural voices say per second at normal pace, measured; zh, ja and th in characters, others in words.
+SPOKEN_PER_S = {"vi": 2.2, "en": 3.2, "es": 2.7, "ko": 1.9, "ja": 5.5, "zh": 5.0, "th": 7.0}
+CHARACTER_LANGS = {"ja", "zh", "th"}
+
+
+def speakable(target: str, seconds: float) -> str:
+    """How much a dub can say in `seconds` at the fastest pace that still sounds natural, e.g. "12 words"."""
+    lang = _base(target)
+    count = max(3, round(seconds * SPOKEN_PER_S.get(lang, 2.7) * MAX_PACE * 0.9))
+    return f"{count} characters" if lang in CHARACTER_LANGS else f"{count} words"
+
 REGIONS = {"US": "US", "GB": "UK", "AU": "Australian", "IE": "Irish", "IN": "Indian", "ZA": "South African",
            "CA": "Canadian", "NZ": "New Zealand", "SC": "Scottish", "ES": "Spain", "MX": "Mexican",
            "BR": "Brazilian", "PT": "Portugal", "FR": "France", "BE": "Belgian", "CH": "Swiss", "CN": "Mainland",
@@ -66,19 +80,20 @@ class Delivery:
     pace: float = 1.0
     pitch: int = 0
     loudness: float = 1.0
+    fit_s: float = 0.0
 
 
 def gender_of(pitch: float) -> str:
     return "" if pitch <= 0 else "male" if pitch < MALE_BELOW_HZ else "female"
 
 
-def delivery(emotion: str, pitch: float, gender: str, backlog: int = 0) -> Delivery:
+def delivery(emotion: str, pitch: float, gender: str, backlog: int = 0, fit_s: float = 0.0) -> Delivery:
     """How to say a line: the speaker's emotion and voice height, sped up a little when lines are piling up."""
     pace, shift, loudness = EXPRESSION.get(emotion, (1.0, 0, 1.0))
     if pitch > 0 and gender in TYPICAL_HZ:
         shift += round(max(-12.0, min(12.0, (pitch / TYPICAL_HZ[gender] - 1) * 40)))
-    pace = min(1.6, pace * (1 + 0.15 * backlog))
-    return Delivery(round(pace, 2), int(shift), loudness)
+    pace = min(MAX_PACE, pace * (1 + 0.15 * backlog))
+    return Delivery(round(pace, 2), int(shift), loudness, fit_s)
 
 
 def _base(lang: str) -> str:
@@ -244,10 +259,15 @@ class Line:
     target: str
     emotion: str
     pitch: float
+    seconds: float = 0.0
+    heard_at: float = 0.0
 
 
 class Dubber:
-    """Speaks lines one after another on a thread of its own, so translation never waits for the voice."""
+    """Speaks lines one after another on threads of their own, so translation never waits for the voice.
+
+    The next line is voiced while the current one plays, so lines follow each other without a gap.
+    """
 
     def __init__(self, settings: Callable, voices_factory=default_voices, player=default_player,
                  original_sound=OriginalSound, emit: Callable[[dict], None] = lambda event: None) -> None:
@@ -257,9 +277,12 @@ class Dubber:
         self.original_sound = original_sound
         self.emit = emit
         self._lines: queue.Queue[Line | None] = queue.Queue()
+        self._ready: queue.Queue[tuple | None] = queue.Queue(maxsize=1)
         self._quiet_after = 0.0
-        self._thread = threading.Thread(target=self._run, name="dub", daemon=True)
-        self._thread.start()
+        self._threads = [threading.Thread(target=self._prepare, name="dub-voice", daemon=True),
+                         threading.Thread(target=self._play, name="dub-play", daemon=True)]
+        for thread in self._threads:
+            thread.start()
 
     def say(self, line: Line) -> None:
         self._lines.put(line)
@@ -270,50 +293,76 @@ class Dubber:
 
     def close(self) -> None:
         self._lines.put(None)
-        self._thread.join(timeout=2)
+        for thread in self._threads:
+            thread.join(timeout=2)
 
-    def _run(self) -> None:
+    def _waiting(self) -> int:
+        return self._lines.qsize() + self._ready.qsize()
+
+    @staticmethod
+    def _stale(line: Line) -> bool:
+        return bool(line.heard_at) and time.monotonic() - line.heard_at > STALE_S
+
+    def _prepare(self) -> None:
         if sys.platform == "win32":
             sys.coinit_flags = 0
         voices = None
         while True:
             line = self._lines.get()
             if line is None:
+                self._ready.put(None)
                 return
+            if self._stale(line) and self._waiting():
+                continue
             try:
                 voices = voices or self.voices_factory()
+                voiced = self._voice(voices, line)
             except Exception as exc:
-                self.emit({"type": "dub", "error": f"Could not load the voices: {exc}"})
+                self.emit({"type": "dub", "error": f"Could not speak the line: {exc}"})
                 continue
+            if voiced:
+                self._ready.put(voiced)
+
+    def _play(self) -> None:
+        if sys.platform == "win32":
+            sys.coinit_flags = 0
+        while True:
+            item = self._ready.get()
+            if item is None:
+                return
             with self.original_sound(self.settings().dub_original):
-                while line is not None:
-                    backlog = self._lines.qsize()
-                    if backlog < 3:
+                while item is not None:
+                    line, audio, rate = item
+                    if not (self._stale(line) and self._waiting()):
+                        self._quiet_after = time.monotonic() + len(audio) / rate + 0.3
                         try:
-                            self._speak(voices, line, backlog)
+                            self.player(audio, rate)
                         except Exception as exc:
-                            self.emit({"type": "dub", "error": f"Could not speak the line: {exc}"})
+                            self.emit({"type": "dub", "error": f"Could not play the line: {exc}"})
                     try:
-                        line = self._lines.get(timeout=0.4)
+                        item = self._ready.get(timeout=0.4)
                     except queue.Empty:
-                        line = None
+                        item = None
                         break
-                    if line is None:
-                        self._lines.put(None)
+                    if item is None:
+                        self._quiet_after = time.monotonic() + 0.3
+                        return
             self._quiet_after = time.monotonic() + 0.3
 
-    def _speak(self, voices, line: Line, backlog: int) -> None:
+    def _voice(self, voices, line: Line) -> tuple | None:
         settings = self.settings()
         gender = gender_of(line.pitch)
         voice = pick_voice(voices.voices, line.target, gender, settings.dub_voice)
         if voice is None:
             self.emit({"type": "dub", "error": f"No voice for {line.target} is installed. On Windows, add one "
                                                "under Settings → Time & language → Speech."})
-            return
-        how = delivery(line.emotion, line.pitch, voice.gender or gender, backlog)
+            return None
+        how = delivery(line.emotion, line.pitch, voice.gender or gender, self._waiting(), line.seconds)
         started = time.monotonic()
         audio, rate = voices.synthesize(line.text, voice, how)
-        self.emit({"type": "dub", "voice": voice.name, "ms": round((time.monotonic() - started) * 1000)})
-        self._quiet_after = time.monotonic() + len(audio) / rate + 0.3
-        self.player(audio, rate)
-        self._quiet_after = time.monotonic() + 0.3
+        if how.fit_s and len(audio) / rate > 1.05 * how.fit_s and how.pace < MAX_PACE:
+            faster = min(MAX_PACE, how.pace * len(audio) / rate / how.fit_s)
+            audio, rate = voices.synthesize(line.text, voice, Delivery(faster, how.pitch, how.loudness))
+        self.emit({"type": "dub", "voice": voice.name, "ms": round((time.monotonic() - started) * 1000),
+                   "seconds": round(len(audio) / rate, 1), "text": line.text})
+        return line, audio, rate

@@ -5,12 +5,14 @@ import queue
 import threading
 import time
 import traceback
+from collections import deque
 from statistics import median
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
 from . import diagnostics, online
+from .dub import speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
 from .address import Relationships
@@ -187,6 +189,7 @@ class Pipeline:
         self.devices: dict[str, str] = {}
         self._heard_lock = threading.Lock()
         self._heard: dict | None = None
+        self._finals: deque[dict] = deque()
         self._heard_changed = threading.Event()
         self.state = "stopped"
         self.last_error = ""
@@ -218,6 +221,7 @@ class Pipeline:
         self._translator_ready.clear()
         self._events = queue.Queue()
         self._heard = None
+        self._finals = deque()
         if settings.scope == "screen":
             loops = [(self._screen_capture_loop, "capture"), (self._screen_translate_loop, "translate")]
         else:
@@ -725,11 +729,17 @@ class Pipeline:
                 emotion = result[2] if len(result) > 2 else ""
                 self.emit({"type": "heard", "id": utterance, "text": text, "final": heard.final, "lang": spoken,
                            "ms": round((time.monotonic() - started) * 1000)})
+                entry = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
+                         "lang": spoken, "emotion": emotion, "at": time.monotonic(),
+                         "pitch": pitch_hz(heard.samples) if heard.final else 0.0,
+                         "seconds": len(heard.samples) / RATE}
                 with self._heard_lock:
-                    self._heard = {"id": utterance, "text": text, "final": heard.final, "ending": heard.ending,
-                                   "lang": spoken, "emotion": emotion, "at": time.monotonic(),
-                                   "pitch": pitch_hz(heard.samples) if heard.final else 0.0,
-                                   "seconds": len(heard.samples) / RATE}
+                    # Every finished sentence is kept; of a sentence still being spoken only the newest guess is.
+                    if heard.final:
+                        self._finals.append(entry)
+                        self._heard = None
+                    else:
+                        self._heard = entry
                 self._heard_changed.set()
                 if heard.final:
                     utterance += 1
@@ -738,8 +748,12 @@ class Pipeline:
 
     def _take_heard(self) -> dict | None:
         with self._heard_lock:
-            heard, self._heard = self._heard, None
-            self._heard_changed.clear()
+            if self._finals:
+                heard = self._finals.popleft()
+            else:
+                heard, self._heard = self._heard, None
+            if not self._finals and self._heard is None:
+                self._heard_changed.clear()
             return heard
 
     def _speech_translate_loop(self) -> None:
@@ -785,7 +799,7 @@ class Pipeline:
         if self._dubber is None:
             self._dubber = self.dubber_factory(self)
         self._dubber.say(Line(translation, self.store.settings.target_lang, heard.get("emotion", ""),
-                              heard.get("pitch", 0.0)))
+                              heard.get("pitch", 0.0), heard.get("seconds", 0.0), heard.get("at", 0.0)))
 
     def _speech_line(self, heard: dict, translation: str, final: bool, **extra) -> None:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
@@ -796,8 +810,10 @@ class Pipeline:
         known = self._cache.get(self._cache_key(heard["text"]))
         if known is not None:
             return known
+        budget = speakable(settings.target_lang, heard.get("seconds", 0.0)) if settings.dub else ""
         messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
-                                  settings.glossary, settings.notes, address=self.relationships.address(heard["text"]))
+                                  settings.glossary, settings.notes, address=self.relationships.address(heard["text"]),
+                                  budget=budget)
 
         started = time.monotonic()
 
@@ -805,7 +821,7 @@ class Pipeline:
             if self._stop.is_set():
                 raise Superseded()
             with self._heard_lock:
-                newer = self._heard
+                newer = self._finals[-1] if self._finals else self._heard
             if heard["final"] or not newer:
                 pass
             elif newer["id"] != heard["id"]:

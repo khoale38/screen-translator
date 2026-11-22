@@ -179,17 +179,20 @@ class Utterance:
 class Segmenter:
     """Cuts a stream of 32 ms blocks into utterances.
 
-    An utterance ends after `silence_s` without speech, or at `max_s`. While someone is still talking it also hands
+    An utterance ends after `silence_s` without speech, or at `max_s`. Fast talkers barely pause, so once an
+    utterance is `long_s` old a breath of `short_silence_s` ends it too, at a comma or full stop rather than mid-phrase. While someone is still talking it also hands
     out the speech so far every `partial_s`, and once more the moment the voice drops, so its translation is usually
     done by the time the utterance is confirmed finished.
     """
 
     def __init__(self, vad, threshold: float = 0.5, silence_s: float = 0.25, max_s: float = 8.0,
-                 partial_s: float = 0.5, pad_s: float = 0.2) -> None:
+                 partial_s: float = 0.5, pad_s: float = 0.2, long_s: float = 3.0, short_silence_s: float = 0.08) -> None:
         self.vad = vad
         self.threshold = threshold
         self.silence_blocks = max(1, round(silence_s * RATE / CHUNK))
         self.max_blocks = round(max_s * RATE / CHUNK)
+        self.long_blocks = round(long_s * RATE / CHUNK)
+        self.short_silence_blocks = max(1, round(short_silence_s * RATE / CHUNK))
         self.partial_blocks = max(1, round(partial_s * RATE / CHUNK))
         self.pad_blocks = round(pad_s * RATE / CHUNK)
         self._before: list[np.ndarray] = []
@@ -212,7 +215,8 @@ class Segmenter:
             return None
         self._speech.append(chunk)
         self._quiet = 0 if voiced else self._quiet + 1
-        if self._quiet >= self.silence_blocks or len(self._speech) >= self.max_blocks:
+        needed = self.short_silence_blocks if len(self._speech) >= self.long_blocks else self.silence_blocks
+        if self._quiet >= needed or len(self._speech) >= self.max_blocks:
             return self._finish()
         self._since_partial += 1
         if self._since_partial >= self.partial_blocks or self._quiet == 1:
