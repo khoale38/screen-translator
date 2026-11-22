@@ -75,6 +75,21 @@ def test_screen_overlay_grows_a_block_down_when_the_translation_is_long(app):
     assert rect.height() > 0.02 * 800 + 4
 
 
+def test_a_manga_bubble_gets_its_translation_across_its_columns_and_inside_its_oval(app):
+    overlay = desktop.ScreenOverlay()
+    overlay.setGeometry(QRect(0, 0, 1280, 900))
+    char = 43 / 900
+    block = {"text": "おい、待てよ!どこに行くんだ?", "box": (1009 / 1280, 118 / 900, 88 / 1280, 259 / 900),
+             "line_height": char, "bg": "#ffffff", "fg": "#000000", "vertical": True,
+             "translation": "Hey, wait! Where do you think you're going?"}
+    overlay.set_blocks([block])
+    rect, size = overlay._layouts[0]
+    bubble_width = 88 + 6 + 2 * 43
+    assert 88 <= rect.width() <= 0.7 * bubble_width and rect.height() <= 0.7 * (259 + 2 * 43)
+    assert abs(rect.center().x() - (1009 + 44)) < 2
+    assert 18 <= size <= 37
+
+
 class FakeApi:
     base_url = "http://127.0.0.1:1"
 

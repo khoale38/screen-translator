@@ -18,7 +18,7 @@ from .context import ContextWindow
 from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
 from .ocr import OcrEngine, default_engine
-from .text import Block, Stabilizer, TextEvent, assemble, group_blocks, normalize, similar
+from .text import Block, Stabilizer, TextEvent, assemble, char_size, group_blocks, normalize, similar
 from .translator import (
     LlamaTranslator, Translator, build_batch_messages, build_messages, build_screen_messages, label_speaker,
     parse_numbered, strip_item_letter,
@@ -301,8 +301,8 @@ class Pipeline:
                     if changed(thumbs.get(area), thumb):
                         lines = ocr.recognize(frame, settings.source_lang)
                         self._report_devices(ocr)
-                        texts[area] = assemble(lines)
-                        heights[area] = median(line.box[3] for line in lines) if lines else 0.0
+                        texts[area] = assemble(lines, width=frame.width, height=frame.height)
+                        heights[area] = median(char_size(l, frame.width, frame.height) for l in lines) if lines else 0.0
                         self.emit({"type": "ocr", "area": area, "text": texts[area],
                                    "ms": round((time.monotonic() - read_at) * 1000)})
                     thumbs[area] = thumb
@@ -507,7 +507,7 @@ class Pipeline:
             self._screen_blocks = blocks
         self._screen_changed.set()
         self.emit({"type": "screen", "ms": ms, "ocr": ocr_timing or {}, "blocks": [
-            {"text": b.text, "box": b.box, "line_height": b.line_height, "bg": b.bg, "fg": b.fg,
+            {"text": b.text, "box": b.box, "line_height": b.line_height, "bg": b.bg, "fg": b.fg, "vertical": b.vertical,
              "translation": self._cache.get(self._cache_key(b.text))}
             for b in blocks
         ]})

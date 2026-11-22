@@ -265,9 +265,31 @@ class ScreenOverlay(QWidget):
         self.translations.clear()
         self.set_blocks([])
 
-    def _rect(self, block: dict) -> QRectF:
+    def _box(self, block: dict) -> QRectF:
         x, y, w, h = block["box"]
         return QRectF(x * self.width(), y * self.height(), w * self.width(), h * self.height()).adjusted(-3, -2, 3, 2)
+
+    def _rect(self, block: dict) -> QRectF:
+        rect = self._box(block)
+        return self._bubble(rect, block["line_height"] * self.height()) if block.get("vertical") else rect
+
+    def _bubble(self, rect: QRectF, char: float) -> QRectF:
+        """Room for a sideways translation inside the speech bubble around a few columns of vertical text.
+
+        A bubble leaves about a character of margin around its text, and a rectangle stays inside an oval only
+        when it is at most about 70% of the oval's width and height.
+        """
+        inner = QRectF(0, 0, max(0.68 * (rect.width() + 2 * char), rect.width()), 0.68 * (rect.height() + 2 * char))
+        inner.moveCenter(rect.center())
+        inner.moveLeft(min(max(0.0, inner.left()), max(0.0, self.width() - inner.width())))
+        return inner
+
+    @staticmethod
+    def _fitted(rect: QRectF, width: float, height: float) -> QRectF:
+        """Only as much of a speech bubble as the translation needs, so the patch stays clear of its curved edge."""
+        fitted = QRectF(0, 0, min(rect.width(), width), min(rect.height(), height))
+        fitted.moveCenter(rect.center())
+        return fitted
 
     def _layout(self, block: dict) -> tuple[QRectF, int]:
         rect = self._rect(block)
@@ -278,6 +300,8 @@ class ScreenOverlay(QWidget):
             needed = QFontMetrics(pixel_font(size)).boundingRect(
                 rect.toRect().adjusted(2, 0, -2, 0), flags, text)
             if needed.height() <= rect.height() and needed.width() <= rect.width() - 4:
+                if block.get("vertical"):
+                    rect = self._fitted(rect, needed.width() + size // 2, needed.height() + size // 2)
                 return rect, size
         size = sizes[-1]
         needed = QFontMetrics(pixel_font(size)).boundingRect(
@@ -300,7 +324,12 @@ class ScreenOverlay(QWidget):
                 continue
             rect, size = self._layouts[i]
             text, final = self.translations[block["text"]]
-            paint_patch(painter, rect, text, size, block["bg"], block["fg"], final)
+            if block.get("vertical"):
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(block["bg"]))
+                painter.drawRoundedRect(self._box(block), 3, 3)
+            paint_patch(painter, rect, text, size, block["bg"], block["fg"], final,
+                        Qt.AlignHCenter if block.get("vertical") else Qt.AlignLeft)
 
 
 class ScreenFlash(QWidget):

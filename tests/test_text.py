@@ -122,3 +122,8 @@ def test_text_is_previewed_on_its_first_read_and_emitted_once_it_holds():
     event = stab.feed("Get in the car,")
     assert event.kind == "text" and event.text == "Get in the car,"
     assert stab.feed("Get in the car.") is None
+
+
+def test_vertical_columns_are_read_from_right_to_left():
+    lines = [OcrLine("関係ない", 1.0, (0.40, 0.1, 0.03, 0.3)), OcrLine("先輩には", 1.0, (0.45, 0.1, 0.03, 0.3))]
+    assert assemble(lines, width=1000, height=1000) == "先輩には関係ない"

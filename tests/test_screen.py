@@ -338,3 +338,24 @@ async def test_whole_screen_translates_its_pieces_side_by_side_when_the_model_ca
     finals = {e["source"]: e["translation"] for e in events if e["type"] == "screen_text" and e["final"]}
     assert finals == {"ファイル": "EN(ファイル)", "こんにちは": "EN(こんにちは)"}
     assert translator.parallel_calls == [2, 2] and translator.calls == []
+
+
+def _px(x, y, w, h, width=1280, height=900):
+    return (x / width, y / height, w / width, h / height)
+
+
+def test_manga_columns_make_one_bubble_read_right_to_left():
+    lines = [
+        OcrLine("やる！", 0.96, _px(340, 149, 42, 101)),
+        OcrLine("ぶっ倒して", 1.0, _px(382, 147, 44, 159)),
+        OcrLine("あいつを", 0.99, _px(423, 148, 44, 132)),
+        OcrLine("今日こそ", 1.0, _px(466, 150, 42, 128)),
+        OcrLine("どこに行くんだ？", 0.98, _px(1009, 118, 43, 259)),
+        OcrLine("おい、待てよ！", 0.96, _px(1054, 118, 43, 229)),
+        OcrLine("第3話 約束の場所", 0.96, _px(695, 816, 270, 40)),
+    ]
+    blocks = {b.text: b for b in group_blocks(lines, 1280, 900)}
+    assert set(blocks) == {"今日こそあいつをぶっ倒してやる!", "おい、待てよ!どこに行くんだ?", "第3話 約束の場所"}
+    bubble = blocks["今日こそあいつをぶっ倒してやる!"]
+    assert bubble.vertical and round(bubble.line_height * 900) == 43
+    assert not blocks["第3話 約束の場所"].vertical

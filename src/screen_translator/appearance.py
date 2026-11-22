@@ -96,7 +96,8 @@ def paint_translation(painter: QPainter, rect: QRect, text: str, size: int, styl
     painter.restore()
 
 
-def paint_patch(painter: QPainter, rect: QRectF, text: str, size: int, bg: str, fg: str, final: bool = True) -> None:
+def paint_patch(painter: QPainter, rect: QRectF, text: str, size: int, bg: str, fg: str, final: bool = True,
+                align=Qt.AlignLeft) -> None:
     """Whole-screen style: the original's own colours, so the translation looks printed in place."""
     painter.save()
     painter.setRenderHint(QPainter.Antialiasing)
@@ -107,5 +108,5 @@ def paint_patch(painter: QPainter, rect: QRectF, text: str, size: int, bg: str, 
     ink.setAlpha(255 if final else 170)
     painter.setPen(ink)
     painter.setFont(pixel_font(size))
-    painter.drawText(rect.adjusted(2, 0, -2, 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextWordWrap, text)
+    painter.drawText(rect.adjusted(2, 0, -2, 0), align | Qt.AlignVCenter | Qt.TextWordWrap, text)
     painter.restore()
