@@ -248,3 +248,13 @@ def test_finished_sentences_that_arrive_while_translating_are_all_kept(store):
     finals = [e["source"] for e in events if e["type"] == "line" and e["final"]]
     assert finals[:3] == ["line 1", "line 2", "line 3"]
 
+
+
+def test_a_womans_low_phrase_ending_is_not_taken_for_a_man():
+    def pitch(samples):
+        return 140.0 if samples[0] > 0.95 else 175.0
+
+    dip, voice = np.full(CHUNK, 0.99, np.float32), block(0.9)
+    segmenter = Segmenter(FakeVad(), partial_s=100, pad_s=0, pitch=pitch)
+    results = [segmenter.feed(b) for b in [voice] * 20 + [block(0.0)] * 6 + [dip] * 14]
+    assert not [r for r in results if r and r.final]

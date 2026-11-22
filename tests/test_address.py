@@ -164,7 +164,8 @@ def test_titles_settle_roles_the_judge_gets_wrong():
                      "ハルト", "ミサキ", [("ハルト", "ハルト：すみません、ミサキ先輩！")])
     assert vietnamese(senpai, "ハルト", "ミサキ") == ("em", "chị")
     teacher = settled({"relation": "coworkers"}, "ミサキ", "田中先生", [("ミサキ", "ミサキ：すみません、田中先生。")])
-    assert vietnamese(teacher, "ミサキ", "田中先生") == ("em", "thầy")
+    assert vietnamese(teacher, "ミサキ", "田中先生") == ("em", "")
+    assert vietnamese({**teacher, "田中先生 gender": "male"}, "ミサキ", "田中先生") == ("em", "thầy")
     assert vietnamese({"relation": "rivals or enemies", "B gender": "female"}, "A", "B") == ("tôi", "chị")
 
 
@@ -219,4 +220,36 @@ def test_only_a_name_that_calls_someone_picks_the_listener():
         rel.heard(line)
     assert rel._listener("Ren", "Ren: Misaki, wait up!") == "Misaki"
     assert rel._listener("Ren", "Ren: I saw Misaki at the station.") == "Haruto"
+    rel.close()
+
+
+def test_possessives_quotes_and_reported_speech_are_mentions():
+    from screen_translator.address import calls_by, ROLES
+
+    parent = ROLES["parent and child"]
+    assert not calls_by(parent, "Listen to your mother.")
+    assert not calls_by(parent, "Mom said you can't go.")
+    assert calls_by(parent, "Mom, I'm home!")
+    assert calls_by(parent, "I'm home, Mom.")
+    assert guess_facts("弟から届いた手紙にはお姉ちゃん。", "the speaker", "the listener") is None
+
+
+def test_a_guess_from_one_line_is_marked_and_titles_set_gender():
+    from screen_translator.address import settled
+
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    assert rel.address("Shut up, you punk!").guessed
+    facts = settled({"relation": "friends"}, "Tuấn", "Hoa", [("Tuấn", "Tuấn: Mom, I'm home!")])
+    assert vietnamese(facts, "Tuấn", "Hoa") == ("con", "mẹ")
+    rel.close()
+
+
+def test_a_titled_name_calls_that_person_and_a_newcomer_answers_the_last_speaker():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("Kai: Hi.", "Mia: Hey.", "Kai: Ready?", "Mia: Yes.", "Joe: Morning."):
+        rel.heard(line)
+    assert rel._listener("Kai", "Kai: Uncle Joe!") == "Joe"
+    assert rel._listener("Ana", "Ana: Nice to meet you.") == "Joe"
     rel.close()

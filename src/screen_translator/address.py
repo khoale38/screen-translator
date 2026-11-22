@@ -15,7 +15,7 @@ import re
 import threading
 import time
 from collections import Counter, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from . import diagnostics
@@ -88,9 +88,16 @@ def _looks_like_name(label: str) -> bool:
 
 
 def body_of(text: str) -> str:
-    """The line without its "Name:" label, so a name such as "Sir Aldric" is not read as a cue."""
+    """The line without its "Name:" label or name box, so a name such as "Sir Aldric" is not read as a cue."""
     match = _LABEL.match(text.strip())
-    return match.group(2) if match and _looks_like_name(match.group(1)) else text
+    if match and _looks_like_name(match.group(1)):
+        return match.group(2)
+    name = speaker_of(text)
+    if name:
+        first, _, rest = text.strip().partition("\n")
+        if first.strip() == name:
+            return rest.strip()
+    return text
 
 
 def speaker_of(text: str) -> str | None:
@@ -117,10 +124,8 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     elder = lambda who: {"female": "chị", "male": "anh"}.get(gender(who), "")
     female = lambda who: gender(who) == "female"
     top = senior if senior in (speaker, listener) else older if older in (speaker, listener) else ""
-    ranked = {
-        "parent": lambda who: "mẹ" if female(who) else "bố", "grandparent": lambda who: "bà" if female(who) else "ông",
-        "teacher": lambda who: "cô" if female(who) else "thầy",
-    }
+    by_gender = lambda women, men: lambda who: {"female": women, "male": men}.get(gender(who), "")
+    ranked = {"parent": by_gender("mẹ", "bố"), "grandparent": by_gender("bà", "ông"), "teacher": by_gender("cô", "thầy")}
     for role, title in ranked.items():
         if relation.startswith(role) and top:
             young = "con" if role == "parent" else "cháu" if role == "grandparent" else "em"
@@ -152,6 +157,8 @@ class Address:
     listener: str
     me: str
     you: str
+    # From a single line rather than the judge: used for that line, not kept in the history for later ones.
+    guessed: bool = field(default=False, compare=False)
 
     def note(self) -> str:
         words = [f'"{word}" for {role}' for word, role in ((self.me, "I/me"), (self.you, "you")) if word]
@@ -179,7 +186,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
     for gender, cue in TO_ELDER.items():
-        if cue.search(line):
+        found = cue.search(line)
+        if found and not _MENTIONED.search(line[:found.start()]):
             facts = {"relation": "school senior and junior", "older": listener, "guess": True}
             return {**facts, f"{listener} gender": gender} if gender else facts
     if ROUGH.search(line):
@@ -191,13 +199,21 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
     """Whether a title in the line calls the listener ("Mom, I'm home", "Your Highness!") rather than names someone."""
     for match in cue.finditer(line):
         before, after = line[:match.start()], line[match.end():]
-        if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after):
+        if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after) or _MENTIONED.search(before):
             continue
         opening = not before.strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
+        # An English title must stand apart to call someone: "Mom, I'm home", not "Mom said so".
+        if match.group(0).isascii() and opening and not closing:
+            continue
         if opening or closing:
             return True
     return False
+
+
+# Words before a title that make it a mention: "your mother", "like a mother", "手紙には", "우리 엄마".
+_MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says)\s+|"
+                        r"の|には|って|と|우리\s*|내\s*|네\s*)$", re.I)
 
 
 def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
@@ -206,6 +222,7 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
     `said` holds (speaker, line) for the lines either of the two said to the other.
     """
     roles: dict[str, str] = {}
+    facts = dict(facts)
     for name in (a, b):
         role = next((role for role, cue in ROLES.items() if cue.search(name)), None)
         if role:
@@ -216,6 +233,11 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
             role = next((role for role, cue in ROLES.items() if calls_by(cue, body_of(line))), None)
             if role:
                 roles[other] = role
+                title = ROLES[role].search(body_of(line)).group(0)
+                if FEMALE_TITLES.search(title):
+                    facts.setdefault(f"{other} gender", "female")
+                elif MALE_TITLES.search(title):
+                    facts.setdefault(f"{other} gender", "male")
     facts = dict(facts)
     for name in (a, b):
         if FEMALE_TITLES.search(name):
@@ -259,8 +281,10 @@ def parse_facts(answer: str) -> dict | None:
 
 def _calls_name(line: str, name: str) -> bool:
     """A name opening the line or set off by punctuation calls that person; one inside the sentence only mentions them."""
+    title = r"(?:(?:Uncle|Aunt|Mr|Mrs|Ms|Miss|Dr|Captain|Sergeant|Sir|Lady)\.?\s+)?"
     suffix = r"(?:さん|君|くん|ちゃん|様|先輩|先生|-sensei|-san|-kun|-chan|아|야|씨)?"
-    return bool(re.search(rf"(?:^|[,、，!！?？]\s*){re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)", line.strip()))
+    return bool(re.search(rf"(?:^|[,、，!！?？]\s*){title}{re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)",
+                          line.strip()))
 
 
 class Relationships:
@@ -296,6 +320,9 @@ class Relationships:
             return max(named, key=len)
         cutoff = self.clock() - self.window_s
         recent = [who for who, _text, at, _to in reversed(self._lines) if who and who != speaker and at >= cutoff]
+        if not self._spoken[speaker]:
+            # A newcomer's first line answers whoever just spoke.
+            return recent[0] if recent else None
         return next((who for who in recent if self._spoken[who] >= 2), recent[0] if recent else None)
 
     def address(self, text: str) -> Address | None:
@@ -304,7 +331,7 @@ class Relationships:
         speaker = speaker_of(text)
         if not speaker:
             facts = guess_facts(text, "the speaker", "the listener")
-            return Address("the speaker", "the listener", *vietnamese(facts, "the speaker", "the listener")) \
+            return Address("the speaker", "the listener", *vietnamese(facts, "the speaker", "the listener"), True) \
                 if facts else None
         with self._lock:
             listener = self._listener(speaker, text)
@@ -319,10 +346,11 @@ class Relationships:
         if facts is None:
             listener = listener or "the listener"
             facts = guess_facts(text, speaker, listener)
-        return Address(speaker, listener, *vietnamese(facts, speaker, listener)) if facts else None
+        return Address(speaker, listener, *vietnamese(facts, speaker, listener), bool(facts.get("guess"))) \
+            if facts else None
 
     def _said(self, pair: frozenset) -> list[tuple[str, str]]:
-        return [(who, line) for who, line, _a, to in self._lines if who in pair and (to is None or to in pair)]
+        return [(who, line) for who, line, _a, to in self._lines if who in pair and to in pair and to != who]
 
     def _note_cues(self, pair: frozenset) -> None:
         """Cues from every line either of the two said to the other so far, the latest ones winning."""
@@ -332,7 +360,11 @@ class Relationships:
                 if other is None:
                     continue
                 guess = guess_facts(line, who, other)
-                if guess and (guess.get("older") or not self._cues.get(pair, {}).get("older")):
+                known = self._cues.get(pair, {})
+                # One insult between siblings does not make them street rivals.
+                if guess and guess.get("rough") and (known.get("older") or known.get("senior")):
+                    continue
+                if guess and (guess.get("older") or not known.get("older")):
                     self._cues[pair] = {**guess, "pair": tuple(pair)}
 
     def heard(self, text: str) -> None:

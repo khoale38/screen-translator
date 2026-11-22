@@ -90,3 +90,24 @@ def test_hy_mt_is_not_shown_the_rest_of_the_screen():
     screen = ["設定", "ミッション失敗", "Lv 41"]
     prompt = for_hy_mt(build_screen_messages(1, screen, [], "ja", "vi"))[0]["content"]
     assert "設定" not in prompt and "Lv 41" not in prompt and prompt.count("ミッション失敗") == 2
+
+
+def test_a_models_introduction_to_its_answer_is_dropped_but_labels_are_kept():
+    assert clean_output("Dưới đây là bản dịch của câu:\n\"Anh đi đâu vậy?\"") == "Anh đi đâu vậy?"
+    assert clean_output("Here's the translation:\nWhere are you going?") == "Where are you going?"
+    assert clean_output("Mục tiêu:\nĐến ngân hàng") == "Mục tiêu:\nĐến ngân hàng"
+
+
+def test_hy_mt_gets_screen_labels_whole_and_name_boxes_without_the_name():
+    screen = ["剩余时间：02:15", "设置"]
+    prompt = for_hy_mt(build_screen_messages(0, screen, [], "zh", "vi"))[0]["content"]
+    assert prompt.endswith("剩余时间：02:15") and "前面的对话" not in prompt
+    boxed = for_hy_mt(build_messages("ミサキ\nまた遅刻？", [], "ja", "vi"))[0]["content"]
+    assert boxed.endswith("\nまた遅刻？") and "ミサキ\nまた遅刻？" not in boxed
+
+
+def test_a_dropped_name_comes_back_as_the_viewer_reads_it():
+    names = {"ミサキ": "Misaki"}
+    assert label_speaker("ミサキ：また遅刻？", "Lại muộn à?", names) == "Misaki: Lại muộn à?"
+    assert label_speaker("ミサキ\nまた遅刻？", "Lại muộn à?", names) == "Misaki: Lại muộn à?"
+    assert label_speaker("ミサキ\nまた遅刻？", "Misaki\nLại muộn à?", names) == "Misaki: Lại muộn à?"

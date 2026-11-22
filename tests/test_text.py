@@ -133,3 +133,20 @@ def test_a_name_box_over_its_dialogue_stays_a_separate_line():
     lines = [OcrLine("Detective Ross", 0.99, (0.10, 0.70, 0.12, 0.05)),
              OcrLine("Sit down, Danny. We need to talk about last night.", 0.99, (0.10, 0.745, 0.60, 0.05))]
     assert assemble(lines) == "Detective Ross\nSit down, Danny. We need to talk about last night."
+
+
+def test_short_bubble_lines_are_not_name_boxes_but_dashes_and_chat_lines_split():
+    bubble = [OcrLine("WHERE ARE", 0.99, (0.40, 0.30, 0.10, 0.04)),
+              OcrLine("YOU GOING TONIGHT, KID?", 0.99, (0.36, 0.33, 0.20, 0.04))]
+    assert "\n" not in assemble(bubble)
+    dashes = [OcrLine("- Where were you?", 0.99, (0.30, 0.80, 0.25, 0.04)),
+              OcrLine("- At home.", 0.99, (0.30, 0.845, 0.15, 0.04))]
+    assert assemble(dashes) == "- Where were you?\n- At home."
+    chat = [OcrLine("pixelcat: lol that jump", 0.99, (0.70, 0.20, 0.20, 0.03)),
+            OcrLine("Zed_99: gg", 0.99, (0.70, 0.235, 0.08, 0.03))]
+    assert assemble(chat) == "pixelcat: lol that jump\nZed_99: gg"
+
+
+def test_a_first_bubble_line_that_starts_a_sentence_is_not_a_name():
+    lines = [OcrLine("Jake is", 0.99, (0.40, 0.30, 0.06, 0.04)), OcrLine("at school, Lily.", 0.99, (0.38, 0.335, 0.12, 0.04))]
+    assert assemble(lines) == "Jake is at school, Lily."

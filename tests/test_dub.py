@@ -177,8 +177,18 @@ def test_speech_tells_the_translator_who_is_speaking_by_their_voice():
 
     pipeline = Pipeline.__new__(Pipeline)
     pipeline._last_voice = None
-    pipeline._previous_voice = ""
+    pipeline._previous_voice, pipeline._previous_pitch = "", 0.0
     assert pipeline._voice_note({"id": 1, "pitch": 210.0}).startswith("Voice: a woman.")
     assert pipeline._voice_note({"id": 2, "pitch": 110.0}).startswith("Voice: a man (the line before was a woman's).")
     assert pipeline._voice_note({"id": 2, "pitch": 115.0}).startswith("Voice: a man (the line before was a woman's).")
     assert pipeline._voice_note({"id": 3, "pitch": 0.0}) == ""
+
+
+def test_two_men_with_clearly_different_voices_count_as_different_people():
+    from screen_translator.pipeline import Pipeline
+
+    pipeline = Pipeline.__new__(Pipeline)
+    pipeline._last_voice, pipeline._previous_voice, pipeline._previous_pitch = None, "", 0.0
+    pipeline._voice_note({"id": 1, "pitch": 105.0})
+    assert "different person" in pipeline._voice_note({"id": 2, "pitch": 80.0})
+    assert "different" not in pipeline._voice_note({"id": 3, "pitch": 84.0})

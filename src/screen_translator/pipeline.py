@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import queue
+import re
 import threading
 import time
 import traceback
@@ -15,7 +16,7 @@ from . import diagnostics, online
 from .dub import gender_of, speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
-from .address import Relationships
+from .address import _LABEL, Relationships, speaker_of
 from .context import ContextWindow
 from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
@@ -190,8 +191,10 @@ class Pipeline:
         self._heard_lock = threading.Lock()
         self._heard: dict | None = None
         self._finals: deque[dict] = deque()
-        self._last_voice: tuple[int, str] | None = None
+        self._names: dict[str, str] = {}
+        self._last_voice: tuple[int, str, float] | None = None
         self._previous_voice = ""
+        self._previous_pitch = 0.0
         self._heard_changed = threading.Event()
         self.state = "stopped"
         self.last_error = ""
@@ -418,7 +421,7 @@ class Pipeline:
             self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
                        "translation": text, "final": False, "line_height": event.line_height})
 
-        translation = label_speaker(event.text, translator.translate(messages, partial))
+        translation = self._labelled(event.text, translator.translate(messages, partial), translator)
         self._previews[event.area] = (event.text, translation, round((time.monotonic() - started) * 1000),
                                       first[0] if first else None)
         partial(translation)
@@ -438,10 +441,13 @@ class Pipeline:
             self._line_id += 1
         line_id = self._line_id
         address = self.relationships.address(event.text)
-        note = address.note() if address else ""
+        note = address.note() if address and not address.guessed else ""
 
         preview = self._previews.pop(event.area, None)
-        if preview and similar(preview[0], event.text, 0.92):
+        # A typewriter's half-shown line is a prefix of the full one and still scores as similar; it does not count.
+        grew = len(_bare(event.text)) > len(_bare(preview[0])) and _bare(event.text).startswith(_bare(preview[0])) \
+            if preview else False
+        if preview and similar(preview[0], event.text, 0.92) and not grew:
             _source, translation, ms, first_ms = preview
             self._remember(event.text, translation)
             self.context.add(event.text, translation, replace_last=replace, note=note)
@@ -478,7 +484,7 @@ class Pipeline:
                        "translation": text, "final": False, "line_height": event.line_height})
 
         partial("")
-        translation = label_speaker(event.text, translator.translate(messages, partial))
+        translation = self._labelled(event.text, translator.translate(messages, partial), translator)
         self._remember(event.text, translation)
         self.context.add(event.text, translation, replace_last=replace, note=note)
         self.relationships.heard(event.text)
@@ -560,8 +566,9 @@ class Pipeline:
                     # A second look straight after OCR: if nothing moved, publish now instead of after the next tick.
                     after = thumbnail(grab())
                     settled = not changed(thumb, after)
-                    # Compared with the last screen read, not the last tick, so slow changes such as a countdown add up.
-                    previous_thumb = after
+                    # Compared with the screen that was read, not the last tick, so slow changes such as a countdown
+                    # add up; if it moved during the read, the next tick reads it again.
+                    previous_thumb = after if settled else thumb
 
                 # Stable means the same words: over a moving game scene the boxes never quite hold still.
                 texts = _texts(blocks)
@@ -638,6 +645,7 @@ class Pipeline:
         ]
         started = time.monotonic()
         finished: list[tuple[str, str]] = []
+        retry: list[str] = []
         left = set(texts)
 
         def piece(index: int, translation: str, done: bool) -> None:
@@ -648,7 +656,14 @@ class Pipeline:
             if not done:
                 self.emit({"type": "screen_text", "source": source, "translation": translation, "final": False})
                 return
-            translation = label_speaker(source, translation)
+            if re.fullmatch(r"\s*[A-L]?[.):]?\s*", translation):
+                # A bare letter is the model naming an item instead of translating it; translate that one alone.
+                retry.append(source)
+                left.discard(source)
+                return
+            if "\n" in source:
+                translation = translation.replace(" / ", "\n")
+            translation = label_speaker(source, translation, self._names)
             self._remember(source, translation)
             left.discard(source)
             finished.append((source, translation))
@@ -659,6 +674,8 @@ class Pipeline:
         translator.translate_each(conversations, [len(text) for text in texts], piece)
         for source, translation in finished:
             self.context.add(source, translation)
+        for source in retry:
+            self._translate_block(translator, source)
 
     def _translate_batch(self, translator: Translator, texts: list[str]) -> list[str]:
         """Translate several blocks in one call; returns the ones the model skipped, to be done one by one."""
@@ -680,7 +697,7 @@ class Pipeline:
         ms = round((time.monotonic() - started) * 1000)
         for number, line in done.items():
             source = texts[number - 1]
-            translation = label_speaker(source, line)
+            translation = label_speaker(source, line, self._names)
             self._remember(source, translation)
             self.context.add(source, translation)
             self.emit({"type": "screen_text", "source": source, "translation": translation, "final": True,
@@ -698,9 +715,9 @@ class Pipeline:
         def partial(translation: str) -> None:
             self.emit({"type": "screen_text", "source": text, "translation": translation, "final": False})
 
-        translation = label_speaker(text, translator.translate(messages, partial))
+        translation = self._labelled(text, translator.translate(messages, partial), translator)
         self._remember(text, translation)
-        self.context.add(text, translation, note=address.note() if address else "")
+        self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
         self.relationships.heard(text)
         self.emit({"type": "screen_text", "source": text, "translation": translation, "final": True,
                    "ms": round((time.monotonic() - started) * 1000), "context_lines": len(history)})
@@ -794,7 +811,7 @@ class Pipeline:
             if heard["final"]:
                 self._remember(text, translation)
                 address = self.relationships.address(text)
-                self.context.add(text, translation, note=address.note() if address else "")
+                self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
                 self._speech_line(heard, translation, True, ms=round((time.monotonic() - heard["at"]) * 1000),
                                   context_lines=len(self.context.turns()) - 1)
                 if settings.dub:
@@ -813,17 +830,44 @@ class Pipeline:
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
                    "translation": translation, "final": final, **extra})
 
+    def _labelled(self, source: str, translation: str, translator) -> str:
+        """The translation with its speaker's name, written as the model writes it rather than in kana or hangul."""
+        name = speaker_of(source)
+        if name:
+            match = _LABEL.match(translation.strip())
+            if match:
+                self._names.setdefault(name, match.group(1).strip())
+            elif name not in self._names and not name.isascii():
+                self._names[name] = self._name_in_target(name, translator)
+        return label_speaker(source, translation, self._names)
+
+    def _name_in_target(self, name: str, translator) -> str:
+        settings = self.store.settings
+        messages = build_messages(name, [], settings.source_lang, settings.target_lang,
+                                  notes="This is only a character's name: give just the name, in Latin letters.")
+        try:
+            written = translator.translate(messages).strip().splitlines()[0].strip(" .:：\"'")
+        except (RuntimeError, ValueError, IndexError, Yielded, Superseded):
+            return name
+        return written if 0 < len(written) <= 30 else name
+
     def _voice_note(self, heard: dict) -> str:
         """Speech has no speaker names, but the voice says whether a man or a woman is talking, and when it changes."""
         gender = gender_of(heard.get("pitch", 0.0))
         if not gender:
             return ""
+        pitch = heard.get("pitch", 0.0)
         if self._last_voice and self._last_voice[0] != heard["id"]:
-            self._previous_voice = self._last_voice[1]
-        self._last_voice = (heard["id"], gender)
+            self._previous_voice, self._previous_pitch = self._last_voice[1], self._last_voice[2]
+        self._last_voice = (heard["id"], gender, pitch)
         person = "man" if gender == "male" else "woman"
-        before = self._previous_voice
-        switched = f" (the line before was a {'man' if before == 'male' else 'woman'}'s)" if before and before != gender else ""
+        before, then = self._previous_voice, self._previous_pitch
+        if before and before != gender:
+            switched = f" (the line before was a {'man' if before == 'male' else 'woman'}'s)"
+        elif before and then and max(pitch, then) >= 1.25 * min(pitch, then):
+            switched = " (a different person from the line before)"
+        else:
+            switched = ""
         return f"Voice: a {person}{switched}. Use this only to choose the speaker's pronouns for themselves."
 
     def _translate_speech(self, translator: Translator, heard: dict) -> str:
@@ -853,7 +897,14 @@ class Pipeline:
                 raise Superseded()
             self._speech_line(heard, translation, False)
 
-        return label_speaker(heard["text"], translator.translate(messages, partial, urgent=True))
+        translation = translator.translate(messages, partial, urgent=True)
+        earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
+        if heard["final"] and translation in earlier:
+            # Given a long note on a short or garbled line, a small model can repeat an earlier answer instead.
+            plain = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
+                                   settings.glossary, settings.notes)
+            translation = translator.translate(plain, partial, urgent=True)
+        return self._labelled(heard["text"], translation, translator)
 
 
 def _cut_off(block: Block, frame_height: int) -> bool:

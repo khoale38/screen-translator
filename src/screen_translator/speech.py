@@ -14,7 +14,7 @@ from typing import Callable, NamedTuple
 
 import numpy as np
 
-from .dub import MALE_BELOW_HZ
+TURN_LOW_HZ, TURN_HIGH_HZ, TURN_RATIO = 130.0, 165.0, 1.4
 
 RATE = 16000
 CHUNK = 512  # 32 ms, the block size Silero VAD expects at 16 kHz
@@ -260,7 +260,9 @@ class Segmenter:
         self._turn = None
         before = self.pitch(np.concatenate(self._speech[max(0, pause - 16):pause]))
         after = self.pitch(np.concatenate(self._speech[resumed:]))
-        if not before or not after or (before < MALE_BELOW_HZ) == (after < MALE_BELOW_HZ):
+        # Women's voices dip low at the start and end of a phrase, so only a clear gap between the two counts.
+        low, high = sorted((before, after))
+        if not low or low >= TURN_LOW_HZ or high <= TURN_HIGH_HZ or high < TURN_RATIO * low:
             return None
         samples = np.concatenate(self._speech[:pause + min(self.pad_blocks, resumed - pause)])
         self._speech = self._speech[max(pause, resumed - self.pad_blocks):]

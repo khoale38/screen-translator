@@ -8,6 +8,8 @@ from .address import _LABEL, body_of, speaker_of
 from .context import Turn
 
 _THINK = re.compile(r"<think>.*?</think>", re.S)
+# A model's own introduction to its answer, which would otherwise be shown and dubbed.
+_PREAMBLE = re.compile(r"^\s*(dưới đây là|đây là bản dịch|bản dịch|here is|here's the translation|translation)\b", re.I)
 
 
 def build_messages(
@@ -29,7 +31,7 @@ def build_messages(
         f"Rules:\n"
         f"- Reply with only the {target} translation of the latest message. No notes, quotes, romanization or alternatives.\n"
         f"- Keep character names as names: write them in their usual Latin spelling (ユキ is Yuki, 김민수 is Kim Min-su) "
-        f"and never translate their meaning.\n"
+        f"and never translate their meaning. Keep place and brand names as they are known (Paris stays Paris).\n"
         f"- Earlier messages are the lines that were on screen just before, with your translations. Use them to keep "
         f"names, pronouns, gender, tone, terminology and each speaker's voice consistent.\n"
         f"- Translate what the line means, not word by word. Idioms, slang, game objectives and film dialogue must "
@@ -147,15 +149,20 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     """
     facts, last = messages[0], messages[-1]
     # Without its "Name:" label, which HY-MT would otherwise translate, replacing the name with a pronoun.
-    text = body_of(last.get("item", last["content"]))
+    text = last.get("item", last["content"])
+    screen = "screen" in last
+    if not screen:
+        text = body_of(text)
     glossary = {**facts.get("address_terms", {}), **facts.get("glossary", {})}
     terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in glossary.items() if src.strip())
     parts = [f"参考下面的翻译：\n{terms}"] if terms else []
-    screen_note = "这是游戏或应用界面上的文字（菜单、按钮、标签）。数字、时间和价格保持原样。" if "screen" in last else ""
+    screen_note = (f"这是游戏或应用界面上的文字。把菜单、按钮和标签翻译成{facts['target']}；只有数字、时间、价格以及HP、MP、Lv、"
+                   f"EXP等缩写保持原样。") if screen else ""
     background = "\n".join(filter(None, (facts.get("notes"), screen_note, facts.get("address_zh"))))
     if background:
         parts.append(f"背景：{background}")
-    turns = messages[1:-1]
+    # A neighbouring screen item in the history gets copied into a short one, so screen items go without it.
+    turns = [] if screen else messages[1:-1]
     if turns:
         parts.append("前面的对话：\n" + "\n".join(f"{asked.get('item', asked['content'])}\n{answered['content']}"
                                                for asked, answered in zip(turns[::2], turns[1::2])))
@@ -197,29 +204,31 @@ def clean_output(raw: str) -> str:
     if "<think>" in text:
         text = text.split("<think>", 1)[0]
     text = text.strip()
+    first, _, rest = text.partition("\n")
+    introduces = first.rstrip().endswith((":", "：")) and len(first.split()) >= 4
+    if rest.strip() and (introduces or _PREAMBLE.match(first)):
+        text = rest.strip()
     pairs = {'"': '"', "'": "'", "“": "”", "‘": "’"}
     if len(text) >= 2 and pairs.get(text[0]) == text[-1]:
         text = text[1:-1].strip()
     return text
 
 
-def label_speaker(source: str, translation: str) -> str:
+def label_speaker(source: str, translation: str, names: dict[str, str] | None = None) -> str:
     """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line".
 
-    A "Name: line" source whose label the model dropped gets the name back, so it is clear who speaks.
+    A source with a speaker whose name the model dropped gets the name back, so it is clear who speaks; `names`
+    holds how each name is written in the target language, as kana or hangul means nothing to most viewers.
     """
+    label, _, rest = source.partition("\n")
+    if rest and len(label) <= 12:
+        head, _, body = translation.partition("\n")
+        head = head.strip().rstrip(":：")
+        if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
+            return f"{head}: {' '.join(body.split())}"
     name = speaker_of(source)
     if name and source.lstrip().startswith(name) and not _LABEL.match(translation.strip()):
-        rest = source.strip()[len(name):].lstrip()
-        if rest[:1] in (":", "："):
-            return f"{name}: {translation.strip()}"
-    label, _, rest = source.partition("\n")
-    if not rest or len(label) > 12:
-        return translation
-    head, _, body = translation.partition("\n")
-    head = head.strip().rstrip(":：")
-    if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
-        return f"{head}: {' '.join(body.split())}"
+        return f"{(names or {}).get(name, name)}: {translation.strip()}"
     return translation
 
 

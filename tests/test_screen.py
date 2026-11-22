@@ -409,3 +409,14 @@ def test_manga_rows_are_read_right_to_left_even_when_bubbles_start_at_different_
              OcrLine("右の吹き出しです", 0.99, _px(900, 160, 42, 300)),
              OcrLine("下の吹き出しです", 0.99, _px(600, 600, 42, 250))]
     assert [b.text for b in group_blocks(lines, 1280, 900)] == ["右の吹き出しです", "左の吹き出しです", "下の吹き出しです"]
+
+
+def test_hud_stacks_chat_lines_and_toggles_stay_apart():
+    hud = [px("HP 1250/1500", 100, 100, 160, 30), px("MP 320/400", 100, 134, 140, 30)]
+    assert len(group_blocks(hud, 1000, 1000)) == 2
+    chat = [px("[Party] Minsu: heal me please", 100, 500, 300, 30), px("[Guild] Haneul: raid at 9", 100, 534, 260, 30)]
+    assert len(group_blocks(chat, 1000, 1000)) == 2
+    toggle = [px("On", 100, 300, 40, 30), px("Off", 100, 350, 45, 30)]
+    assert len(group_blocks(toggle, 1000, 1000)) == 2
+    tilted = [px("THIS IS A LONG", 100, 100, 200, 30), px("SPEECH BUBBLE", 100, 118, 200, 30)]
+    assert len(group_blocks(tilted, 1000, 1000)) == 1

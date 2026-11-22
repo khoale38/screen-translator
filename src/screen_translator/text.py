@@ -104,9 +104,22 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     # OCR boxes vary in height for the same font, so a size change alone only counts when it is large or spaced out.
     if gap > 0.6 * height or ratio < 0.6 or (ratio < 0.75 and gap > 0.3 * height):
         return True
+    if _ENTRY_START.match(below.text):
+        return True
     # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
-    short = len(above_text) <= 20 and len(above_text.split()) <= 3 and not above_text.rstrip().endswith(_ENDS)
-    return short and above_width < 0.6 * below_width and gap > -0.5 * height
+    return _name_like(above_text) and above_width < 0.6 * below_width and gap > -0.5 * height
+
+
+def _name_like(text: str) -> bool:
+    """A speaker's name box rather than the short first line of a speech bubble ("WHERE ARE", "ねえ、")."""
+    text = text.strip()
+    words = text.split()
+    if not 0 < len(text) <= 20 or len(words) > 3 or text.endswith(_ENDS) or _MID_PHRASE.search(text):
+        return False
+    if re.search("[\u3041-\u309f]", text):
+        return False
+    capitalised = all(word[0].isupper() or not word[0].isascii() for word in words)
+    return capitalised and not (text.isupper() and len(words) > 1)
 
 
 @dataclass
@@ -265,6 +278,8 @@ def _manga_order(blocks: list[Block]) -> list[Block]:
 
 _MID_PHRASE = re.compile(r"[、，,;:\-]$|[でにをはがのとへもや]$|\b(the|a|an|to|of|and|with|in|on|for|or|your|my)$", re.I)
 _ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
+_STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")
+_ENTRY_START = re.compile(r"^\s*(?:[-–－]\s|\[[^\]]{1,20}\]|[^\s:：\[\]]{1,24}:\s|[^\s:：\[\]]{1,12}：)")
 
 
 def _cjk(text: str) -> bool:
@@ -290,14 +305,20 @@ def _same_block(a: tuple, b: tuple) -> bool:
     same_size = ratio >= 0.75 or (ratio >= 0.6 and gap <= 0.3 * height)
     # Lines of one paragraph or speech bubble sit close together; more widely spaced rows join only when the upper
     # one stops mid-phrase, so menu items, list entries and chat lines stay apart.
+    # A stat ending the upper row, or a tag, name, or dash starting the lower one, marks separate entries: HUD stacks,
+    # chat lines, two speakers in one subtitle.
     text = upper[5].rstrip()
-    wraps = (gap <= 0.25 * height or _MID_PHRASE.search(text) or lower[5][:1].islower()
-             or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)))
-    return wraps and same_size and -0.2 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
+    if _STAT_END.search(text) or _ENTRY_START.match(lower[5]):
+        return False
+    mid_phrase = _MID_PHRASE.search(text) and not re.fullmatch(r"[A-Za-z]+", text)
+    wraps = (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower()
+             or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS) and gap <= 0.35 * height))
+    # Padded OCR boxes of tightly set or slightly rotated lines overlap by up to half a line.
+    return wraps and same_size and -0.5 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
 
 
 def _same_bubble(a: tuple, b: tuple) -> bool:
     size = max(a[2], b[2])
     gap = max(a[0], b[0]) - min(a[0] + a[2], b[0] + b[2])
     overlap = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
-    return min(a[2], b[2]) >= 0.6 * size and -0.2 * size <= gap <= 0.8 * size and overlap >= 0.3 * min(a[3], b[3])
+    return min(a[2], b[2]) >= 0.6 * size and -0.5 * size <= gap <= 0.8 * size and overlap >= 0.3 * min(a[3], b[3])
