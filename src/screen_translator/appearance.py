@@ -97,13 +97,13 @@ def paint_translation(painter: QPainter, rect: QRect, text: str, size: int, styl
 
 
 def paint_patch(painter: QPainter, rect: QRectF, text: str, size: int, bg: str, fg: str, final: bool = True,
-                align=Qt.AlignLeft) -> None:
+                align=Qt.AlignLeft, corner: float = 3) -> None:
     """Whole-screen style: the original's own colours, so the translation looks printed in place."""
     painter.save()
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setPen(Qt.NoPen)
     painter.setBrush(QColor(bg))
-    painter.drawRoundedRect(rect, 3, 3)
+    painter.drawRoundedRect(rect, corner, corner)
     ink = QColor(fg)
     ink.setAlpha(255 if final else 170)
     painter.setPen(ink)

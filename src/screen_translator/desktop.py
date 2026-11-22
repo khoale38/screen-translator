@@ -325,11 +325,16 @@ class ScreenOverlay(QWidget):
             rect, size = self._layouts[i]
             text, final = self.translations[block["text"]]
             if block.get("vertical"):
+                # Rounded like the bubble, so the corners of the columns' patch never clip its outline.
+                x, y, w, h = block["box"]
+                columns = QRectF(x * self.width(), y * self.height(), w * self.width(), h * self.height())
+                corner = 0.45 * block["line_height"] * self.height()
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QColor(block["bg"]))
-                painter.drawRoundedRect(self._box(block), 3, 3)
-            paint_patch(painter, rect, text, size, block["bg"], block["fg"], final,
-                        Qt.AlignHCenter if block.get("vertical") else Qt.AlignLeft)
+                painter.drawRoundedRect(columns, corner, corner)
+                paint_patch(painter, rect, text, size, block["bg"], block["fg"], final, Qt.AlignHCenter, size / 2)
+            else:
+                paint_patch(painter, rect, text, size, block["bg"], block["fg"], final)
 
 
 class ScreenFlash(QWidget):
