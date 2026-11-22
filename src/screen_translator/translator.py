@@ -154,9 +154,8 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     if turns:
         parts.append("前面的对话：\n" + "\n".join(f"{asked.get('item', asked['content'])}\n{answered['content']}"
                                                for asked, answered in zip(turns[::2], turns[1::2])))
-    # Shown a whole screen, the 1.8B model translates the wrong item or all of them, so a screen item comes alone.
-    if "screen" not in last:
-        parts.append("屏幕上的文字：\n" + text)
+    # Shown a whole screen, the 1.8B model translates the wrong item or all of them, so it sees only its own.
+    parts.append("屏幕上的文字：\n" + text)
     brief = ""
     if facts.get("budget"):
         count, unit = facts["budget"].split()
