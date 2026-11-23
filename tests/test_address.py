@@ -624,3 +624,13 @@ def test_round_21_japanese_commands_elder_roles_and_narrower_swears():
     assert said("作为妈妈，你应该多关心他") is None
     assert said("师傅，去火车站，我徒弟在那儿等我") is None
     assert Address("the speaker", "the listener", "mẹ", "con").terms("zh", "作为妈妈，我不能不管你") == {"我": "mẹ", "你": "con"}
+
+
+def test_round_22_doctors_in_laws_fillers_and_phone_calls():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    for line in ("네, 어머님. 수술은 잘 끝났습니다.", "어머님, 처음 뵙겠습니다.", "お母さん、お子さんは大丈夫ですよ。",
+                 "선생님, 수술은 언제예요?", "お兄ちゃん早く帰ってこないかなお腹空いた。", "作为哥哥你要让着妹妹"):
+        assert said(line) is None, line
+    assert said("あの、先輩、これどうぞ。") == ("em", "")
+    assert said("喂，妈，是我。") == ("con", "mẹ")
+    assert speaker_of("攻击\n技能\n物品\n逃跑") is None and speaker_of("はい\nいいえ") is None

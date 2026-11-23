@@ -652,3 +652,20 @@ def test_round_21_lettering_versus_menus_and_choice_words():
     W, H = 1280, 720
     short = [px("なんか", 560, 500, 120, 40, W, H), px("私も行きたい", 520, 545, 220, 40, W, H)]
     assert assemble(short, width=W, height=H, menus=True) == "なんか私も行きたい"
+
+
+def test_round_22_caps_menus_lettering_and_name_tabs_over_replies():
+    from screen_translator.text import assemble
+
+    W, H = 1920, 1080
+    menu = [px("RESUME", 200, 400, 160, 40, W, H), px("SETTINGS", 200, 456, 200, 40, W, H),
+            px("CONTROLS", 200, 512, 200, 40, W, H), px("QUIT TO MENU", 200, 568, 280, 40, W, H)]
+    assert len(group_blocks(menu, W, H)) == 4
+    dialogue = [px("YOU NEED", 870, 300, 180, 40, W, H), px("LEVEL 5 TO", 860, 350, 200, 40, W, H),
+                px("ENTER THE CAVE.", 830, 400, 260, 40, W, H)]
+    assert [b.text for b in group_blocks(dialogue, W, H)] == ["YOU NEED LEVEL 5 TO ENTER THE CAVE."]
+    subject = [px("DAD", 920, 300, 80, 40, W, H), px("WILL KILL US!", 860, 350, 200, 40, W, H)]
+    assert [b.text for b in group_blocks(subject, W, H)] == ["DAD WILL KILL US!"]
+    W, H = 1280, 720
+    tab = [px("小林", 100, 480, 80, 36, W, H), px("好吧", 100, 530, 80, 40, W, H)]
+    assert assemble(tab, width=W, height=H, menus=True) == "小林\n好吧"

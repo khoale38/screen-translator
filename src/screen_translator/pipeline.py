@@ -898,7 +898,7 @@ class Pipeline:
     def _speech_translate_loop(self) -> None:
         """Translates the newest speech: live captions while someone talks, then the finished sentence at once."""
         translator = self._ready_translator()
-        done: tuple[int, str, str] | None = None
+        done: tuple[int, str, str, str] | None = None
         while not self._stop.is_set():
             if not self._heard_changed.wait(0.2):
                 continue
@@ -912,8 +912,10 @@ class Pipeline:
             if _spoken_in(settings.target_lang, heard.get("lang", "")) or already_in(settings.target_lang, text):
                 self._speech_line(heard, text, heard["final"], ms=0, context_lines=0)
                 continue
-            if done and done[:2] == (heard["id"], _bare(text)):
-                translation = self._unrepeated(translator, heard, done[2]) if heard["final"] else done[2]
+            # The same words with new punctuation can change who is called ("お父さん行こうよ、…"): reuse only the same cue.
+            cue = self.relationships.address(_punctuated(text), gender_of(heard.get("pitch", 0.0)))
+            if done and done[:3] == (heard["id"], _bare(text), cue.note() if cue else ""):
+                translation = self._unrepeated(translator, heard, done[3]) if heard["final"] else done[3]
             else:
                 try:
                     translation = self._translate_speech(translator, heard)
@@ -922,7 +924,7 @@ class Pipeline:
                 except online.OnlineHiccup as exc:
                     self._hiccup(exc)
                     continue
-                done = (heard["id"], _bare(text), translation)
+                done = (heard["id"], _bare(text), cue.note() if cue else "", translation)
             if heard["final"]:
                 self._remember(text, translation)
                 address = self.relationships.address(text)
@@ -1077,7 +1079,7 @@ class Pipeline:
         messages = build_messages(_punctuated(heard["text"]), self.context.turns(), settings.source_lang,
                                   settings.target_lang,
                                   settings.glossary, settings.notes,
-                                  address=self.relationships.address(heard["text"], gender_of(heard.get("pitch", 0.0))),
+                                  address=self.relationships.address(_punctuated(heard["text"]), gender_of(heard.get("pitch", 0.0))),
                                   budget=budget, aside=self._voice_note(heard))
 
         started = time.monotonic()

@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from . import diagnostics
+from .romanize import CHOICE_WORDS
 
 _BRACKETED = re.compile(r"^[（(\[【〔]\s*([^()（）\[\]【】〔〕\n]{1,12}?)\s*[)）\]】〕]\s*(\S.*)$", re.S)
 # Lines to a whole group get no pronoun pair: a host to her viewers, a teacher to the class.
@@ -78,8 +79,8 @@ ROLES = {
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|じいちゃん|ばあちゃん|じっちゃん|ばっちゃん|じいじ|ばあば|爺ちゃん|"
                                              r"婆ちゃん|祖母|祖父|奶奶|爷爷|爺爺|外婆|外公|阿嫲|嫲嫲|阿爺|婆婆|公公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
-                                   r"^(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|아버님|어머님|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니(?!님)|아버지(?!님)|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
+                                   r"(?:^|(?<=喂，)|(?<=喂,)|(?<=喂 ))(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
                      r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹|弟弟|妹妹|細佬|细佬|阿妹)(?=[，,。！？!? ])",
@@ -194,6 +195,10 @@ def speaker_of(text: str) -> str | None:
         return bracketed
     first, _, rest = text.partition("\n")
     first, rest = first.strip(), rest.strip()
+    rows = [row.strip() for row in rest.split("\n")]
+    # A menu ("攻击 / 技能 / 物品 / 逃跑") or a game's answers ("はい / いいえ") has no speaker.
+    if first in CHOICE_WORDS or len(rows) >= 2 and all(len(row) <= 8 for row in [first, *rows]):
+        return None
     if not rest or first.endswith(_SENTENCE_END) or not _looks_like_name(first) or rest[:1].islower():
         return None
     # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker.
@@ -358,7 +363,11 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         facts = {"relation": "siblings or cousins", "older": speaker, "guess": True, "martial": bool(martial)}
         gender = "female" if FEMALE_TITLES.search(younger.group(0)) else "male" if MALE_TITLES.search(younger.group(0)) else ""
         return {**facts, f"{listener} gender": gender} if martial and gender else facts
+    # A doctor called 선생님/先生, or お母さん said to a patient's or pupil's mother, is not a teacher or a parent.
+    clinic = re.search(r"수술|병원|진료|환자|약을|처방|手術|病院|診察|お薬|患者|手术|医院|病人|お子さん|息子さん|娘さん|お嬢さん", line)
     for role, cue in ROLES.items():
+        if clinic and role.startswith(("teacher", "parent")):
+            continue
         title = cue.search(line)
         # Only the speaker being that role already: "我也是第一次当妈妈", not "你要当爷爷了" or "我要当爸爸了".
         opening = re.match(r"\W*([^，,、\s]{1,4})[，,、]", line)
@@ -392,7 +401,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         if not found:
             continue
         martial = bool(re.search("师|師|사형|사저", found.group(0)))
-        if re.match(r"\W*(?:作为|作為|身为|身為)$", line[:found.start()]) and gender:
+        if re.match(r"\W*(?:作为|作為|身为|身為)$", line[:found.start()]) and gender and not re.match(
+                r"\W*你", line[found.end():]):
             # "身为哥哥，我要保护你": the elder sibling speaking as one.
             return {"relation": "school senior and junior", "older": speaker, f"{speaker} gender": gender,
                     "guess": True, "martial": martial}
@@ -456,7 +466,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
         # A title before 我 with 你 later is either side ("姐姐我请你" from the elder, "姐姐我好想你" from the younger):
         # no cue for it either way.
-        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫|早く(?=[来行起帰早し！!、。…~\s]|$)|(?:来て|起きて|行こう|して|待って|見て)(?:よ|ね|ってば|ください)?(?=[！!、。…~\s]|$))(?!って|と言)", after) and not re.search("かな[あぁ]?\\W*$", after) or (
+        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫|早く(?=[来行起帰早し！!、。…~\s]|$)|(?:来て|起きて|行こう|して|待って|見て)(?:よ|ね|ってば|ください)?(?=[！!、。…~\s]|$))(?!って|と言)", after) and not re.search("かな(?!り)", after) or (
             re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue
@@ -473,7 +483,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
 
 # Words before a title that make it a mention: "your mother", "like a mother", "手紙には", "우리 엄마".
 _MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says|with|to|for|ask|"
-                        r"tell|visit|help|see|call)\s+|の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|(?<![参拜叩])见|"
+                        r"tell|visit|help|see|call)\s+|(?<![あこそど])の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|(?<![参拜叩])见|"
                         r"护住|保护|救|帮|跟着)$", re.I)
 # Titles that only ever come with "your", so "Your Majesty" calls the ruler where "your mother" only mentions one.
 _HONORIFIC = re.compile(r"(?:majesty|highness|grace|excellency|lordship|ladyship)", re.I)

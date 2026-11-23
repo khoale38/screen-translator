@@ -85,6 +85,10 @@ def _hangul(name: str) -> str:
     return " ".join(_syllables(word).capitalize() for word in words)
 
 
+# Answers a game offers ("はい / いいえ"): never a speaker's name tab, and kept apart even with no question above.
+CHOICE_WORDS = {"はい", "いいえ", "Yes", "No", "YES", "NO", "OK", "Cancel", "是", "否", "예", "아니요", "아니오", "接受", "拒绝",
+                "确定", "取消", "買う", "売る", "やめる", "Buy", "Sell", "Back", "买", "卖", "구매", "판매", "취소", "확인"}
+
 # Kinship and job titles used as labels: they are said in Vietnamese, not spelled out.
 ROLES_VI = {
     "할머니": "Bà", "할아버지": "Ông", "엄마": "Mẹ", "어머니": "Mẹ", "아빠": "Bố", "아버지": "Bố", "선생님": "Thầy",

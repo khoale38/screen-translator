@@ -102,7 +102,7 @@ _DOLLARS = re.compile(rf"\$\s*({_NUMBER})")
 _DEGREES = re.compile(r"(\d)\s*°\s*([CF]\b)?")
 _NEGATIVE = re.compile(r"(?<![\w.,])-(?=\d)")
 _TIMES = re.compile(r"(?<![\w])[x×](?=\d)|(?<=\d)[x×](?!\w)")
-_UNIT_WORDS = [("km/h", "ki lô mét trên giờ"), ("kg", "ki lô gam"), ("km", "ki lô mét"), ("cm", "xen ti mét"), ("mm", "mi li mét"),
+_UNIT_WORDS = [("km/h", "ki lô mét trên giờ"), ("mg", "mi li gam"), ("℃", "độ C"), ("kg", "ki lô gam"), ("km", "ki lô mét"), ("cm", "xen ti mét"), ("mm", "mi li mét"),
                ("ml", "mi li lít"), ("g", "gam"), ("k", "nghìn"), ("đ", "đồng"), ("vnđ", "đồng"),
                ("VNĐ", "đồng"), ("VND", "đồng")]
 _UNITS_AFTER = re.compile(r"(\d)\s*(" + "|".join(unit for unit, _ in sorted(_UNIT_WORDS, key=lambda u: -len(u[0])))

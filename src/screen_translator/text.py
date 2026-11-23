@@ -8,7 +8,7 @@ from statistics import median
 from difflib import SequenceMatcher
 
 from .ocr import BUTTON_MISREAD, OcrLine
-from .romanize import ROLES_VI
+from .romanize import CHOICE_WORDS, ROLES_VI
 
 _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _KANA_FIX = {"八": "ハ", "口": "ロ", "工": "エ", "力": "カ", "夕": "タ"}
@@ -66,7 +66,7 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
         # In bubbles a lone CJK character or Hangul syllable, or a line of just a number ("30!"), is real text too.
         lone = lone_cjk and ((letters and re.search("[\u3040-\u9fff\uac00-\ud7a3]", text)) or re.search(r"\d", text))
         # "爸，" read as a box of its own beside "我回来了。" is a call, not a stray glyph.
-        beside = letters == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) and any(
+        beside = letters == 1 and re.search("[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]", text) and any(
             other is not line and sum(ch.isalpha() for ch in other.text) >= 2
             and (_same_row(line, other) or _stacked(line, other)) for other in lines)
         if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
@@ -83,11 +83,8 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 # A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
-# Answers a game offers ("はい / いいえ"): never a speaker's name tab, and kept apart even with no question above.
-CHOICE_WORDS = {"はい", "いいえ", "Yes", "No", "YES", "NO", "OK", "Cancel", "是", "否", "예", "아니요", "아니오", "接受", "拒绝",
-                "确定", "取消", "買う", "売る", "やめる", "Buy", "Sell", "Back", "买", "卖", "구매", "판매", "취소", "확인"}
 _TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
-    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "누나", "오빠", "형",
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
     "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
@@ -187,7 +184,10 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         menu_left = row[0].box[0] if menu else None
         if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(
                 *previous, row[0], width, frame_w, frame_h):
-            if paragraphs[-1].strip() in _TITLE_WORDS:
+            # Not "DAD / WILL KILL US", where the title is the subject of the next row.
+            subject = re.match(r"(?:WILL|IS|WAS|SAID|SAYS|WANTS|HAS|CAN|DOESN'T|DIDN'T|WON'T|ISN'T|HATES|LOVES|KNOWS|THINKS)\b",
+                               row_text, re.I)
+            if paragraphs[-1].strip() in _TITLE_WORDS and not subject:
                 paragraphs[-1] = paragraphs[-1].strip() + ("，" if _cjk(paragraphs[-1]) else ", ") + row_text
             else:
                 paragraphs[-1] = _join(paragraphs[-1], row_text)
@@ -258,7 +258,10 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
         left_aligned = abs(above.box[0] - below.box[0]) * frame_w < 0.5 * height * frame_h
     centred = (abs((above.box[0] + above_width / 2) - (below.box[0] + below_width / 2)) < height
                and gap > 0.08 * height and above.box[3] < (0.85 if titled else 0.92) * below.box[3])
-    return (_name_like(above_text) and (left_aligned or centred) and above_width < 0.6 * below_width
+    # A visual-novel name tab over a short reply ("小林" / "好吧"): both short, set apart a little.
+    short_reply = (left_aligned and len(above_text.strip()) <= 4 and len(below.text.strip()) <= 6 and gap > 0.15 * height
+                   and not above_text.strip()[-1:] in "，,、")
+    return (_name_like(above_text) and (left_aligned or centred) and (above_width < 0.6 * below_width or short_reply)
             and gap > -0.5 * height)
 
 
@@ -510,11 +513,12 @@ def _list_rows(pixels: list[tuple]) -> set[int]:
         ends = any(re.search("[。.!！?？…]$", p[5].strip()) and 0 < (p[1] - last[1]) <= 4 * last[3] and p[3] >= 0.85 * last[3]
                    and (abs(p[0] - last[0]) < 0.5 * last[3] or abs((p[0] + p[2] / 2) - (last[0] + last[2] / 2)) < 0.5 * last[3])
                    for p in pixels)
-        # All-caps comic lettering sits closer (about 1.3 line heights) than an all-caps menu.
+        # All-caps comic lettering: centred rows of varying width, closer than 1.6 line heights; a left-aligned all-caps
+        # column (RESUME / SETTINGS / CONTROLS) is a menu.
         capitals = all(re.fullmatch(r"[A-Z0-9 '’,.!?\-]+", pixels[i][5]) for i in chain)
-        tight = capitals and len(chain) > 1 and min(
-            pixels[b][1] - pixels[a][1] for a, b in zip(chain, chain[1:])) < 1.45 * last[3]
-        if len(chain) >= 3 and not ends and not tight:
+        ragged = any(abs(pixels[a][0] - pixels[b][0]) > 0.3 * pixels[a][3] for a, b in zip(chain, chain[1:]))
+        close = len(chain) > 1 and max(pixels[b][1] - pixels[a][1] for a, b in zip(chain, chain[1:])) < 1.6 * last[3]
+        if len(chain) >= 3 and not ends and not (capitals and ragged and close):
             pitches = [(pixels[b][1] - pixels[a][1]) for a, b in zip(chain, chain[1:])]
             middle = median(pitches)
             if all(abs(p - middle) <= 0.15 * middle for p in pitches):
@@ -662,8 +666,8 @@ def _same_block(a: tuple, b: tuple) -> bool:
     cjk_title = (_cjk(text) and _cjk(lower[5]) and ratio < 0.88 and upper[2] < 0.95 * lower[2]
                  and gap > 0.12 * height and not text.endswith(("，", "、", ",")))
     # Comic lettering is all capitals with loose leading.
-    lettering = (text.isupper() and lower[5].isupper() and gap <= 0.45 * height and not re.search(r"\d", text + lower[5])
-                 and not text.endswith(_ENDS) and (len(text.split()) > 1 or len(lower[5].split()) > 1))
+    centred_rows = abs((upper[0] + upper[2] / 2) - (lower[0] + lower[2] / 2)) < 0.5 * height
+    lettering = text.isupper() and lower[5].isupper() and gap <= 0.5 * height and centred_rows and not text.endswith(_ENDS)
     wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower() or lettering
                                or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)
                                    and gap <= 0.35 * height))
