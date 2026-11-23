@@ -84,7 +84,7 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
 _TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
-    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "누나", "오빠", "형",
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
     "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
@@ -163,7 +163,8 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
         after_question = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？"
         lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip()) and not (menus and after_question)
-                and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0]) and len(row_text.strip()) > 2)
+                and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0])
+                and (len(row_text.strip()) > 2 or re.search("[\uac00-\ud7a3]", previous[0])))
         if lone and not same_baseline:
             # "哥" centred over "等等我！" calls the listener; only a role set flush left over its line names the speaker.
             left = abs(previous[1].box[0] - row[0].box[0])
@@ -218,7 +219,11 @@ def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: floa
     indented = (below.box[0] - above.box[0]) * frame_w > 0.5 * height and above_text[-1:] in "。.!！:：?？"
     if left >= 1.5 * height and not indented:
         return False
-    return above_text[-1:] in "?？" or asked and short(above_text) or indented
+    # はい / いいえ, Yes / No, 接受 / 拒绝: single words flush with each other, not a wrapped sentence.
+    token = lambda text: " " not in text.strip() and not re.search("[。.!！?？,，、]", text) and (
+        len(text.strip()) <= 3 or text.strip().isascii() and len(text.strip()) <= 10)
+    words = left < 0.3 * height and token(above_text) and token(below_text)
+    return above_text[-1:] in "?？" or asked and short(above_text) or indented or words
 
 
 def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
@@ -494,10 +499,14 @@ def _list_rows(pixels: list[tuple]) -> set[int]:
             height = max(a[3], b[3])
             pitch = (b[1] + b[3] / 2) - (a[1] + a[3] / 2)
             lined = abs(a[0] - b[0]) < 0.5 * height or abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < 0.5 * height
-            # Menus are spaced wider than the lines of a speech bubble (1.1-1.4 line heights).
-            if min(a[3], b[3]) >= 0.85 * height and lined and 1.5 * height <= pitch <= 4 * height:
+            if min(a[3], b[3]) >= 0.85 * height and lined and 1.2 * height <= pitch <= 4 * height:
                 chain.append(i)
-        if len(chain) >= 3:
+        # A speech bubble's unpunctuated rows run on into a row that ends the sentence ("DON'T TELL / GRANDMA / …!").
+        last = pixels[chain[-1]]
+        ends = any(re.search("[。.!！?？…]$", p[5].strip()) and 0 < (p[1] - last[1]) <= 4 * last[3]
+                   and (abs(p[0] - last[0]) < 0.5 * last[3] or abs((p[0] + p[2] / 2) - (last[0] + last[2] / 2)) < 0.5 * last[3])
+                   for p in pixels)
+        if len(chain) >= 3 and not ends:
             pitches = [(pixels[b][1] - pixels[a][1]) for a, b in zip(chain, chain[1:])]
             middle = median(pitches)
             if all(abs(p - middle) <= 0.15 * middle for p in pitches):
@@ -644,7 +653,9 @@ def _same_block(a: tuple, b: tuple) -> bool:
     # A shorter CJK row of another size, set apart, is a header or title; a bubble's rows touch.
     cjk_title = (_cjk(text) and _cjk(lower[5]) and ratio < 0.88 and upper[2] < 0.95 * lower[2]
                  and gap > 0.12 * height and not text.endswith(("，", "、", ",")))
-    wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower()
+    # Comic lettering is all capitals with loose leading.
+    lettering = text.isupper() and lower[5].isupper() and gap <= 0.6 * height
+    wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower() or lettering
                                or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)
                                    and gap <= 0.35 * height))
     # Padded OCR boxes of tightly set or slightly rotated lines overlap by up to half a line.

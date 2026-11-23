@@ -102,7 +102,9 @@ ROLES_VI = {
     "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
     "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
     "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
-    "우편함": "Hộp thư", "ログインボーナス": "Thưởng đăng nhập", "お知らせ": "Thông báo", "公告": "Thông báo",
+    "伯父": "Bác", "叔父": "Chú", "岳父": "Bố vợ", "岳母": "Mẹ vợ", "师母": "Sư mẫu", "姑母": "Cô", "舅舅": "Cậu", "姨妈": "Dì",
+    "伯母": "Bác gái", "婶婶": "Thím", "陛下": "Bệ hạ", "丞相": "Thừa tướng", "太监": "Thái giám", "殿下": "Điện hạ",
+    "娘娘": "Nương nương", "우편함": "Hộp thư", "ログインボーナス": "Thưởng đăng nhập", "お知らせ": "Thông báo", "公告": "Thông báo",
     "알림": "Thông báo", "공지": "Thông báo", "안내": "Hướng dẫn", "경고": "Cảnh báo", "보상": "Phần thưởng",
     "퀘스트": "Nhiệm vụ", "이벤트": "Sự kiện", "우편": "Thư", "파티 초대": "Mời nhóm", "친구 요청": "Lời mời kết bạn",
     "길드 초대": "Mời bang hội", "執事": "Quản gia", "鍛冶屋": "Thợ rèn", "謎の男": "Người đàn ông bí ẩn",
@@ -160,7 +162,7 @@ def han_viet(name: str) -> str | None:
     if not 1 <= len(name) <= 5:
         return None
     for role, label in sorted(ROLES_VI.items(), key=lambda item: -len(item[0])):
-        if name.endswith(role) and len(role) < len(name) and "\u4e00" <= role[0] <= "\u9fff":
+        if name.endswith(role) and 1 < len(role) < len(name) and "\u4e00" <= role[0] <= "\u9fff":
             head = han_viet(name[:-len(role)])
             return f"{head} {label}" if head else None
     if not all(ch in HAN_VIET for ch in name):

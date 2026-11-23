@@ -620,3 +620,18 @@ def test_round_19_bubbles_and_dialogue_boxes_are_not_menus_and_two_character_tab
     W, H = 1920, 1080
     bubble = [px("WAIT", 900, 300, 100, 40, W, H), px("RIGHT HERE", 860, 345, 180, 40, W, H), px("NOW", 910, 390, 80, 40, W, H)]
     assert len(group_blocks(bubble, W, H)) == 1
+
+
+def test_round_20_comic_bubbles_join_menus_split_and_yes_no_choices_stay_apart():
+    from screen_translator.text import assemble
+
+    W, H = 1920, 1080
+    bubble = [px("DON'T TELL", 860, 300, 200, 40, W, H), px("GRANDMA", 880, 355, 160, 40, W, H),
+              px("ABOUT THE", 870, 410, 180, 40, W, H), px("BROKEN VASE!", 850, 465, 220, 40, W, H)]
+    assert [b.text for b in group_blocks(bubble, W, H)] == ["DON'T TELL GRANDMA ABOUT THE BROKEN VASE!"]
+    menu = [px("ゲームに戻る", 840, 400, 240, 40, W, H), px("設定", 920, 452, 80, 40, W, H),
+            px("操作方法", 880, 504, 160, 40, W, H), px("タイトルに戻る", 820, 556, 280, 40, W, H)]
+    assert len(group_blocks(menu, W, H)) == 4
+    W, H = 1280, 720
+    choice = [px("はい", 100, 500, 80, 40, W, H), px("いいえ", 100, 550, 120, 40, W, H)]
+    assert assemble(choice, width=W, height=H, menus=True) == "はい\nいいえ"

@@ -600,3 +600,15 @@ def test_round_19_calls_beat_self_roles_and_parent_words_are_not_swears():
     assert said("아들아밥은먹고다니니?") == ("", "con")
     assert said("师傅，弟子知错了。") == ("đệ tử", "sư phụ")
     assert said("お姉ちゃん早く来て！") == ("em", "chị")
+
+
+def test_round_20_daughter_mentions_mom_words_and_role_suffixes():
+    from screen_translator.romanize import role_label
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    for line in ("딸아이가이번에대학에붙었어요.", "我妈的手机坏了", "他妈妈来了", "滚烫的汤"):
+        assert said(line) is None, line
+    assert said("滚！") == ("tao", "mày") and said("他妈的！") == ("tao", "mày")
+    assert said("作为妈妈，我不能不管你") == ("mẹ", "con")
+    assert said("傻孩子说这些干什么?") == ("", "con")
+    assert role_label("伯父") == "Bác" and role_label("陛下") == "Bệ hạ"
