@@ -71,7 +71,8 @@ def build_messages(
         messages.append(_asking(turn.source, turn.note))
         messages.append({"role": "assistant", "content": turn.translation})
     note = " ".join(filter(None, (aside, address.note() if address else "", dub_note(budget))))
-    messages.append(_asking(current, note))
+    # All-caps lettering in sentence case: small models loop or answer in garbled capitals otherwise.
+    messages.append(_asking(sentence_case(current), note))
     return messages
 
 
@@ -146,9 +147,9 @@ def build_screen_messages(
     messages = build_messages("", history, source_lang, target_lang, glossary, notes, address=address)
     messages[0]["address_terms"] = address.terms(source_lang, screen[index]) if address else {}
     messages[0]["content"] += SCREEN_NOTE
-    listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
+    listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(sentence_case(text).splitlines())}" for i, text in enumerate(screen))
     # Quoting the item spares a small model looking its letter up, where it often lands on a neighbour.
-    item = " / ".join(screen[index].splitlines())
+    item = " / ".join(sentence_case(screen[index]).splitlines())
     content = with_note(f"{listing}\n\nTranslate item {SCREEN_LETTERS[index]}: {item}", note)
     messages[-1].update(content=content, item=screen[index], screen=screen)
     return messages
@@ -245,12 +246,13 @@ def sentence_case(text: str) -> str:
     letters = [ch for ch in text if ch.isascii() and ch.isalpha()]
     if len(letters) < 8 or sum(ch.isupper() for ch in letters) < 0.8 * len(letters):
         return text
-    lowered = re.sub(r"[A-Za-z]+", lambda m: m.group(0) if m.group(0) in _ACRONYMS else m.group(0).lower(), text)
+    lowered = re.sub(r"[A-Za-z][A-Za-z0-9]*", lambda m: m.group(0) if m.group(0) in _ACRONYMS else m.group(0).lower(), text)
     lowered = re.sub(r"\bi\b", "I", lowered)
     return re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), lowered)
 
 
-_ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "AI", "DNA", "CEO", "PC", "GPS", "VIP"}
+_ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "AI", "DNA", "CEO", "PC", "GPS", "VIP", "XP",
+             "ATK", "DEF", "RT", "LT", "RB", "LB", "L1", "L2", "L3", "R1", "R2", "R3", "ZL", "ZR", "UI"}
 
 
 def is_name_tab(text: str) -> bool:

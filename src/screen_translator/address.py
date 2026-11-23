@@ -39,7 +39,7 @@ YOU_WORDS = {"en": ("you", "you're", "you'll", "you've", "your", "yourself"),
 # Cues clear enough to guess from at once, before the model has read the conversation.
 # お前 and "hell" are left out: teachers, parents and couples say them all the time.
 ROUGH = re.compile(r"\b(damn|shit|fuck\w*|bitch|fool|punk|ass(hole)?|dumbass|motherf\w*)\b|"
-                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|(?<![やおゆ])くそ(?!こ)|クソ|새끼|씨발|개새|他妈的|(?:^|[，,。！!？?\s])妈的|(?:^|[，,。！!？?\s]|给我)滚(?:开|出去|蛋)?(?=[！!。，,\s]|$)", re.I)
+                   r"てめぇ|てめえ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|(?<![やおゆ])くそ(?!こ)|クソ|새끼|씨발|개새|他妈的|(?:^|[，,。！!？?\s])妈的|(?:^|[，,。！!？?\s]|给我)滚(?:开|出去|蛋)?(?=[！!。，,\s]|$)", re.I)
 # English and Korean titles count only when they call the listener ("Brother, wait!", "오빠, 그 말..."), not when
 # they mention someone ("오빠 편만 들어요"); Japanese and Chinese often use the title for "you" inside the sentence.
 _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|{0}(?=\s*[,!?~…]))"
@@ -79,7 +79,7 @@ ROLES = {
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|じいちゃん|ばあちゃん|じっちゃん|ばっちゃん|じいじ|ばあば|爺ちゃん|"
                                              r"婆ちゃん|祖母|祖父|奶奶|爷爷|爺爺|外婆|外公|阿嫲|嫲嫲|阿爺|婆婆|公公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|어머님|아버님|장모님|장인어른|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|어머님|아버님|장모님|장인어른|丈母娘|岳母|岳父|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
                                    r"(?:^|(?<=喂，)|(?<=喂,)|(?<=喂 ))(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
@@ -120,12 +120,15 @@ _TRANSLATOR_NOTE = re.compile(r"^\s*(?:T/?N|TL ?note|TN|Note|N/A|注|註|※|작
 _PARENT_SELF = re.compile(r"\b(mommy|mummy|daddy|mom|mum|dad|your (?:mother|father|mom|dad))\b|엄마가|아빠가|"
                           r"(?:妈妈|爸爸)(?=在|回来|来了|给你|带你|陪你|帮你|爱你|会)",
                           re.I)
+# Vietnamese has its own word for each side of the family: 舅舅 is cậu, 伯伯 bác, 이모 dì.
+KIN_WORDS = [("舅舅|外삼촌|외삼촌", "cậu"), ("伯伯|伯父|큰아버지|伯父さん", "bác"), ("이모|姨妈|姨媽", "dì"), ("姑姑|고모", "cô"),
+             ("叔叔|叔父|삼촌|작은아버지", "chú")]
 ROYAL_PARENTS = {"父皇": "phụ hoàng", "母后": "mẫu hậu", "母妃": "mẫu phi"}
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|姫様|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother|aunt|auntie|"
-                           r"aunty|noona|unnie|ahjumma|mommy|mummy|mama)\b|ばあちゃん|阿嫲|嫲嫲|婆婆|媽|家姐|아줌마|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
+                           r"aunty|noona|unnie|ahjumma|mommy|mummy|mama)\b|장모님|丈母娘|岳母|ばあちゃん|阿嫲|嫲嫲|婆婆|媽|家姐|아줌마|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
                            r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|爺爺|じいちゃん|阿爺|公公|老豆|爹哋|大佬|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|장인어른|岳父|爺爺|じいちゃん|阿爺|公公|老豆|爹哋|大佬|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
                          r"おじさん|叔叔|伯伯|舅舅|삼촌|사형|사제|师兄|師兄|师弟|師弟|왕자|할아버지|아빠|아버지|"
                          r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
@@ -204,7 +207,11 @@ def speaker_of(text: str) -> str | None:
     # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker.
     words = first.split()
     # A lone title over an all-caps line is a comic bubble calling someone ("MOM / I'M HOME!"), not a name tab.
-    called = words[-1].lower().strip(",") in _VOCATIVE_TITLES and (len(words) > 1 or rest.isupper())
+    called = words[-1].lower().strip(",") in _VOCATIVE_TITLES and len(words) > 1
+    heading = re.fullmatch(r"(?i:objective|warning|quest|mission|tip|hint|notice|reward|goal|tutorial|new|live)|S\d+\s*E\d+|"
+                           r"\d+\+|\d{1,2}:\d{2}", first)
+    if heading:
+        return None
     if words[0].lower().strip(",") in _DISCOURSE or called:
         return None
     return first
@@ -228,7 +235,7 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     top = senior if senior in (speaker, listener) else older if older in (speaker, listener) else ""
     by_gender = lambda women, men: lambda who: {"female": women, "male": men}.get(gender(who), "")
     ranked = {"parent": by_gender("mẹ", "bố"), "grandparent": by_gender("bà", "ông"), "teacher": by_gender("cô", "thầy"),
-              "aunt": by_gender("cô", "chú")}
+              "aunt": (lambda who: facts["kin_word"]) if facts.get("kin_word") else by_gender("cô", "chú")}
     if relation.startswith("parent") and top and facts.get("royal_parent"):
         royal = facts["royal_parent"]
         return (royal, "hoàng nhi") if top == speaker else ("nhi thần", royal)
@@ -365,10 +372,17 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         return {**facts, f"{listener} gender": gender} if martial and gender else facts
     # A doctor called 선생님/先生, or お母さん said to a patient's or pupil's mother, is not a teacher or a parent.
     # A parent to the doctor or teacher about their child, or a doctor to a patient: no teacher cue.
-    clinic = re.search(r"수술|진료|환자|처방|퇴원|의사|우리 ?아이|手術|診察|患者|うちの子|手术|医生|病人|我家孩子|我的孩子", line)
+    clinic = re.search(r"수술|진료|환자|처방|퇴원|의사|우리 ?(?:아이|애|딸|아들)|제 ?(?:딸|아들)|手術|診察|患者|うちの(?:子|娘|息子)|"
+                       r"(?:息子|娘)は|手术|医生|病人|我家孩子|我的孩子|我(?:儿子|女儿)", line)
     # 어머님/お母さん said to someone else's parent ("お子さんは…", "처음 뵙겠습니다"): no parent cue.
+    # A doctor or teacher to a patient's or pupil's parent: 어머님 with clinic or school words, お母さん in polite
+    # speech with them, 妈妈 with 您 about 孩子.
     others = re.search(r"お子さん|息子さん|娘さん|お嬢さん|아드님|따님|처음 ?뵙|您的孩子|你家孩子", line) or (
-        re.search("어머님|아버님", line) and re.search(r"수술|진료|환자|퇴원|검사|치료|입원", line))
+        re.search("어머님|아버님", line) and re.search(r"수술|진료|환자|퇴원|검사|치료|입원|약|병원|감기|걱정 ?마세요|"
+                                                   r"아이|애가|학생|학교|성적|숙제", line)) or (
+        re.search("お母さん|お父さん", line) and re.search("ます|です", line)
+        and re.search("薬|病院|検査|風邪|学校|成績|宿題", line)) or (
+        re.search("妈妈|爸爸|妈|爸", line) and "您" in line and "孩子" in line)
     for role, cue in ROLES.items():
         if clinic and role.startswith("teacher") or others and role.startswith("parent"):
             continue
@@ -389,6 +403,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         if calls_by(cue, line):
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
             title = cue.search(line).group(0)
+            if role.startswith("aunt"):
+                facts["kin_word"] = next((word for pattern, word in KIN_WORDS if re.search(pattern, title)), "")
             if role.startswith("parent") and title in ROYAL_PARENTS:
                 facts["royal_parent"] = ROYAL_PARENTS[title]
             if role.startswith("ruler"):
@@ -570,7 +586,7 @@ NOBODY = "?"
 def _replier(lines: list, index: int) -> str | None:
     who = lines[index][0]
     return next((w for w, _l, _a, _t in lines[index + 1:] if w and w != who), None)
-_KOREAN_CALL_ON = re.compile(r"\s*(?:나|저|우리|너|왜|빨리|어디|이거|지금|야(?=\s*(?:[,.!?~…]|$))|잠깐)")
+_KOREAN_CALL_ON = re.compile(r"\s*(?:나|저|제가|내가|식사|밥|우리|너|왜|빨리|어디|이거|지금|야(?=\s*(?:[,.!?~…]|$))|잠깐)")
 
 
 def _calls_a_title(body: str) -> bool:

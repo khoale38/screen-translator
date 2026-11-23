@@ -176,6 +176,7 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
         after_question = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？"
         lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip()) and not (menus and after_question)
+                and previous[0].strip() not in ("나", "저", "我", "私", "俺", "僕")
                 and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0])
                 and (len(row_text.strip()) > 2 or re.search("[\uac00-\ud7a3]", previous[0])))
         if lone and not same_baseline:
@@ -203,7 +204,10 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
             addresses = re.match(r"(?:I|I'M|I'LL|I'VE|YOU|WE|WHERE|WHAT|WHY|HOW|CAN|COULD|LOOK|WAIT|COME|HELP|PLEASE|HEY|"
                                  r"ARE|DID|DO|STOP|DON'T|LET'S|THANK|TELL|GIVE|SHOW|LET|TAKE|GET|GO|SIT|EAT|READ|PLAY|BUY|LISTEN|HURRY|RUN|"
                                  r"KEEP|TRY|WAKE|OPEN|GUESS|SORRY|GOOD)\b", row_text, re.I) or not row_text[:1].isascii()
-            flush_tab = abs(previous[1].box[0] - row[0].box[0]) * frame_w < 0.5 * row[0].box[3] * frame_h
+            # A tab sits flush left over a wider line; a centred call over a line of similar width shares its centre too.
+            left_gap = abs(previous[1].box[0] - row[0].box[0]) * frame_w
+            centre_gap = abs((previous[1].box[0] + previous[1].box[2] / 2) - (row[0].box[0] + row[0].box[2] / 2)) * frame_w
+            flush_tab = left_gap < 0.5 * row[0].box[3] * frame_h and centre_gap > row[0].box[3] * frame_h
             if paragraphs[-1].strip() in _TITLE_WORDS and addresses and not flush_tab:
                 paragraphs[-1] = paragraphs[-1].strip() + ("，" if _cjk(paragraphs[-1]) else ", ") + row_text
             else:
@@ -276,6 +280,12 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     centred = (abs((above.box[0] + above_width / 2) - (below.box[0] + below_width / 2)) < height
                and gap > 0.08 * height and above.box[3] < (0.85 if titled else 0.92) * below.box[3])
     # A visual-novel name tab over a short reply ("小林" / "好吧"): both short, set apart a little.
+    # An all-caps speaker tab ("OLD MINER", "SGT. HALE") flush left over a much wider line.
+    caps_tab = (above_text.isupper() and len(above_text.split()) <= 3 and len(above_text) <= 14 and left_aligned
+                and above_width < 0.45 * below_width and gap > 0.15 * height
+                and abs(above.box[0] - below.box[0]) * frame_w < 0.5 * height * frame_h)
+    if caps_tab:
+        return True
     short_reply = (menus and left_aligned and len(above_text.strip()) <= 4 and len(below.text.strip()) <= 6 and gap > 0.15 * height
                    and not above_text.strip()[-1:] in "，,、")
     return (_name_like(above_text) and (left_aligned or centred) and (above_width < 0.6 * below_width or short_reply)

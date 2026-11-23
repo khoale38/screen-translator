@@ -644,3 +644,15 @@ def test_round_23_parents_at_the_clinic_in_laws_and_children_mentioning_hospital
     assert said("엄마, 병원 가기 싫어.") == ("con", "mẹ")
     assert said("어머님, 식사하세요.") == ("con", "mẹ")
     assert said("네, 어머님. 수술은 잘 끝났습니다.") is None
+
+
+def test_round_24_doctors_and_teachers_to_parents_kin_words_and_caps_tabs():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    for line in ("어머님, 걱정 마세요.", "お母さん、お薬を出しておきますね。", "妈妈，您放心，孩子只是感冒。", "선생님, 우리 애가 요즘 힘들어해요."):
+        assert said(line) is None, line
+    assert said("어머님, 식사하세요.") == ("con", "mẹ")
+    assert said("舅舅，你来了！") == ("cháu", "cậu") and said("이모, 배고파요.") == ("cháu", "dì")
+    assert said("장모님제가할게요.") == ("con", "mẹ")
+    assert said("てめえ、ぶっ飛ばすぞ！") == ("tao", "mày")
+    assert speaker_of("MOM\nWHERE HAVE YOU BEEN?") == "MOM"
+    assert speaker_of("OBJECTIVE\nReach the extraction point.") is None

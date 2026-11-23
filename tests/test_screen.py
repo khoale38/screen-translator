@@ -690,3 +690,16 @@ def test_round_23_stat_columns_caps_name_tabs_and_area_menus():
              px("セーブ", 560, 520, 120, 36, W, H), px("ロード", 560, 580, 120, 36, W, H)]
     assert assemble(title, width=W, height=H, menus=True).split("\n") == ["はじめから", "つづきから", "セーブ", "ロード"]
     assert spoken_numbers("Ăn 3 lần/ngày, huyết áp 120/80.") == "Ăn ba lần mỗi ngày, huyết áp một trăm hai mươi trên tám mươi."
+
+
+def test_round_24_centred_calls_join_and_caps_tabs_stay_tabs():
+    from screen_translator.translator import sentence_case
+
+    W, H = 1920, 1080
+    call = [px("Mom", 920, 300, 80, 40, W, H), px("help!", 915, 350, 90, 40, W, H)]
+    assert [b.text for b in group_blocks(call, W, H)] == ["Mom, help!"]
+    tab = [px("OLD MINER", 200, 800, 190, 36, W, H), px("THE MINE COLLAPSED YESTERDAY.", 200, 846, 560, 36, W, H)]
+    assert [b.text for b in group_blocks(tab, W, H)] == ["OLD MINER\nTHE MINE COLLAPSED YESTERDAY."]
+    mom = [px("MOM", 200, 800, 90, 36, W, H), px("WHERE HAVE YOU BEEN?", 200, 846, 420, 36, W, H)]
+    assert [b.text for b in group_blocks(mom, W, H)] == ["MOM\nWHERE HAVE YOU BEEN?"]
+    assert sentence_case("PRESS RT TO DASH AND L3 TO SPRINT") == "Press RT to dash and L3 to sprint"
