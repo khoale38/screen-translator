@@ -93,7 +93,8 @@ _CURRENCY_BEFORE = re.compile(r"([₫¥€₩£])\s*(\d+(?:[.,]\d+)*)")
 _CURRENCY_AFTER = re.compile(r"(\d)\s*([₫¥€₩£])")
 _DECADE = re.compile(r"(?:(?:những năm|thập niên)\s+)?\b((19|20)(\d)0)s\b", re.I)
 _ORDINAL = re.compile(r"\b(thứ)\s+([14])\b", re.I)
-_CLOCK_SUFFIX = re.compile(r"\b(\d{1,2})\s*([ap])(?:\.m\.|m\b)", re.I)
+_CLOCK_SUFFIX = re.compile(r"(?<![:\d])(\d{1,2})\s*([ap])(?:\.m\.|m\b)", re.I)
+_TIME_SUFFIX = re.compile(r"\b(\d{1,2}):(\d{2})\s*([ap])(?:\.m\.|m\b)", re.I)
 _THOUSANDS = re.compile(r"(\d)K(?=\s*(?:người|lượt|view|sub|follow|like|đô|đồng|USD)\b)", re.I)
 _PHONE = re.compile(r"(?<![\d.,])0\d{2,}(?: \d{2,})*")
 _PERCENT = re.compile(rf"({_NUMBER})\s*%")
@@ -114,6 +115,9 @@ def spoken_numbers(text: str) -> str:
     text = _CLOCK.sub(lambda m: f"{spoken_integer(int(m.group(1)))} tiếng {spoken_integer(int(m.group(2)))} phút "
                       f"{spoken_integer(int(m.group(3)))} giây", text)
     text = _SCORE.sub(lambda m: f"{_UNITS[int(m.group(1))]} - {_UNITS[int(m.group(2))]}", text)
+    text = _TIME_SUFFIX.sub(lambda m: f"{spoken_integer(int(m.group(1)))} giờ"
+                            + (f" {spoken_integer(int(m.group(2)))}" if int(m.group(2)) else "")
+                            + (" sáng" if m.group(3).lower() == "a" else " tối"), text)
     text = _CLOCK_SUFFIX.sub(lambda m: f"{m.group(1)} giờ " + ("sáng" if m.group(2).lower() == "a" else "tối"), text)
     text = _THOUSANDS.sub(r"\1 nghìn", text)
     text = _DECADE.sub(lambda m: "những năm " + spoken_integer(int(m.group(3)) * 10 if m.group(2) == "19" else int(m.group(1))),

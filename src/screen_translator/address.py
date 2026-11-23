@@ -38,7 +38,7 @@ YOU_WORDS = {"en": ("you", "you're", "you'll", "you've", "your", "yourself"),
 # Cues clear enough to guess from at once, before the model has read the conversation.
 # お前 and "hell" are left out: teachers, parents and couples say them all the time.
 ROUGH = re.compile(r"\b(damn|shit|fuck\w*|bitch|fool|punk|ass(hole)?|dumbass|motherf\w*)\b|"
-                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|くそ(?![くこ])|クソ|새끼|씨발|개새|他妈|妈的|滚", re.I)
+                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|(?<![やおゆ])くそ(?!こ)|クソ|새끼|씨발|개새|他妈|妈的|滚", re.I)
 # English and Korean titles count only when they call the listener ("Brother, wait!", "오빠, 그 말..."), not when
 # they mention someone ("오빠 편만 들어요"); Japanese and Chinese often use the title for "you" inside the sentence.
 _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|{0}(?=\s*[,!?~…]))"
@@ -82,7 +82,14 @@ ROLES = {
                                    r"^(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|아버님|어머님|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
-                     r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹)(?=[，,。！？!?])", re.I)
+                     r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹|弟弟|妹妹|細佬|细佬|阿妹)(?=[，,。！？!? ])",
+                     re.I)
+# A parent or grandparent calling the child: "儿子，…", "乖孙", "Son, …", "아들, …".
+TO_CHILD = {
+    "grandparent and grandchild": re.compile(r"乖孙|乖孫|孙子|孫子|孙女|孫女|손자|손녀|孫よ", re.I),
+    "parent and child": re.compile(_VOCATIVE.format(r"(?:son|kiddo|young man)") + r"|儿子|兒子|闺女|閨女|아들|딸아|息子よ",
+                                   re.I),
+}
 # What one spouse or lover calls the other; 老公 is said to a husband, 老婆 and 마누라 to a wife, 여보 to either.
 COUPLE = {
     "male": re.compile(r"老公|夫君|相公|旦那様?(?=[、，,！!？?])", re.I),
@@ -115,7 +122,7 @@ PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|姫�
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother|aunt|auntie|"
                            r"aunty|noona|unnie|ahjumma|mommy|mummy|mama)\b|ばあちゃん|阿嫲|嫲嫲|婆婆|媽|家姐|아줌마|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
                            r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|じいちゃん|阿爺|公公|老豆|爹哋|大佬|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|爺爺|じいちゃん|阿爺|公公|老豆|爹哋|大佬|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
                          r"おじさん|叔叔|伯伯|舅舅|삼촌|사형|사제|师兄|師兄|师弟|師弟|왕자|할아버지|아빠|아버지|"
                          r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
@@ -349,6 +356,12 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         gender = "female" if FEMALE_TITLES.search(younger.group(0)) else "male" if MALE_TITLES.search(younger.group(0)) else ""
         return {**facts, f"{listener} gender": gender} if martial and gender else facts
     for role, cue in ROLES.items():
+        title = cue.search(line)
+        if title and re.search(f"(?:当|做|作为|當|作為){re.escape(title.group(0))}", line):
+            # "妈妈,我也是第一次当妈妈": the speaker is the one being a mother.
+            gender = "female" if FEMALE_TITLES.search(title.group(0)) else "male" if MALE_TITLES.search(title.group(0)) else ""
+            facts = {"relation": role, "senior": speaker, "older": speaker, "guess": True}
+            return {**facts, f"{speaker} gender": gender} if gender else facts
         if calls_by(cue, line):
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
             title = cue.search(line).group(0)
@@ -360,6 +373,9 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
                                   else "điện hạ" if PRINCELY.search(title) else "bệ hạ")
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
+    for role, cue in TO_CHILD.items():
+        if calls_by(cue, line):
+            return {"relation": role, "senior": speaker, "older": speaker, "guess": True}
     for gender, cue in TO_ELDER.items():
         found = cue.search(line)
         if not found:
@@ -425,7 +441,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
         # A title before 我 with 你 later is either side ("姐姐我请你" from the elder, "姐姐我好想你" from the younger):
         # no cue for it either way.
-        speaks_on = re.match(r"\s*(?:你|您)", after) or (
+        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫)", after) or (
             re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue

@@ -559,3 +559,16 @@ def test_round_16_promise_is_not_a_swear_and_colloquial_or_cantonese_titles_coun
     assert said("媽，我回來了。") == ("con", "mẹ")
     assert said("妈 我回来了") == ("con", "mẹ")
     assert label_speaker("李明\n走吧。", "Lý Minh: “Đi thôi.”", {"李明": "Lý Minh"}) == "Lý Minh: Đi thôi."
+
+
+def test_round_17_parents_calling_children_and_mothers_speaking_of_themselves():
+    from screen_translator.romanize import han_viet, romanized, role_label
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("儿子，你今天怎么回来这么晚？") == ("", "con")
+    assert said("乖孙，食咗饭未呀？") == ("", "cháu")
+    assert said("妈妈,我也是第一次当妈妈,你们别吵了") == ("mẹ", "con")
+    assert said("じいちゃんただいま!") == ("cháu", "ông")
+    assert said("くそくらえ！") == ("tao", "mày") and said("やくそくだよ") is None
+    assert han_viet("鬼王") == "Quỷ Vương"
+    assert romanized("파티 초대") is None and role_label("파티 초대") == "Mời nhóm" and romanized("김 철수") == "Kim Cheolsu"

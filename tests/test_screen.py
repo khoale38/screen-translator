@@ -567,3 +567,25 @@ def test_round_16_area_furigana_buttons_and_choice_menus():
     assert assemble(choices, width=W, height=H, menus=True) == "你真的要离开这个村子吗？\n是\n否"
     call = [px("师父", 600, 560, 60, 30, W, H), px("弟子知错了。", 560, 600, 160, 32, W, H)]
     assert assemble(call, width=W, height=H, menus=True) == "师父，弟子知错了。"
+
+
+def test_round_17_short_two_line_subtitles_stay_one_line_and_choices_follow_questions():
+    from screen_translator.text import assemble
+
+    W, H = 1280, 720
+    subtitle = [px("我真的不知道", 520, 560, 240, 40, W, H), px("你在说什么", 530, 605, 200, 40, W, H)]
+    assert assemble(subtitle, width=W, height=H, menus=True) == "我真的不知道你在说什么"
+    choices = [px("정말 떠나시겠습니까?", 400, 500, 400, 40, W, H), px("예", 400, 550, 40, 40, W, H),
+               px("아니요", 400, 600, 120, 40, W, H)]
+    assert assemble(choices, width=W, height=H, menus=True) == "정말 떠나시겠습니까?\n예\n아니요"
+
+
+def test_round_17_tightly_set_furigana_at_several_sizes():
+    from screen_translator.text import assemble
+
+    W, H = 1280, 720
+    for size in (28, 36, 44):
+        half = size // 2
+        rows = [px("ハルカ", 100, 440, size * 3, size, W, H), px("せんせい ほんとう", 100, 500, size * 4, half + 6, W, H),
+                px("先生、本当にありがとうございました。", 100, 500 + half - 6, size * 18, size + 8, W, H)]
+        assert assemble(rows, width=W, height=H, menus=True) == "ハルカ\n先生、本当にありがとうございました。"

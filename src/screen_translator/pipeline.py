@@ -193,7 +193,10 @@ def _sounds_alike(written: str, spelled: str) -> bool:
     if not re.fullmatch(r"[A-Za-z][A-Za-z' -]{1,19}", written):
         return False
     group = lambda ch: next((g for g in ("kcq", "sczj", "lr", "bv", "fh", "td", "aeiouy") if ch in g), ch)
-    return bool(set(group(written[0].lower())) & set(group(spelled[0].lower())))
+    # Not a name cut short ("Misa" for ミサキ, spelled Misaki).
+    short, full = written.replace(" ", "").lower(), spelled.replace(" ", "").lower()
+    whole = not (full.startswith(short) and len(short) < len(full))
+    return whole and bool(set(group(written[0].lower())) & set(group(spelled[0].lower())))
 
 class Pipeline:
     def __init__(

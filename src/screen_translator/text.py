@@ -157,7 +157,8 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         same_baseline = previous is not None and abs(
             (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
-        lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip())
+        after_question = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？"
+        lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip()) and not (menus and after_question)
                 and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0]) and len(row_text.strip()) > 2)
         if lone and not same_baseline:
             # "哥" centred over "等等我！" calls the listener; only a role set flush left over its line names the speaker.
@@ -171,8 +172,9 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                 spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
                 previous = (paragraphs[-1], row[0], width)
                 continue
+        asked = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？" and paragraphs[-1] == previous[0]
         menu = menus and previous is not None and not same_baseline and _choice_rows(previous, row[0], row_text,
-                                                                                    frame_w, frame_h)
+                                                                                    frame_w, frame_h, asked)
         if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(*previous, row[0], width):
             paragraphs[-1] = _join(paragraphs[-1], row_text)
             spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
@@ -189,13 +191,14 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
     return "\n".join(paragraphs)
 
 
-def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: float, frame_h: float) -> bool:
-    """A question with short choices stacked under it ("是" / "否"), or short rows left-aligned like a menu."""
+def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: float, frame_h: float,
+                 asked: bool) -> bool:
+    """Short choices stacked under a question ("是" / "否"); two short subtitle rows with no question are one line."""
     above_text, above = previous[0].strip(), previous[1]
     short = lambda text: len(text.replace(" ", "")) <= 8
     if abs(above.box[0] - below.box[0]) * frame_w >= 1.5 * max(above.box[3], below.box[3]) * frame_h:
         return False
-    return short(below_text) and (above_text[-1:] in "?？" or short(above_text))
+    return short(below_text) and (above_text[-1:] in "?？" or asked and short(above_text))
 
 
 def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
@@ -355,8 +358,10 @@ def _ruby_row_base(pixels: list[tuple], i: int) -> int | None:
         # So does a cutscene name centred over its subtitle line, which is not much smaller than the line.
         centred = abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < b[3] and a[3] >= 0.55 * b[3]
         # A hiragana reading over the kanji that open a line ("あした" over "明日") is flush with it too.
-        hiragana = re.fullmatch("[ぁ-ゖー]+", a[5])
-        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and (
+        hiragana = re.fullmatch("[ぁ-ゖー ]+", a[5])
+        # OCR pads boxes, so a tightly set reading can overlap its kanji by most of its own height.
+        above = a[1] + a[3] / 2 < b[1] + 0.25 * b[3]
+        if -0.75 * a[3] <= gap <= 0.4 * b[3] and above and inside and kanji and len(a[5].replace(" ", "")) <= 3 * kanji and (
                 hiragana or not (flush or centred)):
             return j
     return None
@@ -506,7 +511,7 @@ def _manga_order(blocks: list[Block]) -> list[Block]:
 
 
 _MENU_MARK = re.compile(r"^\s*[>▶●►]")
-_KANA_ONLY = re.compile("[\u3041-\u30ff]+")
+_KANA_ONLY = re.compile("[\u3041-\u30ff]+(?: [\u3041-\u30ff]+)*")
 _MID_PHRASE = re.compile(r"[、，,;:\-]$|[でにをはがのとへもや]$|\b(the|a|an|to|of|and|with|in|on|for|or|your|my)$", re.I)
 _ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
 _STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")

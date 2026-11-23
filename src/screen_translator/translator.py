@@ -318,6 +318,11 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
             label = known or readable(head)
             return f"{label}: {' '.join(body.split())}" if label else " ".join(body.split())
     labelled = _LABEL.match(translation.strip())
+    inner = _LABEL.match(labelled.group(2).strip()) if labelled else None
+    if inner and len(inner.group(1).split()) <= 3:
+        # "Diệp Phàm: Quỷ Vương: Đối thủ…": the second label is the listener being called.
+        translation = f"{labelled.group(1)}: {inner.group(1)}, {inner.group(2)}"
+        labelled = _LABEL.match(translation.strip())
     if labelled and re.fullmatch(r"\s*[“\"「『].*[”\"」』]\s*", labelled.group(2), re.S):
         # "Lý Minh: “Đi thôi.”": the quotes only marked the line as speech.
         translation = f"{labelled.group(1)}: {labelled.group(2).strip()[1:-1].strip()}"

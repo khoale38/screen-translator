@@ -80,6 +80,8 @@ def _hangul(name: str) -> str:
     words = name.split()
     if len(words) == 1 and len(name) == 3 and name[0] in _SURNAMES:
         return f"{_SURNAMES[name[0]]} {_syllables(name[1:]).capitalize()}"
+    if len(words) == 2 and words[0] in _SURNAMES:
+        return f"{_SURNAMES[words[0]]} {_syllables(words[1]).capitalize()}"
     return " ".join(_syllables(word).capitalize() for word in words)
 
 
@@ -100,12 +102,18 @@ ROLES_VI = {
     "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
     "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
     "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
-    "의사": "Bác sĩ", "경찰": "Cảnh sát", "간호사": "Y tá", "선생": "Thầy", "학생": "Học sinh", "손님": "Khách",
+    "알림": "Thông báo", "공지": "Thông báo", "안내": "Hướng dẫn", "경고": "Cảnh báo", "보상": "Phần thưởng",
+    "퀘스트": "Nhiệm vụ", "이벤트": "Sự kiện", "우편": "Thư", "파티 초대": "Mời nhóm", "친구 요청": "Lời mời kết bạn",
+    "길드 초대": "Mời bang hội", "執事": "Quản gia", "鍛冶屋": "Thợ rèn", "謎の男": "Người đàn ông bí ẩn",
+    "謎の少女": "Cô gái bí ẩn", "神秘人": "Người bí ẩn", "铁匠": "Thợ rèn", "老板": "Ông chủ", "商人": "Thương nhân",
+    "士兵": "Binh sĩ", "守卫": "Lính gác", "侍卫": "Thị vệ", "管家": "Quản gia", "医生": "Bác sĩ", "护士": "Y tá",
+    "警察": "Cảnh sát", "店员": "Nhân viên", "村民": "Dân làng", "旁白": "Người dẫn chuyện", "ナレーション": "Người dẫn chuyện",
+    "少女": "Thiếu nữ", "少年": "Thiếu niên", "老人": "Ông lão", "药铺掌柜": "Chủ tiệm thuốc", "의사": "Bác sĩ", "경찰": "Cảnh sát", "간호사": "Y tá", "선생": "Thầy", "학생": "Học sinh", "손님": "Khách",
     "직원": "Nhân viên", "주인": "Chủ", "기자": "Phóng viên", "형사": "Thanh tra", "군인": "Quân nhân", "병사": "Binh sĩ",
     "마법사": "Pháp sư", "용사": "Dũng sĩ", "마왕": "Ma vương", "왕자": "Hoàng tử", "공주": "Công chúa", "촌장": "Trưởng làng",
     "노인": "Ông lão", "할멈": "Bà lão", "아이": "Đứa trẻ", "소녀": "Cô gái", "소년": "Cậu bé", "남자": "Người đàn ông",
     "여자": "Người phụ nữ", "전하": "Điện hạ", "중전": "Trung điện", "중전마마": "Trung điện nương nương", "대비": "Đại phi", "세자": "Thế tử",
-    "상궁": "Thượng cung", "내관": "Nội quan", "왕": "Vua", "姫": "Công chúa", "王": "Vua", "兄": "Anh", "爹": "Bố",
+    "상궁": "Thượng cung", "내관": "Nội quan", "왕": "Vua", "姫": "Công chúa", "兄": "Anh", "爹": "Bố",
     "娘": "Mẹ", "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
     "大人": "Đại nhân", "掌柜": "Chưởng quỹ", "长老": "Trưởng lão", "宗主": "Tông chủ",
 }
@@ -178,5 +186,9 @@ def romanized(name: str) -> str | None:
     if KANA_NAME.fullmatch(name):
         return _kana(name)
     if HANGUL_NAME.fullmatch(name):
+        # Two words are a person only as surname and given name ("김 철수"); "파티 초대" is a popup title.
+        words = name.split()
+        if len(words) > 1 and not (len(words[0]) == 1 and words[0] in _SURNAMES):
+            return None
         return _hangul(name)
     return None
