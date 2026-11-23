@@ -29,6 +29,8 @@ def _join(left: str, right: str) -> str:
         return right
     if _SPACELESS.match(left[-1]) and _SPACELESS.match(right[0]):
         return left + right
+    if (_SPACELESS.match(left[-1]) and right[0].isdigit()) or (left[-1].isdigit() and _SPACELESS.match(right[0])):
+        return left + right
     return f"{left} {right}"
 
 
@@ -107,7 +109,7 @@ def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
     segments = [[ordered[0]]]
     for line in ordered[1:]:
         last = segments[-1][-1]
-        if line.box[0] - (last.box[0] + last.box[2]) > 3 * max(line.box[3], last.box[3]):
+        if line.box[0] - (last.box[0] + last.box[2]) > 3 * max(line.box[3], last.box[3]) or _MENU_MARK.match(line.text):
             segments.append([line])
         else:
             segments[-1].append(line)
@@ -125,7 +127,8 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     if _separate_entries(above_text, below.text):
         return True
     # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
-    return _name_like(above_text) and above_width < 0.6 * below_width and gap > -0.5 * height
+    left_aligned = abs(above.box[0] - below.box[0]) < height
+    return _name_like(above_text) and left_aligned and above_width < 0.6 * below_width and gap > -0.5 * height
 
 
 def _name_like(text: str) -> bool:
@@ -246,7 +249,11 @@ def _ruby_row_base(pixels: list[tuple], i: int) -> int | None:
             continue
         gap = b[1] - (a[1] + a[3])
         inside = a[0] >= b[0] - 0.5 * b[3] and a[0] + a[2] <= b[0] + b[2] + 0.5 * b[3]
-        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside:
+        # A reading spells out kanji; a small kana line over kana or a short lead-in over a shout is part of the text.
+        kanji = len(re.findall("[\u4e00-\u9fff々]", b[5]))
+        # A name label sits flush with the left edge of its line; a reading sits over the kanji somewhere along it.
+        flush = abs(a[0] - b[0]) < 0.5 * b[3]
+        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and not flush:
             return j
     return None
 
@@ -297,7 +304,17 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
 
 
 def _with_name_boxes(blocks: list[Block]) -> list[Block]:
-    """A visual novel's name tab joined to the dialogue right under it, as "Name\nline", so the speaker is known."""
+    """A visual novel's name tab joined to the dialogue right under it, as "Name\nline", so the speaker is known.
+
+    A visual novel shows one name tab at a time; several header-over-text pairs on one screen are panel headings,
+    chat tabs or separate bubbles, so then nothing is joined.
+    """
+    paired = _pair_name_boxes(blocks)
+    return paired if sum(len(b.text.split("\n")) > len(o.text.split("\n")) for b, o in zip(paired, blocks)) <= 1 \
+        and len(blocks) - len(paired) <= 1 else blocks
+
+
+def _pair_name_boxes(blocks: list[Block]) -> list[Block]:
     merged: list[Block] = []
     used: set[int] = set()
     for i, name in enumerate(blocks):
@@ -313,9 +330,10 @@ def _with_name_boxes(blocks: list[Block]) -> list[Block]:
                 if not (spoken and same_size):
                     continue
                 drop = block.box[1] - (name.box[1] + name.box[3])
-                lined_up = abs(block.box[0] - name.box[0]) <= 3 * block.line_height \
-                    or block.box[0] <= name.box[0] <= block.box[0] + block.box[2]
-                if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up:
+                lined_up = abs(block.box[0] - name.box[0]) <= 1.5 * block.line_height
+                between = any(k not in (i, j) and name.box[1] < other.box[1] < block.box[1]
+                              for k, other in enumerate(blocks))
+                if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up and not between:
                     dialogue = j
                     break
         if dialogue is None:
@@ -347,12 +365,15 @@ def _manga_order(blocks: list[Block]) -> list[Block]:
     return [block for row in rows for block in sorted(row, key=lambda b: -b.box[0])]
 
 
+_MENU_MARK = re.compile(r"^\s*[>▶●►]")
 _KANA_ONLY = re.compile("[\u3041-\u30ff]+")
 _MID_PHRASE = re.compile(r"[、，,;:\-]$|[でにをはがのとへもや]$|\b(the|a|an|to|of|and|with|in|on|for|or|your|my)$", re.I)
 _ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
 _STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")
-_ENTRY_START = re.compile(r"^\s*(?:[-–－](?:\s|(?=[^\d\s]))|[+\-−]\d|\d+%|\[[^\]]{1,20}\]|[^\s:：\[\]]{1,24}:\s|"
-                          r"[^\s:：\[\]]{1,12}：)")
+_ENTRY_START = re.compile(r"^\s*(?:[-–－](?:\s|(?=[^\d\s]))|[+\-−]\d|\d+%|\d{1,2}[.)]\s|[①-⑩▶>]|\[[^\]]{1,20}\]|"
+                          r"[^\s:：\[\]]{1,24}:\s|[^\s:：\[\]]{1,12}：)")
+_TAG_START = re.compile(r"^\s*\[[^\]]{1,20}\]")
+_NUMBER_START = re.compile(r"^\s*(?:[+\-−]\d|\d+%)")
 
 
 def _short(text: str) -> bool:
@@ -365,11 +386,17 @@ def _separate_entries(upper: str, lower: str) -> bool:
     A row ending in a number counts only over another number ("HP 76" / "MP 40", not "Only 3" / "tickets left?!"),
     and a tag, name or dash only after a row that ends or is itself an entry, not mid-sentence.
     """
-    upper = upper.rstrip()
-    if _STAT_END.search(upper) and re.search(r"\d", lower) and _short(upper):
+    upper, lower = upper.rstrip(), lower.strip()
+    if _STAT_END.search(upper) and _short(upper) and (_STAT_END.search(lower) or lower[:1].isdigit()):
         return True
-    return bool(_ENTRY_START.match(lower)) and (
-        upper.endswith(_ENDS) or bool(_STAT_END.search(upper)) or bool(_ENTRY_START.match(upper)) or _short(upper))
+    if _TAG_START.match(lower):
+        return True
+    if not _ENTRY_START.match(lower):
+        return False
+    ended = upper.endswith(_ENDS) or bool(_ENTRY_START.match(upper)) or bool(_TAG_START.match(upper))
+    if _NUMBER_START.match(lower):
+        return ended or bool(_STAT_END.search(upper))
+    return ended or bool(_STAT_END.search(upper)) or _short(upper)
 
 
 def _cjk(text: str) -> bool:

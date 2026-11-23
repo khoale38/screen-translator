@@ -172,7 +172,22 @@ class RapidOcr:
             x0, y0 = float(xs.min()) / frame.width, float(ys.min()) / frame.height
             w, h = float(xs.max()) / frame.width - x0, float(ys.max()) / frame.height - y0
             lines.append(OcrLine(text, float(score), (x0, y0, w, h)))
-        return lines
+        return _with_dashes(lines, frame.width, frame.height)
+
+
+def _with_dashes(lines: list[OcrLine], width: int, height: int) -> list[OcrLine]:
+    """A two-speaker subtitle's leading dash, read as a box of its own, put back on the line it starts."""
+    dashes = [line for line in lines if line.text.strip() in ("-", "–", "—", "－", "·", "•")]
+    kept = [line for line in lines if line not in dashes]
+    for dash in dashes:
+        row = [line for line in kept if abs((line.box[1] + line.box[3] / 2) - (dash.box[1] + dash.box[3] / 2))
+               < line.box[3] / 2 and 0 <= (line.box[0] - dash.box[0] - dash.box[2]) * width <= 1.5 * line.box[3] * height]
+        if row:
+            line = min(row, key=lambda item: item.box[0])
+            right = line.box[0] + line.box[2]
+            kept[kept.index(line)] = OcrLine(f"- {line.text.lstrip()}", line.confidence,
+                                             (dash.box[0], line.box[1], right - dash.box[0], line.box[3]))
+    return kept
 
 
 def _ort_device(engine) -> str:

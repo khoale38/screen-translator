@@ -5,6 +5,7 @@ from typing import Callable, Protocol
 
 from . import languages
 from .address import _LABEL, body_of, speaker_of
+from .romanize import NOT_LATIN
 from .context import Turn
 
 _THINK = re.compile(r"<think>.*?</think>", re.S)
@@ -152,7 +153,8 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     # Without its "Name:" label, which HY-MT would otherwise translate, replacing the name with a pronoun.
     text = last.get("item", last["content"])
     screen = "screen" in last
-    if not screen:
+    # On a screen "剩余时间：02:15" is a label, not a speaker; only a name tab over its line ("Name\nline") is one.
+    if not screen or is_name_tab(text):
         text = body_of(text)
     glossary = {**facts.get("address_terms", {}), **facts.get("glossary", {})}
     terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in glossary.items() if src.strip())
@@ -215,19 +217,25 @@ def clean_output(raw: str) -> str:
     return text
 
 
+def is_name_tab(text: str) -> bool:
+    return "\n" in text and speaker_of(text) == text.split("\n", 1)[0].strip()
+
+
 def label_speaker(source: str, translation: str, names: dict[str, str] | None = None) -> str:
     """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line".
 
     A source with a speaker whose name the model dropped gets the name back, so it is clear who speaks; `names`
     holds how each name is written in the target language, as kana or hangul means nothing to most viewers.
     """
+    name = speaker_of(source)
     label, _, rest = source.partition("\n")
-    if rest and len(label) <= 12:
+    if rest and name == label.strip():
         head, _, body = translation.partition("\n")
         head = head.strip().rstrip(":：")
         if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
+            if NOT_LATIN.search(head) and name in (names or {}):
+                head = names[name]
             return f"{head}: {' '.join(body.split())}"
-    name = speaker_of(source)
     if name and source.lstrip().startswith(name) and not _LABEL.match(translation.strip()):
         return f"{(names or {}).get(name, name)}: {translation.strip()}"
     return translation

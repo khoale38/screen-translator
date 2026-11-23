@@ -273,3 +273,30 @@ def test_one_rough_line_does_not_make_rivals_and_a_newcomer_calling_a_title_has_
     assert "rough" not in rel._cues.get(frozenset(("Kai", "Mia")), {})
     assert rel._listener("Ana", "Ana: Grandpa! You're back!") is None
     rel.close()
+
+
+def test_film_subtitle_first_lines_and_bracketed_names():
+    assert speaker_of("Okay Mom\nI'll call you when I land.") is None
+    assert speaker_of("Then Jake\nshowed up at my door.") is None
+    assert speaker_of("Captain Reyes\nHold the line!") == "Captain Reyes"
+    assert speaker_of("（ハルカ）お兄ちゃん　起きて！") == "ハルカ"
+    assert speaker_of("(MOM) Sam, wake your brother up.") == "MOM"
+
+
+def test_a_parent_speaking_of_themself_and_titles_after_verbs_are_not_calls():
+    assert guess_facts("お母さんはね、ずっと心配してたのよ。", "the speaker", "the listener") is None
+    assert guess_facts("爸爸给你买了礼物，快打开看看。", "the speaker", "the listener") is None
+    assert guess_facts("ごめんね、お母さん、すぐ行くから。", "the speaker", "the listener")["senior"] == "the listener"
+    assert guess_facts("三弟，护住师父，我来对付他！", "萧远", "林风")["older"] == "萧远"
+    assert guess_facts("I'll go with Father tomorrow.", "the speaker", "the listener") is None
+    assert guess_facts("Thanks, Dad.", "the speaker", "the listener")["senior"] == "the listener"
+
+
+def test_korean_titles_find_their_speaker():
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    for line in ("서연: 오빠!", "준호: 왜?", "최 대리: 준호 씨, 팀장님이 찾으세요."):
+        rel.heard(line)
+    assert rel._listener("최 대리", "최 대리: 준호 씨, 팀장님이 찾으세요.") == "준호"
+    assert rel._listener("준호", "준호: 네, 대리님. 바로 갈게요.") == "최 대리"
+    rel.close()

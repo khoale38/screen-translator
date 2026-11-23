@@ -429,3 +429,13 @@ def test_a_name_tab_joins_its_dialogue_and_furigana_and_split_bubbles_behave():
     assert [b.text for b in group_blocks(ruby, 1000, 1000)] == ["本当に楽しかった"]
     bubble = [px("Only 3", 100, 100, 90, 30), px("tickets left?!", 90, 133, 140, 30)]
     assert [b.text for b in group_blocks(bubble, 1000, 1000)] == ["Only 3 tickets left?!"]
+
+
+def test_name_tabs_join_only_one_clear_pair_and_furigana_needs_kanji_under_it():
+    headers = [px("Inventory", 100, 100, 120, 30), px("A sword forged in fire, sharp and old.", 100, 140, 420, 30),
+               px("Quests", 600, 100, 90, 30), px("Find the lost blade in the northern cave.", 600, 140, 420, 30)]
+    assert len(group_blocks(headers, 1000, 1000)) == 4
+    lead_in = [px("いいかげんに", 120, 300, 80, 14), px("しろ!!", 110, 316, 120, 30)]
+    assert "いいかげんに" in group_blocks(lead_in, 1000, 1000)[0].text
+    label = [px("アオイ", 100, 700, 60, 18), px("ねえ、タクミ。明日の花火大会、一緒に行かない？", 100, 720, 520, 34)]
+    assert group_blocks(label, 1000, 1000)[0].text.startswith("アオイ")

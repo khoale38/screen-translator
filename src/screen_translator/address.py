@@ -20,6 +20,11 @@ from typing import Callable
 
 from . import diagnostics
 
+_BRACKETED = re.compile(r"^[（(\[]\s*([^()（）\[\]\n]{1,12}?)\s*[)）\]]\s*(\S.*)$", re.S)
+_DISCOURSE = {"then", "okay", "ok", "so", "wait", "sorry", "listen", "well", "oh", "hey", "yes", "no", "please", "thanks",
+              "and", "but", "now", "look", "come", "go", "hi", "bye"}
+_VOCATIVE_TITLES = {"mom", "mum", "dad", "mother", "father", "grandma", "grandpa", "sis", "bro", "honey", "sir", "ma'am",
+                    "dear", "babe", "kid"}
 _LABEL = re.compile(r"^([^\s:：\d][^:：\n\d]{0,19}?)\s*[:：]\s*(\S.*)$", re.S)
 _SENTENCE_END = (".", "!", "?", "。", "！", "？", "…", ",", "、")
 SUPPORTED = {"vi"}
@@ -38,7 +43,7 @@ _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|
 _KOREAN_OPENING = r"|^\W*(?:{0})(?!가|는|를|도|의|한테|랑|이|에게|께|하고|님[이은을의])"
 TO_ELDER = {
     "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|아저씨|오빠|형(?:님)?)")
-                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|"
+                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|"
                        r"哥哥|师兄", re.I),
     "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|언니|누나)") + _KOREAN_OPENING.format("언니|누나")
                          + r"|姉さん|姉ちゃん|お姉|姐姐|师姐", re.I),
@@ -60,7 +65,8 @@ ROLES = {
     "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸",
                                    re.I),
 }
-YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아", re.I)
+YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아|"
+                     r"(?:^|[，,。！？!?]\s*)(?:三弟|二弟|师弟|师妹|小妹)(?=[，,。！？!?])", re.I)
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|grandma|grandmother|granny|mom|mum|mother)\b|공주|할머니|엄마|"
                            r"어머니|おばあ|お母|母さん|祖母|奶奶|外婆|妈妈|公主", re.I)
@@ -93,6 +99,9 @@ def body_of(text: str) -> str:
     match = _LABEL.match(text.strip())
     if match and _looks_like_name(match.group(1)):
         return match.group(2)
+    bracketed = _BRACKETED.match(text.strip())
+    if bracketed:
+        return bracketed.group(2)
     name = speaker_of(text)
     if name:
         first, _, rest = text.strip().partition("\n")
@@ -107,11 +116,18 @@ def speaker_of(text: str) -> str | None:
     match = _LABEL.match(text)
     if match and _looks_like_name(match.group(1)):
         return match.group(1).strip()
+    bracketed = _BRACKETED.match(text)
+    if bracketed:
+        return bracketed.group(1).strip()
     first, _, rest = text.partition("\n")
-    first = first.strip()
-    if rest.strip() and len(first) <= 12 and not first.endswith(_SENTENCE_END) and _looks_like_name(first):
-        return first
-    return None
+    first, rest = first.strip(), rest.strip()
+    if not rest or first.endswith(_SENTENCE_END) or not _looks_like_name(first) or rest[:1].islower():
+        return None
+    # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker.
+    words = first.split()
+    if words[0].lower().strip(",") in _DISCOURSE or words[-1].lower().strip(",") in _VOCATIVE_TITLES:
+        return None
+    return first
 
 
 def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
@@ -180,6 +196,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     line = body_of(line)
     if SERVING.search(line):
         return {"relation": "staff and customer", "senior": speaker, "guess": True}
+    if YOUNGER.search(line):
+        return {"relation": "siblings or cousins", "older": speaker, "guess": True}
     for role, cue in ROLES.items():
         if calls_by(cue, line):
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
@@ -188,8 +206,6 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
                 facts["royal"] = "điện hạ" if PRINCELY.search(title) else "bệ hạ"
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
-    if YOUNGER.search(line):
-        return {"relation": "siblings or cousins", "older": speaker, "guess": True}
     for gender, cue in TO_ELDER.items():
         found = cue.search(line)
         if found and not _MENTIONED.search(line[:found.start()]):
@@ -204,22 +220,33 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
     """Whether a title in the line calls the listener ("Mom, I'm home", "Your Highness!") rather than names someone."""
     for match in cue.finditer(line):
         before, after = line[:match.start()], line[match.end():]
+        suffix = re.match(r"(?:さん|ちゃん|様|さま|くん|君)", after)
+        if suffix:
+            after = after[suffix.end():]
         honorific = _HONORIFIC.fullmatch(match.group(0).strip()) and re.search(r"\byour\s+$", before, re.I)
         if re.match(r"(?:가|는|를|도|의|한테|랑|이|에게|께|하고)", after) or (_MENTIONED.search(before) and not honorific):
             continue
+        if honorific:
+            before = re.sub(r"\byour\s+$", "", before, flags=re.I)
+        # A parent speaking of themself: "お母さんはね…", "爸爸给你买了…".
+        if re.match(r"(?:が|は|に|を|も|の|ね|って|と|给|带|帮|陪|会|来|去|也|就|都)", after):
+            continue
+        hangul = re.search("[\uac00-\ud7a3]", match.group(0))
         opening = not before.strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
-        # An English title must stand apart to call someone: "Mom, I'm home", not "Mom said so".
-        if match.group(0).isascii() and opening and not closing:
+        # Set off from what came before: "Thanks, Dad.", "ごめんね、お母さん、", not "go with Father." or "护住师父，".
+        apart = opening or not before.strip() or before.rstrip()[-1:] in ",!?.、，！？~…。"
+        if not hangul and opening and not closing:
             continue
-        if opening or closing:
+        if opening or (closing and apart):
             return True
     return False
 
 
 # Words before a title that make it a mention: "your mother", "like a mother", "手紙には", "우리 엄마".
-_MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says)\s+|"
-                        r"の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|见)$", re.I)
+_MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says|with|to|for|ask|"
+                        r"tell|visit|help|see|call)\s+|の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|见|"
+                        r"护住|保护|救|帮|跟着)$", re.I)
 # Titles that only ever come with "your", so "Your Majesty" calls the ruler where "your mother" only mentions one.
 _HONORIFIC = re.compile(r"(?:majesty|highness|grace|excellency|lordship|ladyship)", re.I)
 
@@ -287,10 +314,17 @@ def parse_facts(answer: str) -> dict | None:
     return facts if isinstance(facts, dict) and facts.get("relation") else None
 
 
+NOBODY = "?"
+
+
+def _calls_a_title(body: str) -> bool:
+    return any(calls_by(cue, body) for cue in ROLES.values()) or any(cue.search(body) for cue in TO_ELDER.values())
+
+
 def _calls_name(line: str, name: str) -> bool:
     """A name opening the line or set off by punctuation calls that person; one inside the sentence only mentions them."""
     title = r"(?:(?:Uncle|Aunt|Mr|Mrs|Ms|Miss|Dr|Captain|Sergeant|Sir|Lady)\.?\s+)?"
-    suffix = r"(?:さん|君|くん|ちゃん|様|先輩|先生|-sensei|-san|-kun|-chan|아|야|씨)?"
+    suffix = r"(?:\s?(?:씨|님)|さん|君|くん|ちゃん|様|先輩|先生|-sensei|-san|-kun|-chan|아|야)?"
     return bool(re.search(rf"(?:^|[,、，!！?？]\s*){title}{re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)",
                           line.strip()))
 
@@ -326,13 +360,16 @@ class Relationships:
         named = [who for who in self._spoken if who != speaker and _calls_name(body, who)]
         if named:
             return max(named, key=len)
+        # "대리님" calls the one speaker whose label ends in that title ("최 대리").
+        titled = {who for title in re.findall(r"([가-힣]{1,3})님", body) for who in self._spoken
+                  if who != speaker and who.endswith(title)}
+        if len(titled) == 1:
+            return titled.pop()
         cutoff = self.clock() - self.window_s
         recent = [who for who, _text, at, _to in reversed(self._lines) if who and who != speaker and at >= cutoff]
         if not self._spoken[speaker]:
             # A newcomer's first line answers whoever just spoke, unless it calls someone by a title ("Grandpa!").
-            calls_a_title = any(calls_by(cue, body) for cue in ROLES.values()) or any(
-                cue.search(body) for cue in TO_ELDER.values())
-            return None if calls_a_title else recent[0] if recent else None
+            return None if _calls_a_title(body) else recent[0] if recent else None
         return next((who for who in recent if self._spoken[who] >= 2), recent[0] if recent else None)
 
     def address(self, text: str) -> Address | None:
@@ -356,6 +393,11 @@ class Relationships:
         if facts is None:
             listener = listener or "the listener"
             facts = guess_facts(text, speaker, listener)
+        elif listener:
+            # A clear form of address in this very line ("Sis", "big brother", 오빠, 大哥) outranks what was stored.
+            called = guess_facts(text, speaker, listener)
+            if called and (called.get("older") or called.get("senior")):
+                facts = {**facts, **{key: value for key, value in called.items() if key != "guess"}}
         return Address(speaker, listener, *vietnamese(facts, speaker, listener), bool(facts.get("guess"))) \
             if facts else None
 
@@ -388,7 +430,10 @@ class Relationships:
         speaker = speaker_of(text)
         with self._lock:
             listener = self._listener(speaker, text) if speaker else None
-            self._lines.append((speaker, text.strip(), self.clock(), listener))
+            # A title called with no known listener ("Grandpa!") belongs to no pair: marked so no pair takes its cue.
+            others = any(who and who != speaker for who, _t, _a, _to in self._lines)
+            to = listener or (NOBODY if speaker and others and _calls_a_title(body_of(text)) else None)
+            self._lines.append((speaker, text.strip(), self.clock(), to))
             if speaker:
                 self._spoken[speaker] += 1
             if not listener:

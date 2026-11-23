@@ -71,15 +71,40 @@ def _syllables(word: str) -> str:
 
 def _hangul(name: str) -> str:
     words = name.split()
-    if len(words) == 1 and len(name) == 3:
-        surname = _SURNAMES.get(name[0], _syllables(name[0]).capitalize())
-        return f"{surname} {_syllables(name[1:]).capitalize()}"
+    if len(words) == 1 and len(name) == 3 and name[0] in _SURNAMES:
+        return f"{_SURNAMES[name[0]]} {_syllables(name[1:]).capitalize()}"
     return " ".join(_syllables(word).capitalize() for word in words)
+
+
+# Kinship and job titles used as labels: they are said in Vietnamese, not spelled out.
+ROLES_VI = {
+    "할머니": "Bà", "할아버지": "Ông", "엄마": "Mẹ", "어머니": "Mẹ", "아빠": "Bố", "아버지": "Bố", "선생님": "Thầy",
+    "오빠": "Anh", "형": "Anh", "언니": "Chị", "누나": "Chị", "팀장": "Trưởng nhóm", "팀장님": "Trưởng nhóm",
+    "부장": "Trưởng phòng", "부장님": "Trưởng phòng", "과장": "Trưởng ban", "과장님": "Trưởng ban", "대리": "Phó phòng",
+    "대리님": "Phó phòng", "사장": "Giám đốc", "사장님": "Giám đốc",
+    "おばあちゃん": "Bà", "おじいちゃん": "Ông", "お母さん": "Mẹ", "おかあさん": "Mẹ", "母": "Mẹ", "お父さん": "Bố",
+    "おとうさん": "Bố", "父": "Bố", "先生": "Thầy", "せんせい": "Thầy", "お兄ちゃん": "Anh", "おにいちゃん": "Anh",
+    "お姉ちゃん": "Chị", "おねえちゃん": "Chị", "师父": "Sư phụ", "师傅": "Sư phụ", "妈妈": "Mẹ", "爸爸": "Bố",
+    "奶奶": "Bà", "爷爷": "Ông", "老师": "Thầy",
+}
+
+
+def role_label(name: str) -> str | None:
+    """A title used as a speaker's label, in Vietnamese: 할머니 is Bà, "강 부장" is "Trưởng phòng Kang"."""
+    name = name.strip()
+    if name in ROLES_VI:
+        return ROLES_VI[name]
+    surname, _, title = name.partition(" ")
+    if title in ROLES_VI and len(surname) == 1:
+        return f"{ROLES_VI[title]} {_SURNAMES.get(surname) or romanized(surname) or surname}"
+    return None
 
 
 def romanized(name: str) -> str | None:
     """The name in Latin letters when it is written only in kana or hangul; None otherwise."""
     name = name.strip()
+    if name in ROLES_VI or role_label(name):
+        return None
     if KANA_NAME.fullmatch(name):
         return _kana(name)
     if HANGUL_NAME.fullmatch(name):
