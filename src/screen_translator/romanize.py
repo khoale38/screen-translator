@@ -100,7 +100,9 @@ ROLES_VI = {
     "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
     "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
     "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
-    "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
+    "전하": "Điện hạ", "중전": "Trung điện", "중전마마": "Trung điện nương nương", "대비": "Đại phi", "세자": "Thế tử",
+    "상궁": "Thượng cung", "내관": "Nội quan", "왕": "Vua", "姫": "Công chúa", "王": "Vua", "兄": "Anh", "爹": "Bố",
+    "娘": "Mẹ", "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
     "大人": "Đại nhân", "掌柜": "Chưởng quỹ", "长老": "Trưởng lão", "宗主": "Tông chủ",
 }
 

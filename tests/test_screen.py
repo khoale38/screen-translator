@@ -483,3 +483,11 @@ def test_round_9_short_cutscene_lines_and_hud_buttons_keep_the_name_apart():
     bubble = [px("형", 240, 107, 38, 40), px("어디 가?", 201, 145, 118, 44)]
     blocks = [b.text for b in group_blocks(bubble, 1000, 1000)]
     assert len(blocks) == 1 and "어디 가?" in blocks[0]
+
+
+def test_round_12_brand_names_stray_think_tags_and_glued_speech():
+    from screen_translator.pipeline import _punctuated
+    from screen_translator.translator import clean_output
+
+    assert clean_output("Kỹ thuật nhẹ\n</think>\n\nKỹ thuật nhẹ") == "Kỹ thuật nhẹ"
+    assert [_punctuated(t) for t in ("네마마.", "爹女儿回来了。")] == ["네, 마마.", "爹，女儿回来了。"]

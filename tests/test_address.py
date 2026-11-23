@@ -402,7 +402,7 @@ def test_round_8_palace_ranks_and_office_titles():
         notes.append(note and (note.me, note.you))
         rel.heard(f"{who}\n{line}")
         time.sleep(0.2)
-    assert notes[1:] == [("con", "mẹ"), ("mẹ", "con"), ("nô tì", "Thái hậu")]
+    assert notes[1:] == [("nhi thần", "mẫu hậu"), ("", "hoàng nhi"), ("nô tì", "Thái hậu")]
     rel.close()
 
 
@@ -470,6 +470,28 @@ def test_round_11_parent_endearments_notes_glued_asr_calls_and_palace_words():
     assert said("爹女儿回来了。") == ("con", "bố")
     assert said("네마마.") == ("thần", "nương nương")
     assert said("臣妾参见太后。") == ("thần thiếp", "Thái hậu")
-    assert said("本宫累了，你退下吧。") == ("bổn cung", "")
+    assert said("本宫累了，你退下吧。") == ("bổn cung", "ngươi")
     assert Address("the speaker", "the listener", "vãn bối", "tiền bối").terms("zh", "晚辈林风,见过前辈。") == {
         "晚辈": "vãn bối", "前辈": "tiền bối"}
+
+
+def test_round_12_elder_endearments_palace_terms_and_modern_titles():
+    import time
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    rel.heard("Grandma\nCome here, sweetie. Let me look at you.")
+    time.sleep(0.1)
+    note = rel.address("Mia\nHi, Grandma! I missed you so much.")
+    assert (note.me, note.you) == ("cháu", "bà")
+    rel.close()
+    concubine = Address("the speaker", "the listener", "thần thiếp", "Thái hậu")
+    assert concubine.terms("zh", "多谢太后关心，臣妾无碍。") == {"臣妾": "thần thiếp", "太后": "Thái hậu"}
+    assert Address("the speaker", "the listener", "em", "anh").terms("zh", "学长,这道题能教教我吗?") == {"学长": "anh"}
+    assert said("父皇，儿臣冤枉。") == ("nhi thần", "phụ hoàng")
+    assert said("多谢太后关心，臣妾无碍。") == ("thần thiếp", "Thái hậu")
+    assert said("아저씨, 이거 얼마예요?") == ("cháu", "chú")
+    assert said("师傅，去火车站。") is None
+    assert said("손님 오셨습니다.") is None
+    assert said("Mommy, look!") == ("con", "mẹ")

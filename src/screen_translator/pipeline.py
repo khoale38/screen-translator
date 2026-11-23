@@ -149,6 +149,13 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
                      r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
 
 
+def _punctuated(text: str) -> str:
+    """Recognized speech without spaces or commas, with a comma after a call it opens or ends with ("네, 마마.")."""
+    text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])", r"\1, ", text)
+    text = re.sub(r"(?<=[가-힣])((?:마마|자기야|여보)\W*)$", r", \1", text)
+    return re.sub(r"^(\W*[爹娘爸妈])(?=女儿|儿子|孩儿|我|您|你)", r"\1，", text)
+
+
 def _sounds_alike(written: str, spelled: str) -> bool:
     """A model's Latin spelling of a katakana name that matches the rule spelling's first sound: Cecil for Seshiru."""
     if not re.fullmatch(r"[A-Za-z][A-Za-z' -]{1,19}", written):
@@ -437,7 +444,8 @@ class Pipeline:
             self.emit({"type": "line", "id": line_id, "area": event.area, "source": event.text,
                        "translation": text, "final": False, "line_height": event.line_height})
 
-        translation = self._labelled(event.text, translator.translate(messages, partial), translator)
+        translation = self._checked(translator, event.text,
+                                    self._labelled(event.text, translator.translate(messages, partial), translator), history)
         self._previews[event.area] = (event.text, translation, round((time.monotonic() - started) * 1000),
                                       first[0] if first else None)
         partial(translation)
@@ -500,7 +508,8 @@ class Pipeline:
                        "translation": text, "final": False, "line_height": event.line_height})
 
         partial("")
-        translation = self._labelled(event.text, translator.translate(messages, partial), translator)
+        translation = self._checked(translator, event.text,
+                                    self._labelled(event.text, translator.translate(messages, partial), translator), history)
         self._remember(event.text, translation)
         self.context.add(event.text, translation, replace_last=replace, note=note)
         self.relationships.heard(event.text)
@@ -690,6 +699,11 @@ class Pipeline:
             # A line answered with an earlier line's translation was copied from the history.
             copied = any(translation == turn.translation for turn in history if turn.source != source)
             translation = self._capitalised(translation)
+            row = re.match(r"\s*([^\W\d_][^:：\n]{0,15})[:：]\s*(\S.*)", translation)
+            if self._leaks(translation) and row and not NOT_LATIN.search(row.group(1)) and re.match(
+                    r"[^:：\n]{1,8}[:：]", source):
+                # A status row ("Tên: 이도윤") whose value is a name: spell the value, keep the translated key.
+                translation = f"{row.group(1)}: {self._readable(source, row.group(2))}"
             if self._leaks(translation) or (copied and len(source) < 40):
                 # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
                 retry.append(source)
@@ -913,9 +927,23 @@ class Pipeline:
 
     def _capitalised(self, translation: str) -> str:
         """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
-        if self.store.settings.target_lang != "vi" or not translation[:1].islower():
+        if self.store.settings.target_lang != "vi":
+            return translation
+        label, colon, body = translation.partition(": ")
+        if colon and len(label) <= 24 and "\n" not in label:
+            return f"{label}: {self._capitalised(body)}"
+        # Not a brand that starts in lower case: iPhone, eBay, eSports.
+        if not translation[:1].islower() or re.match(r"[a-z]+[A-Z]", translation):
             return translation
         return translation[0].upper() + translation[1:]
+
+    def _checked(self, translator: Translator, source: str, translation: str, history: list) -> str:
+        """A subtitle answered in the source's script, or with an earlier line's translation, asked again alone."""
+        copied = any(translation == turn.translation for turn in history if turn.source != source)
+        if self._leaks(translation) or copied:
+            again = self._labelled(source, self._plainly(translator, source), translator)
+            translation = self._readable(source, again, names_only=True)
+        return self._capitalised(translation)
 
     def _japanese_kanji(self, name: str, source: str) -> bool:
         if not re.fullmatch("[\u4e00-\u9fff々]+", name):
@@ -933,8 +961,14 @@ class Pipeline:
         if not self._leaks(translation):
             return translation
 
+        speaker = speaker_of(source) or ""
+
         def spelled(run: str) -> str:
             known = self._names.get(run)
+            # Not a run that carries Korean grammar ("이라는", "획득했습니다") or sits glued to other words.
+            if not known and run != speaker and (re.search("(?:을|를|이|가|은|는|라는|니다|어요|아요|했)$", run)
+                                                  or len(run) > 4):
+                return run
             # A retried row's hanzi might be a word, not a name; kana and hangul are spelled out either way.
             spell = len(run) <= 4 and not (names_only and re.search("[\u3400-\u9fff]", run))
             return known or (self._fixed_name(run, source) if spell else None) or run
@@ -979,7 +1013,8 @@ class Pipeline:
             return known
         budget = speakable(settings.target_lang, heard.get("seconds", 0.0)) if settings.dub else ""
         # On the line itself, not in the notes: the notes open the prompt, and changing them rereads all of it.
-        messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
+        messages = build_messages(_punctuated(heard["text"]), self.context.turns(), settings.source_lang,
+                                  settings.target_lang,
                                   settings.glossary, settings.notes,
                                   address=self.relationships.address(heard["text"], gender_of(heard.get("pitch", 0.0))),
                                   budget=budget, aside=self._voice_note(heard))

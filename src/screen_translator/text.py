@@ -61,10 +61,18 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
         lone = lone_cjk and ((letters and re.search("[\u3040-\u9fff\uac00-\ud7a3]", text)) or re.search(r"\d", text))
         # "爸，" read as a box of its own beside "我回来了。" is a call, not a stray glyph.
         beside = letters == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) and any(
-            other is not line and sum(ch.isalpha() for ch in other.text) >= 2 and _same_row(line, other) for other in lines)
+            other is not line and sum(ch.isalpha() for ch in other.text) >= 2
+            and (_same_row(line, other) or _tab_over(line, other)) for other in lines)
         if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
+
+
+def _tab_over(tab: OcrLine, line: OcrLine) -> bool:
+    """A one-character name tab ("姫", "爹") set right above the line it labels."""
+    drop = line.box[1] - (tab.box[1] + tab.box[3])
+    height = max(tab.box[3], line.box[3])
+    return -0.3 * height <= drop <= 1.2 * height and abs(tab.box[0] - line.box[0]) < 2 * height
 
 
 def _same_row(a: OcrLine, b: OcrLine) -> bool:

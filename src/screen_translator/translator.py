@@ -224,6 +224,10 @@ def clean_output(raw: str) -> str:
     text = _THINK.sub("", raw)
     if "<think>" in text:
         text = text.split("<think>", 1)[0]
+    # A thinking block whose opening tag was left out of the reply still closes with one.
+    before, closed, after = text.rpartition("</think>")
+    if closed:
+        text = after if after.strip() else before
     text = text.strip()
     first, _, rest = text.partition("\n")
     introduces = first.rstrip().endswith((":", "：")) and len(first.split()) >= 4

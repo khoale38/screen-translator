@@ -91,7 +91,7 @@ _CLOCK = re.compile(r"\b(\d{1,2}):(\d{2}):(\d{2})\b")
 _CURRENCY = {"₫": "đồng", "¥": "yên", "€": "ơ-rô", "₩": "won", "£": "bảng"}
 _CURRENCY_BEFORE = re.compile(r"([₫¥€₩£])\s*(\d+(?:[.,]\d+)*)")
 _CURRENCY_AFTER = re.compile(r"(\d)\s*([₫¥€₩£])")
-_DECADE = re.compile(r"(?:(?:những năm|thập niên)\s+)?\b((19|20)(\d)0)s\b")
+_DECADE = re.compile(r"(?:(?:những năm|thập niên)\s+)?\b((19|20)(\d)0)s\b", re.I)
 _ORDINAL = re.compile(r"\b(thứ)\s+([14])\b", re.I)
 _CLOCK_SUFFIX = re.compile(r"\b(\d{1,2})\s*([ap])(?:\.m\.|m\b)", re.I)
 _THOUSANDS = re.compile(r"(\d)K(?=\s*(?:người|lượt|view|sub|follow|like|đô|đồng|USD)\b)", re.I)
