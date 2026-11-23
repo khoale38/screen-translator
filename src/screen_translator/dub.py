@@ -364,8 +364,9 @@ class Dubber:
                                                "under Settings → Time & language → Speech."})
             return None
         waiting = self._waiting()
-        # A line the speaker paused after, with nothing queued behind it, may run into the pause instead of hurrying.
-        fit_s = line.seconds * (1.5 if line.paused and not waiting else 1.0)
+        # A line the speaker paused after, or one whose numbers grow when read out, may run on while nothing is queued.
+        roomy = line.paused or any(ch.isdigit() for ch in line.text)
+        fit_s = line.seconds * (1.5 if roomy and not waiting else 1.0)
         how = delivery(line.emotion, line.pitch, voice.gender or gender, waiting, fit_s)
         started = time.monotonic()
         audio, rate = voices.synthesize(line.text, voice, how)

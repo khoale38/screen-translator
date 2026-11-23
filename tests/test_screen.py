@@ -453,3 +453,18 @@ def test_a_key_tag_mid_sentence_and_a_number_line_in_a_bubble_stay_joined():
     assert len(group_blocks(tutorial, 1000, 1000)) == 1
     bubble = [px("Ready? Only", 100, 300, 140, 30), px("30!", 120, 333, 50, 30)]
     assert [b.text for b in group_blocks(bubble, 1000, 1000)] == ["Ready? Only 30!"]
+
+
+def test_round_8_cutscene_names_hp_readouts_and_quest_titles_stay_apart():
+    cutscene = [px("Aria", 920, 860, 80, 49, 1920, 1080), px("We can't stay here. The bridge won't hold much longer.", 470, 917, 982, 56, 1920, 1080)]
+    assert [b.text for b in group_blocks(cutscene, 1920, 1080)] == [
+        "Aria\nWe can't stay here. The bridge won't hold much longer."]
+    yui = [px("ユイ", 920, 860, 72, 41, 1920, 1080), px("お兄ちゃん、待って！一人で行かないで！", 570, 908, 766, 65, 1920, 1080)]
+    assert [b.text for b in group_blocks(yui, 1920, 1080)] == ["ユイ\nお兄ちゃん、待って!一人で行かないで!"]
+    hud = [px("Bram", 60, 900, 90, 32, 1920, 1080), px("1,430 / 1,600", 60, 936, 150, 26, 1920, 1080)]
+    assert "Bram" in [b.text for b in group_blocks(hud, 1920, 1080)]
+    toast = [px("クエスト更新", 66, 315, 163, 36, 1920, 1080), px("粉屋の消えた娘", 64, 360, 235, 43, 1920, 1080),
+             px("夜に古い水車小屋を調べる", 65, 411, 294, 33, 1920, 1080)]
+    assert len(group_blocks(toast, 1920, 1080)) == 3
+    bubble = [px("哥，你明天", 253, 169, 155, 38, 1920, 1080), px("陪我去买书好不好？", 194, 209, 260, 33, 1920, 1080)]
+    assert len(group_blocks(bubble, 1920, 1080)) == 1

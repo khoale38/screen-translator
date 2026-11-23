@@ -16,8 +16,8 @@ from . import diagnostics, online
 from .dub import STALE_S, gender_of, speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
-from .address import _LABEL, Relationships, speaker_of
-from .romanize import NOT_LATIN, role_label, romanized
+from .address import Relationships, speaker_of
+from .romanize import NOT_LATIN, han_viet, role_label, romanized
 from .context import ContextWindow
 from .languages import already_in
 from .models import DEFAULT_MODEL, MODELS
@@ -25,6 +25,7 @@ from .ocr import OcrEngine, default_engine
 from .text import Block, Stabilizer, TextEvent, assemble, char_size, group_blocks, normalize, similar
 from .translator import (
     LlamaTranslator, Translator, build_batch_messages, build_messages, build_screen_messages, is_name_tab, label_speaker,
+    model_label,
     parse_numbered, strip_item_letter,
 )
 
@@ -857,10 +858,9 @@ class Pipeline:
     def _labelled(self, source: str, translation: str, translator) -> str:
         """The translation with its speaker's name, written as the model writes it rather than in kana or hangul."""
         name = speaker_of(source)
-        if name and name not in self._names and not name.isascii():
-            match = _LABEL.match(translation.strip())
-            written = match.group(1).strip() if match else ""
-            fixed = self._fixed_name(name)
+        if name and name not in self._names and (not name.isascii() or self._fixed_name(name)):
+            written = model_label(translation)
+            fixed = self._fixed_name(name, source)
             # A spelling by rule beats the model's, which may translate a name's meaning ("최 대리" as "Đại lý Tối").
             # Never a model call here: it may run inside a side-by-side translation, which would deadlock.
             if fixed:
@@ -870,9 +870,12 @@ class Pipeline:
         latin_target = self.store.settings.target_lang not in ("ja", "zh", "zh-Hant", "ko")
         return label_speaker(source, translation, self._names, raw_names=not latin_target)
 
-    def _fixed_name(self, name: str) -> str | None:
-        role = role_label(name) if self.store.settings.target_lang == "vi" else None
-        return role or romanized(name)
+    def _fixed_name(self, name: str, source: str = "") -> str | None:
+        vietnamese = self.store.settings.target_lang == "vi"
+        role = role_label(name) if vietnamese else None
+        # Kanji names are read the Japanese way (美咲 is Misaki), so Hán-Việt is only for Chinese text.
+        chinese = vietnamese and not re.search("[\u3040-\u30ff]", source)
+        return role or romanized(name) or (han_viet(name) if chinese else None)
 
     def _voice_note(self, heard: dict) -> str:
         """Speech has no speaker names, but the voice says whether a man or a woman is talking, and when it changes."""

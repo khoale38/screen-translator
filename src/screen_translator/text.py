@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -11,7 +12,9 @@ from .romanize import ROLES_VI
 
 _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
 _KANA_FIX = {"八": "ハ", "口": "ロ", "工": "エ", "力": "カ", "夕": "タ"}
-_KANA_LOOKALIKE = re.compile("(?<=[ァ-ヺー])[八口工力夕]|[八口工力夕](?=[ァ-ヺー])")
+_KANA_LOOKALIKE = re.compile("(?<=[ァ-ヴー])[八口工力夕](?=[ァ-ヴー])"
+                             "|(?:(?<=^)|(?<=[【「『\\[(（\\s]))[八口工力夕](?=[ァ-ヴー]{1,5}(?:$|[】」』\\]):：)）\\s]))",
+                             re.MULTILINE)
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
@@ -21,7 +24,7 @@ def normalize(text: str) -> str:
     # NFKC turns Korean chat laughter (ㅋㅋ, ㅠㅠ) into conjoining jamo, which then render broken; those keep their form.
     parts = re.split("([\u3131-\u318e]+)", text)
     text = "".join(part if i % 2 else unicodedata.normalize("NFKC", part) for i, part in enumerate(parts))
-    # RapidOCR reads katakana ハ, ロ, エ, カ, タ as look-alike kanji when they sit among katakana.
+    # RapidOCR reads katakana ハ, ロ, エ, カ, タ as look-alike kanji inside a katakana word or a short katakana name.
     text = _KANA_LOOKALIKE.sub(lambda m: _KANA_FIX[m.group(0)], text)
     return _BREAKS.sub("\n", _SPACES.sub(" ", text)).strip()
 
@@ -263,10 +266,14 @@ def _ruby_row_base(pixels: list[tuple], i: int) -> int | None:
         gap = b[1] - (a[1] + a[3])
         inside = a[0] >= b[0] - 0.5 * b[3] and a[0] + a[2] <= b[0] + b[2] + 0.5 * b[3]
         # A reading spells out kanji; a small kana line over kana or a short lead-in over a shout is part of the text.
-        kanji = len(re.findall("[\u4e00-\u9fff々]", b[5]))
+        width = b[2] / max(1, len(b[5]))
+        start, end = int((a[0] - b[0]) / width), math.ceil((a[0] + a[2] - b[0]) / width)
+        kanji = len(re.findall("[\u4e00-\u9fff々]", b[5][max(0, start):max(0, end)]))
         # A name label sits flush with the left edge of its line; a reading sits over the kanji somewhere along it.
         flush = abs(a[0] - b[0]) < 0.5 * b[3]
-        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and not flush:
+        # So does a cutscene name centred over its subtitle line, which is not much smaller than the line.
+        centred = abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < b[3] and a[3] >= 0.55 * b[3]
+        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and not (flush or centred):
             return j
     return None
 
@@ -333,6 +340,16 @@ def _with_name_boxes(blocks: list[Block]) -> list[Block]:
     return _join_pairs(blocks, pairs)
 
 
+def _name_over_line(upper: tuple, lower: tuple) -> bool:
+    """A cutscene speaker's name set over a long subtitle line ("Aria" / "We can't stay here..."), not a wrapped row."""
+    name, line = upper[5].strip(), lower[5].strip()
+    if not _name_like(name) or name.isupper() or upper[2] >= lower[2] / 3:
+        return False
+    if _cjk(line):
+        return len(name) <= 4 and len(line.replace(" ", "")) >= 16
+    return len(line) >= 30
+
+
 def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
     pairs: list[tuple[int, int]] = []
     used: set[int] = set()
@@ -351,7 +368,8 @@ def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
             if not (spoken and same_size):
                 continue
             drop = block.box[1] - (name.box[1] + name.box[3])
-            lined_up = abs(block.box[0] - name.box[0]) <= 1.5 * block.line_height
+            centred = abs((block.box[0] + block.box[2] / 2) - (name.box[0] + name.box[2] / 2)) <= 1.5 * block.line_height
+            lined_up = abs(block.box[0] - name.box[0]) <= 1.5 * block.line_height or centred
             between = any(k not in (i, j) and name.box[1] < other.box[1] < block.box[1]
                           for k, other in enumerate(blocks))
             if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up and not between:
@@ -462,9 +480,18 @@ def _same_block(a: tuple, b: tuple) -> bool:
     text = upper[5].rstrip()
     if _separate_entries(text, lower[5]):
         return False
+    # A party member's name over their HP ("Bram" / "1,430 / 1,600") is a label over a readout.
+    if not re.search(r"[^\W\d_]", lower[5]) and re.search(r"[^\W\d_]", text) and ratio < 0.85:
+        return False
+    if _name_over_line(upper, lower):
+        return False
     mid_phrase = _MID_PHRASE.search(text) and not re.fullmatch(r"[A-Za-z]+", text)
-    wraps = (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower()
-             or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS) and gap <= 0.35 * height))
+    # A shorter CJK row of another size, set apart, is a header or title; a bubble's rows touch.
+    cjk_title = (_cjk(text) and _cjk(lower[5]) and ratio < 0.88 and upper[2] < 0.95 * lower[2]
+                 and gap > 0.12 * height and not text.endswith(("，", "、", ",")))
+    wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower()
+                               or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)
+                                   and gap <= 0.35 * height))
     # Padded OCR boxes of tightly set or slightly rotated lines overlap by up to half a line.
     return wraps and same_size and -0.5 * height <= gap <= 0.6 * height and overlap >= 0.3 * min(a[2], b[2])
 

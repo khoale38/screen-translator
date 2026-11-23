@@ -166,3 +166,7 @@ def test_hyphens_rejoin_only_a_broken_word_and_korean_laughter_survives():
     assert _join("Wait, you-", "Don't go!") == "Wait, you- Don't go!"
     assert normalize("ㅋㅋㅋ 진짜?") == "ㅋㅋㅋ 진짜?"
     assert normalize("八ルカ") == "ハルカ"
+    assert normalize("【八ルカ】遅いぞ") == "【ハルカ】遅いぞ"
+    assert normalize("アイテム力ード") == "アイテムカード"
+    for word in ("魔力ポーション", "体力ゲージ", "口コミで話題", "入力フォーム", "人工ダイヤ", "八ヶ岳"):
+        assert normalize(word) == word

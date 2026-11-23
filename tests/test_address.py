@@ -330,7 +330,11 @@ def test_naming_a_speaker_never_asks_the_translator():
     store.update({"target_lang": "vi"})
     pipeline = Pipeline(store, lambda e: None)
     assert pipeline._labelled("村長\nよく来たな。", "Con đến rồi à.", NoCalls()) == "Trưởng làng: Con đến rồi à."
-    assert pipeline._labelled("萧寒\n走吧。", "Đi thôi.", NoCalls()) == "Đi thôi."
+    assert pipeline._labelled("萧寒\n走吧。", "Đi thôi.", NoCalls()) == "Tiêu Hàn: Đi thôi."
+    assert pipeline._labelled("林师姐\n别怕。", "Đừng sợ.", NoCalls()) == "Lâm Sư tỷ: Đừng sợ."
+    assert pipeline._labelled("【美咲】ねえ、健太。", "【Misaki】Này, Kenta.", NoCalls()) == "Misaki: Này, Kenta."
+    assert pipeline._labelled("【美咲】今日ひま？", "Hôm nay rảnh không?", NoCalls()) == "Misaki: Hôm nay rảnh không?"
+    assert pipeline._labelled("【健太】ああ。", "健太: Ừ.", NoCalls()) == "Ừ."
 
 
 def test_round_7_cues_parent_gender_korean_calls_nobles_and_groups():
@@ -345,4 +349,53 @@ def test_round_7_cues_parent_gender_korean_calls_nobles_and_groups():
     rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
     assert rel.address("You guys are the best. Mom, can I go?") is not None
     assert rel.address("- Don't lie to me, Tom.\n- I'm not lying, Mom!") is None
+    rel.close()
+
+
+def test_round_8_kin_martial_honorifics_and_everyday_misses():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("叔母さん、ただいま！") == ("cháu", "cô")
+    assert said("삼촌, 나 왔어!") == ("cháu", "chú")
+    assert said("お母さん、ただいま！") == ("con", "mẹ")
+    assert said("사부님, 제자가 돌아왔습니다.") == ("đệ tử", "sư phụ")
+    assert said("사저, 이 검 좀 봐 주세요.") == ("", "sư tỷ")
+    assert said("師兄，等等我！") == ("", "sư huynh")
+    assert said("Noona, did you eat my pudding?") == ("em", "chị")
+    assert said("林风\n师兄替你挡着，你快走！") == ("sư huynh", "")
+    for line in ("兄さんに任せとけ。", "어머니아까전화하셨는데안받았지?", "엄마아빠다오셨어.", "Young lady, you are grounded.",
+                 "小姐，您的咖啡好了。", "아가씨, 여기 소주 한 병 주세요.", "Oh my Lord, look at the size of you!"):
+        assert guess_facts(line, "A", "B") is None, line
+    assert said("お嬢様、お茶をお持ちしました。") == ("tôi", "tiểu thư")
+
+
+def test_round_8_couples_and_a_newcomers_title_reach_the_pair():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("老公，你回来了！") == ("em", "anh")
+    assert said("娘子，我回来了。") == ("anh", "em")
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    assert rel.address("Honey, have you seen my keys?") is None
+    rel.heard("Old Man Hemlock: Ah, the young knight returns.")
+    rel.heard("Bram: Sorry, Grandpa. The bridge was out.")
+    note = rel.address("Old Man Hemlock: Hmph. Your sister got here an hour ago.")
+    assert note is not None and (note.me, note.you) == ("ông", "cháu")
+    rel.close()
+
+
+def test_round_8_palace_ranks_and_office_titles():
+    import json, time
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("부장님, 보고서 다 끝냈습니다.") == ("em", "sếp")
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    judge = json.dumps({"relation": "ruler and subject", "senior": "皇上", "older": "太后"})
+    rel = Relationships(lambda: Judge(judge), lambda: settings, lambda e: None)
+    notes = []
+    for who, line in [("太后", "皇儿，你今日为何不来请安？"), ("皇上", "母后恕罪，儿臣今早忙于朝政。"),
+                      ("太后", "朝政再忙，也要保重身子。"), ("宫女", "启禀太后，御膳已经备好了。")]:
+        note = rel.address(f"{who}\n{line}")
+        notes.append(note and (note.me, note.you))
+        rel.heard(f"{who}\n{line}")
+        time.sleep(0.2)
+    assert notes[1:] == [("con", "mẹ"), ("mẹ", "con"), ("nô tì", "Thái hậu")]
     rel.close()

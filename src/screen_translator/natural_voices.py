@@ -48,7 +48,10 @@ def language_of(target: str) -> str | None:
 def prepare(text: str, lang: str) -> str:
     """The text as the model was trained to read it, wrapped in its language tag."""
     if lang == "vi":
-        text = spoken_numbers(text)
+        try:
+            text = spoken_numbers(text)
+        except (ValueError, IndexError):
+            pass
     text = _EMOJI.sub("", unicodedata.normalize("NFKD", text)).translate(_SYMBOLS).replace("@", " at ")
     text = re.sub(r" ([,.!?;:'])", r"\1", text)
     text = re.sub(r"\s+", " ", re.sub(r"([\"'])\1+", r"\1", text)).strip()

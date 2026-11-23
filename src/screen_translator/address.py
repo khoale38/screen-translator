@@ -45,12 +45,14 @@ _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|
 # Recognized Korean speech has no spaces or commas: a title opening the line calls someone unless a particle follows.
 _KOREAN_OPENING = r"|^\W*(?:{0})(?!가|는|를|도|의|한테|랑|이|에게|께|하고|님[이은을의])"
 TO_ELDER = {
-    "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|아저씨|오빠|형(?:님)?)")
-                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|^哥(?=[，,！!？?])|"
-                       r"哥哥|师兄", re.I),
-    "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|언니|누나)") + _KOREAN_OPENING.format("언니|누나")
-                         + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|^姐(?=[，,！!？?])", re.I),
-    "": re.compile(r"先輩|せんぱい|선배(?:님)?|学长|学姐"),
+    "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|hyung|oppa|onii-?(?:chan|san)|nii-?san|아저씨|오빠|"
+                                        r"사형|형(?:님)?)")
+                       + _KOREAN_OPENING.format("오빠|아저씨|사형") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|大師兄|"
+                       r"^哥(?=[，,！!？?])|哥哥|师兄|師兄|皇兄", re.I),
+    "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|noona|unnie|onee-?(?:chan|san)|nee-?san|언니|누나|사저)")
+                         + _KOREAN_OPENING.format("언니|누나|사저") + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|師姐|^姐(?=[，,！!？?])",
+                         re.I),
+    "": re.compile(_VOCATIVE.format(r"(?:senpai|sunbae(?:nim)?)") + r"|先輩|せんぱい|선배(?:님)?|学长|学姐", re.I),
 }
 SERVING = re.compile(r"^\W*welcome\b(?! back| home)|いらっしゃいませ|お客様|손님|어서 오세요|欢迎光临", re.I)
 RELATIONS = ("parent and child", "grandparent and grandchild", "siblings or cousins", "couple", "teacher and student",
@@ -60,22 +62,35 @@ RELATIONS = ("parent and child", "grandparent and grandchild", "siblings or cous
 # a 4B judge otherwise mixes up who outranks whom.
 ROLES = {
     "teacher and student": re.compile(r"先生|せんせい|\bsensei\b|\bteacher\b|\bprofessor\b|老师|老師|선생님|교수님", re.I),
-    "master and disciple": re.compile(r"师父|師父|師匠|师傅|(?<!young )\bmaster\b|sư phụ", re.I),
+    "master and disciple": re.compile(r"师父|師父|師匠|师傅|(?<!young )\bmaster\b|sư phụ|사부님|사부|스승님", re.I),
     "ruler and subject": re.compile(r"\b(princess|prince|king|queen|emperor|empress|majesty|highness)\b|"
-                                    r"陛下|殿下|王子|公主|皇上|왕자|공주|폐하|전하", re.I),
-    "noble and servant": re.compile(r"\b(my lady|milady|m'lady|my lord|milord|young master|young lady)\b|"
-                                    r"お嬢様|お坊ちゃま|ご主人様|旦那様|小姐|少爷|아가씨|도련님", re.I),
+                                    r"陛下|殿下|王子|公主|皇上|太后|왕자|공주|폐하|전하", re.I),
+    # Not "young lady" (a parent scolding), "Oh my Lord", or a waiter's bare 小姐/아가씨.
+    "noble and servant": re.compile(r"\b(my lady|milady|m'lady|milord|young master)\b|(?<!oh )(?<!good )(?<!dear )"
+                                    r"\bmy lord\b|お嬢様|お坊ちゃま|ご主人様|旦那様|[大二三]小姐|少爷|도련님", re.I),
+    "boss and employee": re.compile(r"부장님|팀장님|과장님|차장님|실장님|본부장님|部長|課長|社長|经理|總監|总监|\bboss\b", re.I),
+    "aunt or uncle and niece or nephew": re.compile(r"\b(uncle|aunt|auntie|aunty)\b|叔父|伯父|叔母|伯母|おじさん|おばさん|"
+                                                    r"叔叔|阿姨|伯伯|舅舅|姑姑|삼촌|이모|고모", re.I),
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|祖母|祖父|奶奶|爷爷|外婆|外公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸|"
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|"
                                    r"^(?:妈|爸)(?=[，,！!？?])|母后|父皇|母妃", re.I),
 }
-YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아|"
-                     r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|小妹)(?=[，,。！？!?])", re.I)
+YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
+                     r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹)(?=[，,。！？!?])", re.I)
+# What one spouse or lover calls the other; 老公 is said to a husband, 老婆 and 마누라 to a wife, 여보 to either.
+COUPLE = {
+    "male": re.compile(r"老公|夫君|相公|旦那様?(?=[、，,！!？?])", re.I),
+    "female": re.compile(r"老婆|娘子|마누라|\bwifey\b", re.I),
+    "": re.compile(_VOCATIVE.format(r"(?:honey|babe|baby|sweetheart|darling|sweetie)") + r"|亲爱的|親愛的|ダーリン|여보|자기야",
+                   re.I),
+}
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
-FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother)\b|공주|"
+FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother|aunt|auntie|"
+                           r"aunty|noona|unnie)\b|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
                            r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father)\b|왕자|할아버지|아빠|아버지|"
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa)\b|叔父|伯父|"
+                         r"おじさん|叔叔|伯伯|舅舅|삼촌|사형|사제|师兄|師兄|师弟|師弟|왕자|할아버지|아빠|아버지|"
                          r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
 RECHECK_AT = (4, 10)
@@ -114,6 +129,10 @@ def body_of(text: str) -> str:
     return text
 
 
+_STAGE_DIRECTION = re.compile(r"[A-Z]+(?:S|ING|ED)|MUSIC|SILENCE|BEEP|BANG|笑|小声|回想|独白|心の声|ため息|泣|叫|内心|旁白|"
+                              r"叹气|哭|喊|ナレーション|モノローグ|電話|电话|拍手|音乐|音楽", re.I)
+
+
 def _bracketed_name(text: str) -> str | None:
     """【ハルカ】, （ハルカ） or (MOM) before a line; a bracketed aside such as （まずい……） or (Sighs) is not a speaker."""
     match = _BRACKETED.match(text.strip())
@@ -122,7 +141,7 @@ def _bracketed_name(text: str) -> str | None:
     name, opener = match.group(1).strip(), text.strip()[0]
     if opener in "【〔":
         return name
-    if re.search(r"[.…!?！？。、,]", name):
+    if re.search(r"[.…!?！？。、,]", name) or _STAGE_DIRECTION.fullmatch(name):
         return None
     if opener == "（" and re.fullmatch("[\u30a0-\u30ff\u4e00-\u9fff]{1,6}", name):
         return name
@@ -144,7 +163,9 @@ def speaker_of(text: str) -> str | None:
         return None
     # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker.
     words = first.split()
-    if words[0].lower().strip(",") in _DISCOURSE or words[-1].lower().strip(",") in _VOCATIVE_TITLES:
+    # A lone title over an all-caps line is a comic bubble calling someone ("MOM / I'M HOME!"), not a name tab.
+    called = words[-1].lower().strip(",") in _VOCATIVE_TITLES and (len(words) > 1 or rest.isupper())
+    if words[0].lower().strip(",") in _DISCOURSE or called:
         return None
     return first
 
@@ -161,25 +182,34 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     female = lambda who: gender(who) == "female"
     top = senior if senior in (speaker, listener) else older if older in (speaker, listener) else ""
     by_gender = lambda women, men: lambda who: {"female": women, "male": men}.get(gender(who), "")
-    ranked = {"parent": by_gender("mẹ", "bố"), "grandparent": by_gender("bà", "ông"), "teacher": by_gender("cô", "thầy")}
+    ranked = {"parent": by_gender("mẹ", "bố"), "grandparent": by_gender("bà", "ông"), "teacher": by_gender("cô", "thầy"),
+              "aunt": by_gender("cô", "chú")}
     for role, title in ranked.items():
         if relation.startswith(role) and top:
-            young = "con" if role == "parent" else "cháu" if role == "grandparent" else "em"
+            young = "con" if role == "parent" else "cháu" if role in ("grandparent", "aunt") else "em"
             return (title(speaker), young) if top == speaker else (young, title(listener))
     if relation.startswith("master") and top:
         return ("ta", "con") if top == speaker else ("đệ tử", "sư phụ")
     if relation.startswith("ruler") and top:
-        return ("ta", "ngươi") if top == speaker else ("thần", facts.get("royal", "bệ hạ"))
+        servant = re.search(r"宫女|宮女|丫鬟|侍女|婢|太监|maid", speaker, re.I)
+        return ("ta", "ngươi") if top == speaker else ("nô tì" if servant else "thần", facts.get("royal", "bệ hạ"))
     if relation.startswith("noble") and top:
         if top == speaker:
-            return "ta", ""
+            return "", ""
         return "tôi", {"female": "tiểu thư", "male": "ngài"}.get(gender(listener), "ngài")
     if "customer" in relation:
         if senior == listener:
             return "tôi", {"female": "chị", "male": "anh"}.get(gender(listener), "bạn")
         return "tôi", "quý khách"
-    if relation == "couple" and older not in (speaker, listener) and gender(speaker) != gender(listener) != "unknown":
-        older = speaker if gender(speaker) == "male" else listener
+    if relation == "couple" and older not in (speaker, listener):
+        if "female" in (gender(speaker), gender(listener)) or "male" in (gender(speaker), gender(listener)):
+            husband = speaker if gender(speaker) == "male" or gender(listener) == "female" else listener
+            return ("anh", "em") if husband == speaker else ("em", "anh")
+        return "", ""
+    if facts.get("martial") and older in (speaker, listener):
+        if older == speaker:
+            return by_gender("sư tỷ", "sư huynh")(speaker), by_gender("sư muội", "sư đệ")(listener)
+        return by_gender("muội", "đệ")(speaker), by_gender("sư tỷ", "sư huynh")(listener)
     if relation in ("family", "siblings or cousins", "couple", "school senior and junior") and older in (speaker, listener):
         return (elder(speaker), "em") if older == speaker else ("em", elder(listener))
     if relation == "friends" and not rough and older in (speaker, listener):
@@ -187,7 +217,7 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
     if relation == "friends" or rough:
         return ("tao", "mày") if rough else ("tớ", "cậu")
     if relation in ("coworkers", "boss and employee") and top:
-        return (elder(speaker), "em") if top == speaker else ("em", elder(listener))
+        return (elder(speaker), "em") if top == speaker else ("em", elder(listener) or "sếp")
     return "tôi", {"female": "chị", "male": "anh"}.get(gender(listener), "bạn")
 
 
@@ -214,30 +244,55 @@ class Address:
         return terms
 
 
+def _address(speaker: str, listener: str, facts: dict | None, guessed: bool) -> Address | None:
+    pair = vietnamese(facts, speaker, listener) if facts else ("", "")
+    return Address(speaker, listener, *pair, guessed) if any(pair) else None
+
+
 def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     """Facts plain from one line: calling the listener big brother or 先輩, serving a customer, swearing."""
     line = body_of(line)
     if SERVING.search(line):
         return {"relation": "staff and customer", "senior": speaker, "guess": True}
-    if YOUNGER.search(line):
-        return {"relation": "siblings or cousins", "older": speaker, "guess": True}
+    younger = YOUNGER.search(line)
+    if younger:
+        martial = re.search("师|師|사제|사매", younger.group(0))
+        facts = {"relation": "siblings or cousins", "older": speaker, "guess": True, "martial": bool(martial)}
+        gender = "female" if FEMALE_TITLES.search(younger.group(0)) else "male" if MALE_TITLES.search(younger.group(0)) else ""
+        return {**facts, f"{listener} gender": gender} if martial and gender else facts
     for role, cue in ROLES.items():
         if calls_by(cue, line):
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
             title = cue.search(line).group(0)
             if role.startswith("ruler"):
-                facts["royal"] = "điện hạ" if PRINCELY.search(title) else "bệ hạ"
+                facts["royal"] = "Thái hậu" if "太后" in title else "điện hạ" if PRINCELY.search(title) else "bệ hạ"
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
     for gender, cue in TO_ELDER.items():
         found = cue.search(line)
-        self_reference = found and re.match(r"(?:ちゃん|さん|様|さま)?(?:が|は|も|の|会|给|帮|也)", line[found.end():])
-        if found and not _MENTIONED.search(line[:found.start()]) and not self_reference:
-            facts = {"relation": "school senior and junior", "older": listener, "guess": True}
+        if not found:
+            continue
+        martial = bool(re.search("师|師|사형|사저", found.group(0)))
+        if calls_by(cue, line):
+            facts = {"relation": "school senior and junior", "older": listener, "guess": True, "martial": martial}
+            return {**facts, f"{listener} gender": gender} if gender else facts
+        # An elder speaking of themself to the listener: "师兄替你挡着", "お姉ちゃんが守ってあげる", "오빠만 믿어".
+        opening = not line[:found.start()].strip(" \"'「『(-—…")
+        if opening and gender and _SECOND_PERSON.search(line[found.end():]):
+            return {"relation": "school senior and junior", "older": speaker, f"{speaker} gender": gender,
+                    "guess": True, "martial": martial}
+    for gender, cue in COUPLE.items():
+        if calls_by(cue, line):
+            facts = {"relation": "couple", "guess": True}
             return {**facts, f"{listener} gender": gender} if gender else facts
     if ROUGH.search(line):
         return {"relation": "friends", "rough": True, "guess": True}
     return None
+
+
+_SECOND_PERSON = re.compile(r"你|您|お前|おまえ|あなた|君|きみ|너|네가|널|\byou\b", re.I)
+_PARENT_WORD = re.compile(r"엄마|아빠|어머니|아버지")
+_HONORED = re.compile(r"셨|시[어었고는]|계셔|계세|께서")
 
 
 def calls_by(cue: re.Pattern, line: str) -> bool:
@@ -260,7 +315,12 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         hangul = re.search("[\uac00-\ud7a3]", match.group(0))
         opening = not before.strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
-        if not hangul and opening and not closing:
+        # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
+        palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后", match.group(0))
+        if not hangul and opening and not closing and not palace and not re.match(r"\s*(?:你|您)", after):
+            continue
+        # "엄마아빠다오셨어", "어머니아까전화하셨는데": a parent mentioned with an honorific verb, not called.
+        if hangul and not closing and (_PARENT_WORD.match(after) or _HONORED.search(after)):
             continue
         # "엄마 나 오늘 늦어" calls; "어머니병원에 갔었어" or "어머니 말씀이" mentions: a call goes on with "I", "you", "why", "hurry".
         if hangul and opening and not closing and not _KOREAN_CALL_ON.match(after):
@@ -289,12 +349,13 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
         role = next((role for role, cue in ROLES.items() if cue.search(name)), None)
         if role:
             roles[name] = role
+    called: dict[str, str] = {}
     for said_by, line in said:
         other = b if said_by == a else a if said_by == b else None
         if other and other not in roles:
             role = next((role for role, cue in ROLES.items() if calls_by(cue, body_of(line))), None)
             if role:
-                roles[other] = role
+                roles[other] = called[other] = role
                 title = ROLES[role].search(body_of(line)).group(0)
                 if FEMALE_TITLES.search(title):
                     facts.setdefault(f"{other} gender", "female")
@@ -307,6 +368,13 @@ def settled(facts: dict, a: str, b: str, said: list[tuple[str, str]]) -> dict:
         elif MALE_TITLES.search(name):
             facts[f"{name} gender"] = "male"
     enemies = str(facts.get("relation", "")).startswith("rivals")
+    # The emperor still calls his mother 母后: being called parent outranks a title in the other's name.
+    family = [name for name, role in called.items() if role.startswith(("parent", "grandparent"))]
+    if len(family) == 1 and len(roles) == 2:
+        roles = {family[0]: roles[family[0]]}
+    dowager = [name for name in roles if "太后" in name]
+    if len(roles) == 2 and len(dowager) == 1:
+        roles = {dowager[0]: "parent and child" if all(r.startswith("ruler") for r in roles.values()) else roles[dowager[0]]}
     if len(roles) == 1 and not enemies:
         [(senior, role)] = roles.items()
         royal = "điện hạ" if any(PRINCELY.search(text) for text in [senior, *(line for _w, line in said)]) else "bệ hạ"
@@ -342,7 +410,12 @@ def parse_facts(answer: str) -> dict | None:
 
 
 NOBODY = "?"
-_KOREAN_CALL_ON = re.compile(r"\s*(?:나|저|우리|너|왜|빨리|어디|이거|지금|야|아|좀|진짜|잠깐)")
+
+
+def _replier(lines: list, index: int) -> str | None:
+    who = lines[index][0]
+    return next((w for w, _l, _a, _t in lines[index + 1:] if w and w != who), None)
+_KOREAN_CALL_ON = re.compile(r"\s*(?:나|저|우리|너|왜|빨리|어디|이거|지금|야(?=\s*(?:[,.!?~…]|$))|잠깐)")
 
 
 def _calls_a_title(body: str) -> bool:
@@ -354,7 +427,7 @@ def _calls_name(line: str, name: str) -> bool:
     """A name opening the line or set off by punctuation calls that person; one inside the sentence only mentions them."""
     title = r"(?:(?:Uncle|Aunt|Mr|Mrs|Ms|Miss|Dr|Captain|Sergeant|Sir|Lady)\.?\s+)?"
     suffix = r"(?:\s?(?:씨|님)|さん|君|くん|ちゃん|様|先輩|先生|-sensei|-san|-kun|-chan|아|야)?"
-    return bool(re.search(rf"(?:^|[,、，!！?？]\s*){title}{re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)",
+    return bool(re.search(rf"(?:^|[,、，!！?？]\s*)(?:启禀|禀告|参见|拜见|叩见)?{title}{re.escape(name)}{suffix}\s*(?:[,、，!！?？~…。.]|$)",
                           line.strip()))
 
 
@@ -413,8 +486,7 @@ class Relationships:
         speaker = speaker_of(text)
         if not speaker:
             facts = guess_facts(text, "the speaker", "the listener")
-            return Address("the speaker", "the listener", *vietnamese(facts, "the speaker", "the listener"), True) \
-                if facts else None
+            return _address("the speaker", "the listener", facts, True)
         with self._lock:
             listener = self._listener(speaker, text)
             pair = frozenset((speaker, listener))
@@ -433,23 +505,24 @@ class Relationships:
             called = guess_facts(text, speaker, listener)
             if called and (called.get("older") or called.get("senior")):
                 facts = {**facts, **{key: value for key, value in called.items() if key != "guess"}}
-        return Address(speaker, listener, *vietnamese(facts, speaker, listener), bool(facts.get("guess"))) \
-            if facts else None
+        return _address(speaker, listener, facts, bool(facts.get("guess"))) if facts else None
 
     def _said(self, pair: frozenset) -> list[tuple[str, str]]:
-        return [(who, line) for who, line, _a, to in self._lines if who in pair and to in pair and to != who]
+        lines = list(self._lines)
+        return [(who, line) for index, (who, line, _a, to) in enumerate(lines) if who in pair
+                and ((to in pair and to != who) or (to == NOBODY and _replier(lines, index) in pair - {who}))]
 
     def _note_cues(self, pair: frozenset) -> None:
         """Cues from every line either of the two said to the other so far, the latest ones winning."""
         lines = list(self._lines)
         for index, (who, line, _at, to) in enumerate(lines):
-            if who in pair and (to is None or (to in pair and to != who)):
+            if who in pair and (to in (None, NOBODY) or (to in pair and to != who)):
                 other = next(iter(pair - {who}), None)
                 if other is None:
                     continue
-                if to is None:
+                if to in (None, NOBODY):
                     # A line said before anyone answered counts only for the one who answered it.
-                    replier = next((w for w, _l, _a, _t in lines[index + 1:] if w and w != who), None)
+                    replier = _replier(lines, index)
                     if replier is not None and replier != other:
                         continue
                 guess = guess_facts(line, who, other)

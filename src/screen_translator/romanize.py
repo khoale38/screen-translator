@@ -90,7 +90,51 @@ ROLES_VI = {
     "システム": "Hệ thống", "老板娘": "Bà chủ", "店小二": "Tiểu nhị", "掌门": "Chưởng môn", "村长": "Trưởng làng",
     "상인": "Thương nhân", "경비병": "Lính gác", "대장장이": "Thợ rèn", "점원": "Nhân viên", "기사": "Hiệp sĩ",
     "시스템": "Hệ thống",
+    "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
+    "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
+    "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
+    "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
+    "大人": "Đại nhân", "掌柜": "Chưởng quỹ", "长老": "Trưởng lão", "宗主": "Tông chủ",
 }
+
+
+# Hán-Việt readings of common characters in Chinese names: 林风 is Lâm Phong, as Vietnamese viewers know them.
+_HAN_VIET = """
+王Vương 李Lý 张張Trương 刘劉Lưu 陈陳尘塵Trần 杨楊阳陽Dương 黄黃皇Hoàng 赵趙Triệu 吴吳Ngô 周朱舟Chu 徐Từ 孙孫尊Tôn 马馬Mã 胡狐湖Hồ 郭Quách
+何荷霞河Hà 高Cao 林琳霖Lâm 罗羅La 郑鄭Trịnh 梁Lương 谢謝Tạ 宋Tống 唐Đường 许許Hứa 韩韓寒Hàn 冯馮Phùng 邓鄧Đặng 曹Tào 彭Bành 曾Tăng
+肖萧蕭霄Tiêu 田Điền 董Đổng 袁Viên 潘Phan 于Vu 蒋蔣Tưởng 蔡泰太Thái 余Dư 杜Đỗ 叶葉Diệp 程Trình 苏蘇Tô 魏Ngụy 吕呂Lã 丁Đinh 任Nhậm 沈Thẩm
+姚Diêu 卢盧Lư 姜Khương 崔Thôi 钟鍾Chung 谭譚Đàm 陆陸六Lục 汪Uông 范Phạm 金Kim 石Thạch 廖Liêu 贾賈Giả 夏贺賀Hạ 韦韋薇Vi 傅Phó 方芳Phương
+白Bạch 邹鄒Trâu 孟Mạnh 熊Hùng 秦Tần 邱丘Khâu 江Giang 尹Doãn 薛Tiết 段Đoàn 雷Lôi 侯Hầu 龙龍Long 史Sử 陶涛濤桃Đào 黎Lê 顾顧Cố 毛Mao
+龚龔宫宮Cung 邵Thiệu 万萬Vạn 钱錢Tiền 严嚴Nghiêm 武宇雨Vũ 戴Đái 莫Mạc 孔Khổng 向Hướng 汤湯Thang 慕Mộ 容蓉Dung 上Thượng 官Quan 欧歐Âu
+司思Tư 令Lệnh 楚Sở 燕Yến 凌Lăng 柳Liễu 云雲芸Vân 风風峰枫楓Phong 花华華Hoa 月Nguyệt 雪Tuyết 冷Lãnh 君军軍Quân 墨Mặc 宁寧Ninh 安An 洛乐樂Lạc
+秋Thu 春Xuân 冬东東Đông 南男Nam 北Bắc 西Tây 明铭銘Minh 伟偉Vĩ 强強Cường 平Bình 杰傑Kiệt 辉輝Huy 刚剛Cương 勇Dũng 毅Nghị 俊Tuấn 磊Lỗi
+超Siêu 浩昊Hạo 轩軒Hiên 晨辰神宸Thần 天Thiên 子紫Tử 文Văn 志Chí 国國Quốc 建Kiến 成诚誠Thành 海Hải 山Sơn 森Sâm 木沐Mộc 水Thủy 火Hỏa 玉Ngọc
+珠Châu 宝寶Bảo 美Mỹ 丽麗Lệ 娟Quyên 秀Tú 英樱櫻Anh 敏Mẫn 静靜Tĩnh 婷Đình 雅Nhã 晓曉Hiểu 小Tiểu 大Đại 红紅鸿鴻Hồng 兰蘭Lan 梅Mai 菊Cúc
+莲蓮Liên 凤鳳Phượng 虎Hổ 鹤鶴Hạc 清青Thanh 蓝藍岚嵐Lam 星Tinh 璃离離Ly 夜Dạ 影Ảnh 光Quang 灵靈玲铃鈴Linh 心Tâm 念Niệm 爱愛Ái 情晴Tình 诗詩Thi
+书書Thư 琴Cầm 冰Băng 霜Sương 露Lộ 烟煙嫣Yên 若Nhược 如Như 婉Uyển 柔Nhu 瑶瑤遥遙Dao 琪Kỳ 欣Hân 怡Di 佳Giai 慧Tuệ 智Trí 仁人Nhân 义義Nghĩa
+信Tín 德Đức 忠中Trung 孝Hiếu 正Chính 元Nguyên 长長Trường 永Vĩnh 福Phúc 康Khang 荣榮Vinh 贵貴Quý 富Phú 凡帆Phàm 逸Dật 飞飛菲Phi
+鹏鵬Bằng 远遠Viễn 言Ngôn 歌哥Ca 剑劍Kiếm 松Tùng 竹Trúc 杏Hạnh 熙曦Hy 瑾Cẩn 瑜Du 琼瓊Quỳnh 妍Nghiên 娜Na 倩Thiến 萱Huyên 涵Hàm
+悦悅Duyệt 一Nhất 二Nhị 三Tam 四Tứ 五Ngũ 七Thất 八Bát 九Cửu 十Thập 阿A 老Lão 叔Thúc 伯Bá 弟Đệ 妹Muội 姐Tỷ 兄Huynh 公Công 主Chủ
+爷爺家嘉Gia 后Hậu 帝Đế 女Nữ 师師Sư 真Chân 仙Tiên 魔Ma 道Đạo 少Thiếu 新Tân 豪Hào 健Kiện 博Bác 哲Triết 然Nhiên 旭Húc 泽澤Trạch 睿Duệ
+景Cảnh 瑞Thụy 祥翔Tường 依伊Y 可Khả 馨Hinh 芷Chỉ 素Tố 洁潔Khiết 翠Thúy 蝶Điệp 凝Ngưng 渊淵Uyên 玄Huyền 苍蒼Thương 恒恆Hằng 卫衛Vệ
+定Định 宏Hoành 铁鐵Thiết 承Thừa 航Hàng 川Xuyên 波Ba 溪Khê 泉Tuyền 黑Hắc 银銀Ngân 音Âm 母Mẫu 父Phụ 娘Nương 夫Phu 雁Nhạn 珊San
+彤Đồng
+"""
+HAN_VIET = {ch: m.group(2) for m in re.finditer("([\u3400-\u9fff]+)(\\S+)", _HAN_VIET) for ch in m.group(1)}
+
+
+def han_viet(name: str) -> str | None:
+    """A Chinese name in Hán-Việt ("林风" -> "Lâm Phong", "林师姐" -> "Lâm Sư tỷ"); None when a character is unknown."""
+    name = name.strip()
+    if not 1 <= len(name) <= 5:
+        return None
+    for role, label in sorted(ROLES_VI.items(), key=lambda item: -len(item[0])):
+        if name.endswith(role) and len(role) < len(name) and "\u4e00" <= role[0] <= "\u9fff":
+            head = han_viet(name[:-len(role)])
+            return f"{head} {label}" if head else None
+    if not all(ch in HAN_VIET for ch in name):
+        return None
+    return " ".join(HAN_VIET[ch] for ch in name)
 
 
 def role_label(name: str) -> str | None:

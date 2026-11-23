@@ -79,7 +79,7 @@ def build_messages(
 def dub_note(budget: str) -> str:
     """Speech that will be dubbed must fit the time its speaker took, as a simultaneous interpreter's would."""
     return (f"This line will be dubbed over the speaker, so it must be said in the time they took: at most "
-            f"{budget}. If a faithful translation fits, give that; if not, condense like a simultaneous interpreter: "
+            f"{budget}, counting a number as the words it is read with. If a faithful translation fits, give that; if not, condense like a simultaneous interpreter: "
             f"keep the meaning, names and tone, drop only filler, repetition and hedging.") if budget else ""
 
 
@@ -238,7 +238,20 @@ _ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "A
 
 
 def is_name_tab(text: str) -> bool:
-    return "\n" in text and speaker_of(text) == text.split("\n", 1)[0].strip()
+    head, _, body = text.partition("\n")
+    # A party member's HP ("Bram" over "1,430 / 1,600") is not a line they say.
+    return bool(body) and speaker_of(text) == head.strip() and bool(re.search(r"[^\W\d_]{2}", body))
+
+
+def model_label(translation: str) -> str:
+    """The speaker's name as the model wrote it: "Name: line", "【Name】line" or "Name\nline"."""
+    text = translation.strip()
+    for found in (_LABEL.match(text), _BRACKETED.match(text) if text[:1] in "【〔" else None):
+        if found:
+            return found.group(1).strip()
+    head, _, body = text.partition("\n")
+    head = head.strip().rstrip(":：")
+    return head if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?", "。", "！", "？")) else ""
 
 
 def label_speaker(source: str, translation: str, names: dict[str, str] | None = None, raw_names: bool = True) -> str:
@@ -251,19 +264,22 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
     known = (names or {}).get(name) if name else None
     # With raw_names off, a name in a script the viewer cannot read is left off rather than shown in hanzi.
     shown = known or (name if raw_names or not NOT_LATIN.search(name or "") else None)
+    readable = lambda written: written if written and (raw_names or not NOT_LATIN.search(written)) else None
     bracket = _BRACKETED.match(translation.strip())
     if name and bracket and translation.strip()[0] in "【〔":
-        return f"{shown}: {bracket.group(2)}" if shown else bracket.group(2)
+        label = shown or readable(bracket.group(1).strip())
+        return f"{label}: {bracket.group(2)}" if label else bracket.group(2)
     label, _, rest = source.partition("\n")
     if rest and name == label.strip():
         head, _, body = translation.partition("\n")
         head = head.strip().rstrip(":：")
         if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
-            return f"{known or head}: {' '.join(body.split())}"
+            label = known or readable(head)
+            return f"{label}: {' '.join(body.split())}" if label else " ".join(body.split())
     labelled = _LABEL.match(translation.strip())
     # One spelling per character on every line: the known one replaces whatever the model wrote this time.
-    if labelled and known:
-        return f"{known}: {labelled.group(2)}"
+    if labelled and name and (known or not readable(labelled.group(1).strip())):
+        return f"{known}: {labelled.group(2)}" if known else labelled.group(2)
     if name and name in source.lstrip()[:len(name) + 2] and not labelled:
         return f"{shown}: {translation.strip()}" if shown else translation.strip()
     return translation

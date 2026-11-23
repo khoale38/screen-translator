@@ -188,7 +188,8 @@ def _with_dashes(lines: list[OcrLine], width: int, height: int) -> list[OcrLine]
         text = line.text.strip()
         if text in ("-", "–", "—", "－", "·", "•"):
             return starts_row(line)
-        rows = [other.box[3] for other in lines if other is not line and same_row(other, line)]
+        rows = [other.box[3] for other in lines if other is not line and same_row(other, line)
+                and other.box[2] * width > other.box[3] * height]
         return (text in ("0", "o", "O", "口", "一", "ー") and bool(rows) and line.box[3] < 0.6 * max(rows)
                 and line.box[2] * width < 1.5 * line.box[3] * height and starts_row(line))
 
