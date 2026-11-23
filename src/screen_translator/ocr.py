@@ -177,7 +177,15 @@ class RapidOcr:
 
 def _with_dashes(lines: list[OcrLine], width: int, height: int) -> list[OcrLine]:
     """A two-speaker subtitle's leading dash, read as a box of its own, put back on the line it starts."""
-    dashes = [line for line in lines if line.text.strip() in ("-", "–", "—", "－", "·", "•")]
+    def small_mark(line: OcrLine) -> bool:
+        # OCR reads a lone dash as "0", "口" or "o" too; its small, squat box gives it away.
+        if line.text.strip() in ("-", "–", "—", "－", "·", "•"):
+            return True
+        tall = [other.box[3] for other in lines if other is not line and len(other.text.strip()) > 3]
+        return (len(line.text.strip()) <= 2 and bool(tall) and line.box[3] < 0.45 * max(tall)
+                and line.box[2] * width < 1.5 * line.box[3] * height)
+
+    dashes = [line for line in lines if small_mark(line)]
     kept = [line for line in lines if line not in dashes]
     for dash in dashes:
         row = [line for line in kept if abs((line.box[1] + line.box[3] / 2) - (dash.box[1] + dash.box[3] / 2))

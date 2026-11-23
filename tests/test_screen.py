@@ -439,3 +439,17 @@ def test_name_tabs_join_only_one_clear_pair_and_furigana_needs_kanji_under_it():
     assert "いいかげんに" in group_blocks(lead_in, 1000, 1000)[0].text
     label = [px("アオイ", 100, 700, 60, 18), px("ねえ、タクミ。明日の花火大会、一緒に行かない？", 100, 720, 520, 34)]
     assert group_blocks(label, 1000, 1000)[0].text.startswith("アオイ")
+
+
+def test_one_dialogue_name_tab_joins_even_with_a_quest_panel_on_screen():
+    blocks = [px("Quest", 700, 100, 80, 30), px("Find the lost blade in the northern caves", 700, 140, 280, 30),
+              px("Mira", 100, 720, 60, 30), px("You came back! I knew you would.", 100, 760, 420, 30)]
+    texts = [b.text for b in group_blocks(blocks, 1000, 1000)]
+    assert "Mira\nYou came back! I knew you would." in texts and "Quest" in texts
+
+
+def test_a_key_tag_mid_sentence_and_a_number_line_in_a_bubble_stay_joined():
+    tutorial = [px("宝箱を開けるには", 100, 100, 200, 30), px("[E] を押してください", 100, 134, 220, 30)]
+    assert len(group_blocks(tutorial, 1000, 1000)) == 1
+    bubble = [px("Ready? Only", 100, 300, 140, 30), px("30!", 120, 333, 50, 30)]
+    assert [b.text for b in group_blocks(bubble, 1000, 1000)] == ["Ready? Only 30!"]

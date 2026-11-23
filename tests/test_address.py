@@ -300,3 +300,33 @@ def test_korean_titles_find_their_speaker():
     assert rel._listener("최 대리", "최 대리: 준호 씨, 팀장님이 찾으세요.") == "준호"
     assert rel._listener("준호", "준호: 네, 대리님. 바로 갈게요.") == "최 대리"
     rel.close()
+
+
+def test_closing_calls_without_a_comma_group_lines_and_a_first_line_that_only_its_replier_takes():
+    assert guess_facts("Thanks Dad.", "the speaker", "the listener")["senior"] == "the listener"
+    assert guess_facts("谢谢妈妈。", "the speaker", "the listener")["senior"] == "the listener"
+    assert guess_facts("어머니 말씀이 맞아요.", "the speaker", "the listener") is None
+    assert speaker_of("【アオイ】ねえ、タクミ！") == "アオイ"
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    assert rel.address("Mina: Hi everyone, welcome back!") is None
+    for line in ("Sir Aldric: Your Highness, stay behind me.", "Princess Elena: I can walk.", "Lyra: She's right."):
+        rel.heard(line)
+    rel._note_cues(frozenset(("Lyra", "Sir Aldric")))
+    assert "royal" not in rel._cues.get(frozenset(("Lyra", "Sir Aldric")), {})
+    rel.close()
+
+
+def test_naming_a_speaker_never_asks_the_translator():
+    from screen_translator.config import SettingsStore
+    from screen_translator.pipeline import Pipeline
+
+    class NoCalls:
+        def translate(self, *args, **kwargs):
+            raise AssertionError("the translator was called for a name")
+
+    import tempfile, pathlib
+    store = SettingsStore(pathlib.Path(tempfile.mkdtemp()) / "settings.json")
+    store.update({"target_lang": "vi"})
+    pipeline = Pipeline(store, lambda e: None)
+    assert pipeline._labelled("村長\nよく来たな。", "Con đến rồi à.", NoCalls()) == "村長: Con đến rồi à."

@@ -111,3 +111,12 @@ def test_a_dropped_name_comes_back_as_the_viewer_reads_it():
     assert label_speaker("ミサキ：また遅刻？", "Lại muộn à?", names) == "Misaki: Lại muộn à?"
     assert label_speaker("ミサキ\nまた遅刻？", "Lại muộn à?", names) == "Misaki: Lại muộn à?"
     assert label_speaker("ミサキ\nまた遅刻？", "Misaki\nLại muộn à?", names) == "Misaki: Lại muộn à?"
+
+
+def test_one_spelling_per_character_and_a_leaked_item_list_is_trimmed():
+    from screen_translator.translator import strip_item_letter
+
+    names = {"박 팀장": "Trưởng nhóm Park"}
+    assert label_speaker("박 팀장\n보고서 줘.", "Team Leader Park: Đưa báo cáo đây.", names) == "Trưởng nhóm Park: Đưa báo cáo đây."
+    assert strip_item_letter("A. Cài đặt\nB. Âm thanh\nC. Thoát", 1) == "Âm thanh"
+    assert strip_item_letter("A.丽娜", 0) == "丽娜"

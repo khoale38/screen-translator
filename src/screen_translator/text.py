@@ -31,6 +31,8 @@ def _join(left: str, right: str) -> str:
         return left + right
     if (_SPACELESS.match(left[-1]) and right[0].isdigit()) or (left[-1].isdigit() and _SPACELESS.match(right[0])):
         return left + right
+    if re.search(r"[A-Za-z]{2,}-$", left) and right[0].isalpha():
+        return (left[:-1] if left[-2].islower() == right[0].islower() else left) + right
     return f"{left} {right}"
 
 
@@ -43,7 +45,9 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
     for line in lines:
         text = BUTTON_MISREAD.sub(r"\g<1>1", line.text.strip().strip(_DECORATION + " "))
         letters = sum(ch.isalpha() for ch in text)
-        if line.confidence >= min_confidence and (letters >= 2 or (lone_cjk and letters and _SPACELESS.search(text))):
+        # In bubbles a lone CJK character or Hangul syllable, or a line of just a number ("30!"), is real text too.
+        lone = lone_cjk and ((letters and re.search("[\u3040-\u9fff\uac00-\ud7a3]", text)) or re.search(r"\d", text))
+        if line.confidence >= min_confidence and (letters >= 2 or lone):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
 
@@ -292,7 +296,8 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
         bottom = max(l.box[1] + l.box[3] for l in group)
         vertical = any(pixels[i][4] == "v" for i in members)
         text = normalize(assemble(words, min_confidence, width, height, lone_cjk=True, vertical=vertical))
-        if sum(ch.isalpha() for ch in text) < 2:
+        letters = sum(ch.isalpha() for ch in text)
+        if letters < 2 and not (letters == 1 and re.search(r"[?!。！？…]", text)):
             continue
         columns = [l for l in words if is_vertical(l, width, height)] or words
         blocks.append(Block(text, (left, top, right - left, bottom - top),
@@ -306,46 +311,59 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
 def _with_name_boxes(blocks: list[Block]) -> list[Block]:
     """A visual novel's name tab joined to the dialogue right under it, as "Name\nline", so the speaker is known.
 
-    A visual novel shows one name tab at a time; several header-over-text pairs on one screen are panel headings,
-    chat tabs or separate bubbles, so then nothing is joined.
+    A visual novel shows one name tab at a time. With several header-over-text pairs on one screen, only the one
+    that reads like dialogue (a sentence, lowest on screen, where dialogue boxes sit) is joined; if none stands out,
+    they are panel headings, chat tabs or separate bubbles, and nothing is joined.
     """
-    paired = _pair_name_boxes(blocks)
-    return paired if sum(len(b.text.split("\n")) > len(o.text.split("\n")) for b, o in zip(paired, blocks)) <= 1 \
-        and len(blocks) - len(paired) <= 1 else blocks
+    pairs = _name_pairs(blocks)
+    if len(pairs) > 1:
+        spoken = [(i, j) for i, j in pairs if re.search(r"[.!?。！？…]", blocks[j].text)]
+        lowest = max(spoken, key=lambda pair: blocks[pair[1]].box[1], default=None)
+        pairs = [lowest] if lowest and blocks[lowest[1]].box[1] > 0.55 else []
+    return _join_pairs(blocks, pairs)
 
 
-def _pair_name_boxes(blocks: list[Block]) -> list[Block]:
-    merged: list[Block] = []
+def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
+    pairs: list[tuple[int, int]] = []
     used: set[int] = set()
     for i, name in enumerate(blocks):
-        if i in used:
+        header = name.text.isupper() and len(name.text.split()) == 1 and len(name.text) > 3
+        if i in used or not _name_like(name.text) or name.vertical or header:
             continue
-        dialogue = None
-        if _name_like(name.text) and not name.vertical:
-            for j, block in enumerate(blocks):
-                if j == i or j in used or block.vertical:
-                    continue
-                spoken = len(block.text) >= max(12, 2 * len(name.text))
-                same_size = 0.6 * block.line_height <= name.line_height <= 1.3 * block.line_height
-                if not (spoken and same_size):
-                    continue
-                drop = block.box[1] - (name.box[1] + name.box[3])
-                lined_up = abs(block.box[0] - name.box[0]) <= 1.5 * block.line_height
-                between = any(k not in (i, j) and name.box[1] < other.box[1] < block.box[1]
-                              for k, other in enumerate(blocks))
-                if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up and not between:
-                    dialogue = j
-                    break
-        if dialogue is None:
-            merged.append(name)
+        for j, block in enumerate(blocks):
+            if j == i or j in used or block.vertical:
+                continue
+            spoken = len(block.text) >= max(12, 2 * len(name.text))
+            same_size = 0.6 * block.line_height <= name.line_height <= 1.3 * block.line_height
+            if not (spoken and same_size):
+                continue
+            drop = block.box[1] - (name.box[1] + name.box[3])
+            lined_up = abs(block.box[0] - name.box[0]) <= 1.5 * block.line_height
+            between = any(k not in (i, j) and name.box[1] < other.box[1] < block.box[1]
+                          for k, other in enumerate(blocks))
+            if -0.5 * block.line_height <= drop <= 1.5 * block.line_height and lined_up and not between:
+                pairs.append((i, j))
+                used.update((i, j))
+                break
+    return pairs
+
+
+def _join_pairs(blocks: list[Block], pairs: list[tuple[int, int]]) -> list[Block]:
+    bodies = {j: i for i, j in pairs}
+    names = {i for i, _j in pairs}
+    merged: list[Block] = []
+    for index, block in enumerate(blocks):
+        if index in bodies:
             continue
-        block = blocks[dialogue]
-        used.add(dialogue)
-        left, top = min(name.box[0], block.box[0]), min(name.box[1], block.box[1])
-        right = max(name.box[0] + name.box[2], block.box[0] + block.box[2])
-        bottom = max(name.box[1] + name.box[3], block.box[1] + block.box[3])
-        merged.append(Block(f"{name.text}\n{block.text}", (left, top, right - left, bottom - top), block.line_height,
-                            block.bg, block.fg))
+        if index not in names:
+            merged.append(block)
+            continue
+        body = blocks[next(j for i, j in pairs if i == index)]
+        left, top = min(block.box[0], body.box[0]), min(block.box[1], body.box[1])
+        right = max(block.box[0] + block.box[2], body.box[0] + body.box[2])
+        bottom = max(block.box[1] + block.box[3], body.box[1] + body.box[3])
+        merged.append(Block(f"{block.text}\n{body.text}", (left, top, right - left, bottom - top), body.line_height,
+                            body.bg, body.fg))
     return merged
 
 
@@ -372,6 +390,7 @@ _ENDS = (".", "!", "?", "。", "！", "？", "…", ":", "：")
 _STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")
 _ENTRY_START = re.compile(r"^\s*(?:[-–－](?:\s|(?=[^\d\s]))|[+\-−]\d|\d+%|\d{1,2}[.)]\s|[①-⑩▶>]|\[[^\]]{1,20}\]|"
                           r"[^\s:：\[\]]{1,24}:\s|[^\s:：\[\]]{1,12}：)")
+_KOREAN_END = re.compile("(?:요|다|까|죠|네)[.!?]?$")
 _TAG_START = re.compile(r"^\s*\[[^\]]{1,20}\]")
 _NUMBER_START = re.compile(r"^\s*(?:[+\-−]\d|\d+%)")
 
@@ -389,7 +408,10 @@ def _separate_entries(upper: str, lower: str) -> bool:
     upper, lower = upper.rstrip(), lower.strip()
     if _STAT_END.search(upper) and _short(upper) and (_STAT_END.search(lower) or lower[:1].isdigit()):
         return True
+    # A [tag] starts a chat or system row, unless the row above stops mid-sentence ("…も" / "[E] で開く").
     if _TAG_START.match(lower):
+        return not (_MID_PHRASE.search(upper) and not _TAG_START.match(upper))
+    if _TAG_START.match(upper) and not _TAG_START.match(lower) and (upper.endswith(_ENDS) or _KOREAN_END.search(upper)):
         return True
     if not _ENTRY_START.match(lower):
         return False

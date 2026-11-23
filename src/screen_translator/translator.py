@@ -183,6 +183,12 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
 def strip_item_letter(text: str, index: int) -> str:
     """Small models sometimes repeat a letter ("C. Settings") or the instruction; the translation is what follows."""
     text = re.sub(r"^\s*(?:translate\s+)?item\s+[A-L]\s*[:.]\s*", "", text, flags=re.I)
+    listed = [line for line in text.splitlines() if re.match(rf"^\s*[{SCREEN_LETTERS}]\s*[.)]", line)]
+    if len(listed) >= 2:
+        # The whole lettered list came back; keep this item's own line.
+        mine = [line for line in listed if re.match(rf"^\s*{SCREEN_LETTERS[index]}\s*[.)]", line)]
+        text = (mine or listed)[0]
+    text = re.sub(rf"^\s*[{SCREEN_LETTERS}][.)](?=[^\x00-\x7f])", "", text)
     own = list(re.finditer(rf"(?<![\w])\b{SCREEN_LETTERS[index]}\s*:\s+", text))
     if own and own[-1].start() > 0:
         text = text[own[-1].end():]
@@ -228,16 +234,19 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
     holds how each name is written in the target language, as kana or hangul means nothing to most viewers.
     """
     name = speaker_of(source)
+    known = (names or {}).get(name) if name else None
     label, _, rest = source.partition("\n")
     if rest and name == label.strip():
         head, _, body = translation.partition("\n")
         head = head.strip().rstrip(":：")
         if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
-            if NOT_LATIN.search(head) and name in (names or {}):
-                head = names[name]
-            return f"{head}: {' '.join(body.split())}"
-    if name and source.lstrip().startswith(name) and not _LABEL.match(translation.strip()):
-        return f"{(names or {}).get(name, name)}: {translation.strip()}"
+            return f"{known or head}: {' '.join(body.split())}"
+    labelled = _LABEL.match(translation.strip())
+    # One spelling per character on every line: the known one replaces whatever the model wrote this time.
+    if labelled and known:
+        return f"{known}: {labelled.group(2)}"
+    if name and name in source.lstrip()[:len(name) + 2] and not labelled:
+        return f"{known or name}: {translation.strip()}"
     return translation
 
 

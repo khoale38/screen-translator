@@ -193,14 +193,3 @@ def test_two_men_with_clearly_different_voices_count_as_different_people():
     assert "different person" in pipeline._voice_note({"id": 2, "pitch": 80.0})
     assert "different" not in pipeline._voice_note({"id": 3, "pitch": 84.0})
 
-
-def test_each_voice_gets_a_stand_in_name_so_speech_keeps_who_talks_to_whom():
-    from screen_translator.pipeline import Pipeline
-
-    pipeline = Pipeline.__new__(Pipeline)
-    pipeline._voices, pipeline._voice_labels = [], {}
-    assert pipeline._voiced({"id": 1, "text": "오빠, 어디야?", "pitch": 220.0}) == "Woman: 오빠, 어디야?"
-    assert pipeline._voiced({"id": 2, "text": "집이야.", "pitch": 110.0}) == "Man: 집이야."
-    assert pipeline._voiced({"id": 3, "text": "Hi.", "pitch": 80.0}) == "Man 2: Hi."
-    assert pipeline._voiced({"id": 4, "text": "Okay.", "pitch": 115.0}) == "Man: Okay."
-    assert pipeline._voiced({"id": 5, "text": "...", "pitch": 0.0}) == "..."

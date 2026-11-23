@@ -20,7 +20,10 @@ from typing import Callable
 
 from . import diagnostics
 
-_BRACKETED = re.compile(r"^[（(\[]\s*([^()（）\[\]\n]{1,12}?)\s*[)）\]]\s*(\S.*)$", re.S)
+_BRACKETED = re.compile(r"^[（(\[【〔]\s*([^()（）\[\]【】〔〕\n]{1,12}?)\s*[)）\]】〕]\s*(\S.*)$", re.S)
+# Lines to a whole group get no pronoun pair: a host to her viewers, a teacher to the class.
+GROUP = re.compile(r"\b(?:everyone|everybody|you guys|guys|folks|you all|y'all)\b|các bạn|여러분|皆さん|みなさん|みんな|大家|各位",
+                   re.I)
 _DISCOURSE = {"then", "okay", "ok", "so", "wait", "sorry", "listen", "well", "oh", "hey", "yes", "no", "please", "thanks",
               "and", "but", "now", "look", "come", "go", "hi", "bye"}
 _VOCATIVE_TITLES = {"mom", "mum", "dad", "mother", "father", "grandma", "grandpa", "sis", "bro", "honey", "sir", "ma'am",
@@ -43,10 +46,10 @@ _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|
 _KOREAN_OPENING = r"|^\W*(?:{0})(?!가|는|를|도|의|한테|랑|이|에게|께|하고|님[이은을의])"
 TO_ELDER = {
     "male": re.compile(_VOCATIVE.format(r"(?:(?:big )?bro(?:ther)?|아저씨|오빠|형(?:님)?)")
-                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|"
+                       + _KOREAN_OPENING.format("오빠|아저씨") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|^哥(?=[，,！!？?])|"
                        r"哥哥|师兄", re.I),
     "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|언니|누나)") + _KOREAN_OPENING.format("언니|누나")
-                         + r"|姉さん|姉ちゃん|お姉|姐姐|师姐", re.I),
+                         + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|^姐(?=[，,！!？?])", re.I),
     "": re.compile(r"先輩|せんぱい|선배(?:님)?|学长|学姐"),
 }
 SERVING = re.compile(r"^\W*welcome\b(?! back| home)|いらっしゃいませ|お客様|손님|어서 오세요|欢迎光临", re.I)
@@ -62,11 +65,11 @@ ROLES = {
                                     r"陛下|殿下|王子|公主|皇上|왕자|공주|폐하|전하", re.I),
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|祖母|祖父|奶奶|爷爷|外婆|外公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸",
-                                   re.I),
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸|"
+                                   r"^(?:妈|爸)(?=[，,！!？?])", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아|"
-                     r"(?:^|[，,。！？!?]\s*)(?:三弟|二弟|师弟|师妹|小妹)(?=[，,。！？!?])", re.I)
+                     r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|小妹)(?=[，,。！？!?])", re.I)
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|grandma|grandmother|granny|mom|mum|mother)\b|공주|할머니|엄마|"
                            r"어머니|おばあ|お母|母さん|祖母|奶奶|外婆|妈妈|公主", re.I)
@@ -231,14 +234,17 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # A parent speaking of themself: "お母さんはね…", "爸爸给你买了…".
         if re.match(r"(?:が|は|に|を|も|の|ね|って|と|给|带|帮|陪|会|来|去|也|就|都)", after):
             continue
+        if re.search("(?:を|に|が)$", before):
+            continue
         hangul = re.search("[\uac00-\ud7a3]", match.group(0))
         opening = not before.strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
-        # Set off from what came before: "Thanks, Dad.", "ごめんね、お母さん、", not "go with Father." or "护住师父，".
-        apart = opening or not before.strip() or before.rstrip()[-1:] in ",!?.、，！？~…。"
         if not hangul and opening and not closing:
             continue
-        if opening or (closing and apart):
+        # "어머니 말씀이…": a Korean title then a space and a word is a mention; a call runs straight on or pauses.
+        if hangul and opening and not closing and re.match(r"\s+[\uac00-\ud7a3]", after):
+            continue
+        if opening or closing:
             return True
     return False
 
@@ -318,7 +324,8 @@ NOBODY = "?"
 
 
 def _calls_a_title(body: str) -> bool:
-    return any(calls_by(cue, body) for cue in ROLES.values()) or any(cue.search(body) for cue in TO_ELDER.values())
+    return (any(calls_by(cue, body) for cue in ROLES.values()) or any(cue.search(body) for cue in TO_ELDER.values())
+            or bool(YOUNGER.search(body)))
 
 
 def _calls_name(line: str, name: str) -> bool:
@@ -373,7 +380,7 @@ class Relationships:
         return next((who for who in recent if self._spoken[who] >= 2), recent[0] if recent else None)
 
     def address(self, text: str) -> Address | None:
-        if self.settings().target_lang not in SUPPORTED:
+        if self.settings().target_lang not in SUPPORTED or GROUP.search(body_of(text)):
             return None
         speaker = speaker_of(text)
         if not speaker:
@@ -406,11 +413,17 @@ class Relationships:
 
     def _note_cues(self, pair: frozenset) -> None:
         """Cues from every line either of the two said to the other so far, the latest ones winning."""
-        for who, line, _at, to in self._lines:
+        lines = list(self._lines)
+        for index, (who, line, _at, to) in enumerate(lines):
             if who in pair and (to is None or (to in pair and to != who)):
                 other = next(iter(pair - {who}), None)
                 if other is None:
                     continue
+                if to is None:
+                    # A line said before anyone answered counts only for the one who answered it.
+                    replier = next((w for w, _l, _a, _t in lines[index + 1:] if w and w != who), None)
+                    if replier is not None and replier != other:
+                        continue
                 guess = guess_facts(line, who, other)
                 known = self._cues.get(pair, {})
                 # One insult between siblings, or one rough line at all, does not make two people street rivals.
