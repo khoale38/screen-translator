@@ -612,3 +612,15 @@ def test_round_20_daughter_mentions_mom_words_and_role_suffixes():
     assert said("作为妈妈，我不能不管你") == ("mẹ", "con")
     assert said("傻孩子说这些干什么?") == ("", "con")
     assert role_label("伯父") == "Bác" and role_label("陛下") == "Bệ hạ"
+
+
+def test_round_21_japanese_commands_elder_roles_and_narrower_swears():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("お父さん行こうよ") == ("con", "bố")
+    assert said("お母さん早く早く") == ("con", "mẹ")
+    assert said("お兄ちゃん早く帰ってこないかな") is None
+    assert said("你给我滚出去！") == ("tao", "mày")
+    assert said("身为哥哥，我要保护你") == ("anh", "em")
+    assert said("作为妈妈，你应该多关心他") is None
+    assert said("师傅，去火车站，我徒弟在那儿等我") is None
+    assert Address("the speaker", "the listener", "mẹ", "con").terms("zh", "作为妈妈，我不能不管你") == {"我": "mẹ", "你": "con"}

@@ -635,3 +635,20 @@ def test_round_20_comic_bubbles_join_menus_split_and_yes_no_choices_stay_apart()
     W, H = 1280, 720
     choice = [px("はい", 100, 500, 80, 40, W, H), px("いいえ", 100, 550, 120, 40, W, H)]
     assert assemble(choice, width=W, height=H, menus=True) == "はい\nいいえ"
+
+
+def test_round_21_lettering_versus_menus_and_choice_words():
+    from screen_translator.text import assemble
+
+    W, H = 1920, 1080
+    bubble = [px("SO WHERE WERE", 860, 300, 220, 40, W, H), px("WE BEFORE YOU", 860, 352, 220, 40, W, H),
+              px("FINISHED THE", 870, 404, 200, 40, W, H), px("YEAR", 920, 456, 100, 40, W, H)]
+    assert len(group_blocks(bubble, W, H)) == 1
+    menu = [px("CONTINUE", 860, 500, 200, 40, W, H), px("NEW GAME", 860, 560, 200, 40, W, H),
+            px("OPTIONS", 870, 620, 180, 40, W, H)]
+    assert len(group_blocks(menu, W, H)) == 3
+    hud = [px("HP 120", 60, 900, 120, 30, W, H), px("MP 40", 60, 940, 100, 30, W, H)]
+    assert len(group_blocks(hud, W, H)) == 2
+    W, H = 1280, 720
+    short = [px("なんか", 560, 500, 120, 40, W, H), px("私も行きたい", 520, 545, 220, 40, W, H)]
+    assert assemble(short, width=W, height=H, menus=True) == "なんか私も行きたい"

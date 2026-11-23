@@ -38,7 +38,7 @@ YOU_WORDS = {"en": ("you", "you're", "you'll", "you've", "your", "yourself"),
 # Cues clear enough to guess from at once, before the model has read the conversation.
 # お前 and "hell" are left out: teachers, parents and couples say them all the time.
 ROUGH = re.compile(r"\b(damn|shit|fuck\w*|bitch|fool|punk|ass(hole)?|dumbass|motherf\w*)\b|"
-                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|(?<![やおゆ])くそ(?!こ)|クソ|새끼|씨발|개새|他妈的|(?:^|[，,。！!？?\s])妈的|(?:^|[，,。！!？?\s])滚(?:开|出去|蛋)?(?=[！!。，,\s]|$)", re.I)
+                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|(?<![やおゆ])くそ(?!こ)|クソ|새끼|씨발|개새|他妈的|(?:^|[，,。！!？?\s])妈的|(?:^|[，,。！!？?\s]|给我)滚(?:开|出去|蛋)?(?=[！!。，,\s]|$)", re.I)
 # English and Korean titles count only when they call the listener ("Brother, wait!", "오빠, 그 말..."), not when
 # they mention someone ("오빠 편만 들어요"); Japanese and Chinese often use the title for "you" inside the sentence.
 _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|{0}(?=\s*[,!?~…]))"
@@ -64,7 +64,7 @@ RELATIONS = ("parent and child", "grandparent and grandchild", "siblings or cous
 # a 4B judge otherwise mixes up who outranks whom.
 ROLES = {
     "teacher and student": re.compile(r"先生|せんせい|\bsensei\b|\bteacher\b|\bprofessor\b|老师|老師|선생님|교수님", re.I),
-    "master and disciple": re.compile(r"师父|師父|師匠|师傅(?=.{0,10}?(?:弟子|徒儿|徒弟|练功|武功|剑法))|师尊|師尊|为师|為師|掌门|掌門|(?<!young )\bmaster\b|sư phụ|사부님|사부|스승님",
+    "master and disciple": re.compile(r"师父|師父|師匠|师傅(?=.{0,4}?(?:弟子|徒儿|徒弟|练功|武功|剑法))|师尊|師尊|为师|為師|掌门|掌門|(?<!young )\bmaster\b|sư phụ|사부님|사부|스승님",
                                       re.I),
     "ruler and subject": re.compile(r"\b(princess|prince|king|queen|emperor|empress|majesty|highness)\b|"
                                     r"陛下|殿下|王子|公主|皇上|太后|娘娘|姫様|마마|왕자|공주|폐하|전하", re.I),
@@ -327,7 +327,8 @@ def called_title(line: str) -> str:
     cues = [*ROLES.values(), *TO_ELDER.values(), YOUNGER, *COUPLE.values()]
     for cue in cues:
         found = cue.search(body)
-        if found and calls_by(cue, body):
+        # "作为妈妈，…" is the speaker's own role, not a call.
+        if found and calls_by(cue, body) and not re.search("(?:作为|作為|身为|身為)$", body[:found.start()]):
             suffix = re.match("ちゃん|さん|様|さま|くん|君|님", body[found.end():])
             return (found.group(0) + (suffix.group(0) if suffix else "")).strip(" ,.!?~…、，！？")
     return ""
@@ -365,7 +366,7 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         other_call = opening and title and not re.match(r"\W*(?:作为|作為|身为|身為)", line) and (title.group(0) not in opening.group(1) or re.search("你(?!们|們)", line))
         named = re.escape(title.group(0)) if title else ""
         being = title and (re.search(f"我(?:(?![你要想会會将將]).){{0,6}}?(?:当|做|作为|當|作為)(?:了[^，,。]{{0,5}})?{named}", line)
-                           or re.match(f"\\W*(?:作为|作為|身为|身為){named}", line))
+                           or re.match(f"\\W*(?:作为|作為|身为|身為){named}(?![，,]\\s*你)", line))
         # "老公，我做妈妈的…": the call to someone else decides the pair, not the speaker's own role.
         if being and not other_call:
             # "妈妈,我也是第一次当妈妈": the speaker is the one being a mother.
@@ -391,6 +392,10 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         if not found:
             continue
         martial = bool(re.search("师|師|사형|사저", found.group(0)))
+        if re.match(r"\W*(?:作为|作為|身为|身為)$", line[:found.start()]) and gender:
+            # "身为哥哥，我要保护你": the elder sibling speaking as one.
+            return {"relation": "school senior and junior", "older": speaker, f"{speaker} gender": gender,
+                    "guess": True, "martial": martial}
         if calls_by(cue, line):
             facts = {"relation": "school senior and junior", "older": listener, "guess": True, "martial": martial}
             return {**facts, f"{listener} gender": gender} if gender else facts
@@ -439,7 +444,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # A parent speaking of themself: "お母さんはね…", "爸爸给你买了…".
         if re.match(r"(?:が|は|に|を|も|の|ね|って|と|给|带|帮|陪|会|来|去|也|就|都)", after):
             continue
-        if re.search("(?:を|に|が)$", before):
+        if re.search("(?:を|に|が)$", before) or re.search("(?:作为|作為|身为|身為)$", before):
             continue
         hangul = re.search("[\uac00-\ud7a3]", match.group(0))
         opening = not re.sub("(?:启禀|禀告|参见|拜见|叩见|多谢|谢谢|谢|恭送|叩谢|恭迎)$", "", before).strip(" \"'「『(-—…")
@@ -451,7 +456,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
         # A title before 我 with 你 later is either side ("姐姐我请你" from the elder, "姐姐我好想你" from the younger):
         # no cue for it either way.
-        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫|早く(?=[来行起帰！!、。…~\s]|$)|(?:来て|起きて|行こう)(?=[！!、。…~\s]|$))(?!って|と言)", after) or (
+        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫|早く(?=[来行起帰早し！!、。…~\s]|$)|(?:来て|起きて|行こう|して|待って|見て)(?:よ|ね|ってば|ください)?(?=[！!、。…~\s]|$))(?!って|と言)", after) and not re.search("かな[あぁ]?\\W*$", after) or (
             re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue

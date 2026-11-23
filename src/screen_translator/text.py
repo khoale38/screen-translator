@@ -83,8 +83,11 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 # A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
+# Answers a game offers ("はい / いいえ"): never a speaker's name tab, and kept apart even with no question above.
+CHOICE_WORDS = {"はい", "いいえ", "Yes", "No", "YES", "NO", "OK", "Cancel", "是", "否", "예", "아니요", "아니오", "接受", "拒绝",
+                "确定", "取消", "買う", "売る", "やめる", "Buy", "Sell", "Back", "买", "卖", "구매", "판매", "취소", "확인"}
 _TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
-    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "누나", "오빠", "형",
     "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
@@ -220,9 +223,7 @@ def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: floa
     if left >= 1.5 * height and not indented:
         return False
     # はい / いいえ, Yes / No, 接受 / 拒绝: single words flush with each other, not a wrapped sentence.
-    token = lambda text: " " not in text.strip() and not re.search("[。.!！?？,，、]", text) and (
-        len(text.strip()) <= 3 or text.strip().isascii() and len(text.strip()) <= 10)
-    words = left < 0.3 * height and token(above_text) and token(below_text)
+    words = left < 0.3 * height and above_text.strip() in CHOICE_WORDS and below_text.strip() in CHOICE_WORDS
     return above_text[-1:] in "?？" or asked and short(above_text) or indented or words
 
 
@@ -264,6 +265,8 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
 def _name_like(text: str) -> bool:
     """A speaker's name box rather than the short first line of a speech bubble ("WHERE ARE", "ねえ、")."""
     text = text.strip()
+    if text in CHOICE_WORDS:
+        return False
     words = text.split()
     if not 0 < len(text) <= 20 or len(words) > 3 or text.endswith(_ENDS) or _MID_PHRASE.search(text):
         return False
@@ -503,10 +506,15 @@ def _list_rows(pixels: list[tuple]) -> set[int]:
                 chain.append(i)
         # A speech bubble's unpunctuated rows run on into a row that ends the sentence ("DON'T TELL / GRANDMA / …!").
         last = pixels[chain[-1]]
-        ends = any(re.search("[。.!！?？…]$", p[5].strip()) and 0 < (p[1] - last[1]) <= 4 * last[3]
+        # A smaller description line under a menu is not the end of a sentence.
+        ends = any(re.search("[。.!！?？…]$", p[5].strip()) and 0 < (p[1] - last[1]) <= 4 * last[3] and p[3] >= 0.85 * last[3]
                    and (abs(p[0] - last[0]) < 0.5 * last[3] or abs((p[0] + p[2] / 2) - (last[0] + last[2] / 2)) < 0.5 * last[3])
                    for p in pixels)
-        if len(chain) >= 3 and not ends:
+        # All-caps comic lettering sits closer (about 1.3 line heights) than an all-caps menu.
+        capitals = all(re.fullmatch(r"[A-Z0-9 '’,.!?\-]+", pixels[i][5]) for i in chain)
+        tight = capitals and len(chain) > 1 and min(
+            pixels[b][1] - pixels[a][1] for a, b in zip(chain, chain[1:])) < 1.45 * last[3]
+        if len(chain) >= 3 and not ends and not tight:
             pitches = [(pixels[b][1] - pixels[a][1]) for a, b in zip(chain, chain[1:])]
             middle = median(pitches)
             if all(abs(p - middle) <= 0.15 * middle for p in pitches):
@@ -586,7 +594,7 @@ _STAT_END = re.compile(r"\d[\d,./:%+\-]*\)?$")
 _ENTRY_START = re.compile(r"^\s*(?:[-–－](?:\s|(?=[^\d\s]))|[+\-−]\d|\d+%|\d{1,2}[.)]\s|[①-⑩▶>]|\[[^\]]{1,20}\]|"
                           r"[^\s:：\[\]]{1,24}:\s|[^\s:：\[\]]{1,12}：)")
 _KOREAN_END = re.compile("(?:요|다|까|죠|네)[.!?]?$")
-_TAG_START = re.compile(r"^\s*\[[^\]]{1,20}\]")
+_TAG_START = re.compile(r"^\s*(?:\[[^\]]{1,20}\]|【[^】]{1,10}】)")
 _NUMBER_START = re.compile(r"^\s*(?:[+\-−]\d|\d+%)")
 
 
@@ -654,7 +662,8 @@ def _same_block(a: tuple, b: tuple) -> bool:
     cjk_title = (_cjk(text) and _cjk(lower[5]) and ratio < 0.88 and upper[2] < 0.95 * lower[2]
                  and gap > 0.12 * height and not text.endswith(("，", "、", ",")))
     # Comic lettering is all capitals with loose leading.
-    lettering = text.isupper() and lower[5].isupper() and gap <= 0.6 * height
+    lettering = (text.isupper() and lower[5].isupper() and gap <= 0.45 * height and not re.search(r"\d", text + lower[5])
+                 and not text.endswith(_ENDS) and (len(text.split()) > 1 or len(lower[5].split()) > 1))
     wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower() or lettering
                                or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)
                                    and gap <= 0.35 * height))

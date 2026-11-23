@@ -149,7 +149,7 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
                      r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
 
 
-_LOOP = re.compile(r"\b(\w+(?:\s+\w+){0,2})(?:[\s,]+\1\b){4,}")
+_LOOP = re.compile(r"\b(\w+(?:\s+\w+){0,2})(?:[\s,]+\1\b){5,}")
 
 
 def _collapsed(translation: str) -> str:
