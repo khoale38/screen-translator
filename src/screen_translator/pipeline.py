@@ -16,7 +16,7 @@ from . import diagnostics, online
 from .dub import STALE_S, gender_of, speakable
 from .capture import ScreenCapture, block_colors, changed, ensure_screen_permission, thumbnail
 from .config import Settings, SettingsStore
-from .address import Relationships, speaker_of
+from .address import Relationships, body_of, speaker_of
 from .romanize import NOT_LATIN, han_viet, role_label, romanized
 from .context import ContextWindow
 from .languages import already_in
@@ -25,7 +25,7 @@ from .ocr import OcrEngine, default_engine
 from .text import Block, Stabilizer, TextEvent, assemble, char_size, group_blocks, normalize, similar
 from .translator import (
     LlamaTranslator, Translator, build_batch_messages, build_messages, build_screen_messages, is_name_tab, label_speaker,
-    model_label,
+    model_label, unlabelled, without_echo,
     parse_numbered, strip_item_letter,
 )
 
@@ -144,6 +144,14 @@ def default_translator(settings: Settings) -> Translator:
     return LlamaTranslator(resolve_model(settings), gpu_layers=settings.gpu_layers)
 
 
+
+def _sounds_alike(written: str, spelled: str) -> bool:
+    """A model's Latin spelling of a katakana name that matches the rule spelling's first sound: Cecil for Seshiru."""
+    if not re.fullmatch(r"[A-Za-z][A-Za-z' -]{1,19}", written):
+        return False
+    group = lambda ch: next((g for g in ("kcq", "sczj", "lr", "bv", "fh", "td", "aeiouy") if ch in g), ch)
+    return bool(set(group(written[0].lower())) & set(group(spelled[0].lower())))
+
 class Pipeline:
     def __init__(
         self,
@@ -194,6 +202,7 @@ class Pipeline:
         self._heard: dict | None = None
         self._finals: deque[dict] = deque()
         self._names: dict[str, str] = {}
+        self._kana_recent: deque[bool] = deque(maxlen=12)
         self._last_voice: tuple[int, str, float] | None = None
         self._previous_voice = ""
         self._previous_pitch = 0.0
@@ -646,7 +655,7 @@ class Pipeline:
         notes = {text: address.note() if address else "" for text, address in addresses.items()}
         conversations = [
             build_screen_messages(index, texts, history, settings.source_lang, settings.target_lang, settings.glossary,
-                                  settings.notes, note=notes[text])
+                                  settings.notes, note=notes[text], address=addresses[text])
             for index, text in enumerate(texts)
         ]
         started = time.monotonic()
@@ -674,6 +683,11 @@ class Pipeline:
                 translation = self._names.setdefault(source.strip(), romanized(source))
             if is_name_tab(source):
                 translation = self._labelled(source, translation, translator)
+            if self._leaks(translation):
+                # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
+                retry.append(source)
+                left.discard(source)
+                return
             self._remember(source, translation)
             left.discard(source)
             finished.append((source, translation))
@@ -734,7 +748,7 @@ class Pipeline:
                 raise Superseded()
             self.emit({"type": "screen_text", "source": text, "translation": translation, "final": False})
 
-        translation = self._labelled(text, translator.translate(messages, partial), translator)
+        translation = self._readable(text, self._labelled(text, translator.translate(messages, partial), translator))
         self._remember(text, translation)
         self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
         self.relationships.heard(text)
@@ -861,20 +875,45 @@ class Pipeline:
         if name and name not in self._names and (not name.isascii() or self._fixed_name(name)):
             written = model_label(translation)
             fixed = self._fixed_name(name, source)
-            # A spelling by rule beats the model's, which may translate a name's meaning ("최 대리" as "Đại lý Tối").
+            # A spelling by rule beats the model's, which may translate a name's meaning ("최 대리" as "Đại lý Tối"),
+            # except a katakana loanword name the model spells as its original ("セシル" is Cecil, not Seshiru).
             # Never a model call here: it may run inside a side-by-side translation, which would deadlock.
-            if fixed:
+            if fixed and written and re.fullmatch("[ァ-ヴー・]+", name) and _sounds_alike(written, fixed):
+                self._names[name] = written
+            elif fixed:
                 self._names[name] = fixed
             elif written and not NOT_LATIN.search(written):
                 self._names[name] = written
         latin_target = self.store.settings.target_lang not in ("ja", "zh", "zh-Hant", "ko")
+        if latin_target:
+            translation = without_echo(source, translation)
         return label_speaker(source, translation, self._names, raw_names=not latin_target)
+
+    def _leaks(self, translation: str) -> bool:
+        """Source-script text left in a Vietnamese translation."""
+        return self.store.settings.target_lang == "vi" and bool(NOT_LATIN.search(re.sub(r"【[^】]*】", "", translation)))
+
+    def _readable(self, source: str, translation: str) -> str:
+        """Names left in hanzi, kana or hangul after a second try, spelled the way this game's names already are."""
+        if not self._leaks(translation):
+            return translation
+
+        def spelled(run: str) -> str:
+            known = self._names.get(run)
+            return known or (self._fixed_name(run, source) if len(run) <= 4 else None) or run
+
+        return re.sub(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]+", lambda m: spelled(m.group(0)), translation)
 
     def _fixed_name(self, name: str, source: str = "") -> str | None:
         vietnamese = self.store.settings.target_lang == "vi"
         role = role_label(name) if vietnamese else None
         # Kanji names are read the Japanese way (美咲 is Misaki), so Hán-Việt is only for Chinese text.
-        chinese = vietnamese and not re.search("[\u3040-\u30ff]", source)
+        self._kana_recent.append(bool(re.search("[\u3040-\u30ff]", source)))
+        lang = self.store.settings.source_lang
+        han = len(re.findall("[\u4e00-\u9fff]", body_of(source)))
+        titled = re.search("(?:师姐|师兄|师妹|师弟|王爷|太后|皇上|掌门|长老|宗主|掌柜)$", name)
+        chinese = vietnamese and (lang in ("zh", "zh-Hant") or lang not in ("ja", "ko") and not any(self._kana_recent)
+                                  and (han >= 4 or titled) and not re.search("[\u3040-\u30ff]", source))
         return role or romanized(name) or (han_viet(name) if chinese else None)
 
     def _voice_note(self, heard: dict) -> str:
@@ -926,7 +965,7 @@ class Pipeline:
         translation = translator.translate(messages, partial, urgent=True)
         if heard["final"]:
             translation = self._unrepeated(translator, heard, translation)
-        return self._labelled(heard["text"], translation, translator)
+        return unlabelled(heard["text"], self._labelled(heard["text"], translation, translator))
 
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
         """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""

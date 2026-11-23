@@ -330,8 +330,12 @@ def test_naming_a_speaker_never_asks_the_translator():
     store.update({"target_lang": "vi"})
     pipeline = Pipeline(store, lambda e: None)
     assert pipeline._labelled("村長\nよく来たな。", "Con đến rồi à.", NoCalls()) == "Trưởng làng: Con đến rồi à."
-    assert pipeline._labelled("萧寒\n走吧。", "Đi thôi.", NoCalls()) == "Tiêu Hàn: Đi thôi."
+    pipeline = Pipeline(store, lambda e: None)
+    assert pipeline._labelled("萧寒\n走吧，我们该出发了。", "Đi thôi.", NoCalls()) == "Tiêu Hàn: Đi thôi."
     assert pipeline._labelled("林师姐\n别怕。", "Đừng sợ.", NoCalls()) == "Lâm Sư tỷ: Đừng sợ."
+    assert pipeline._labelled("真司\n了解。", "Hiểu rồi.", NoCalls()) == "Hiểu rồi."
+    assert pipeline._labelled("セシル\n姫様、お逃げください！", "Cecil: Công chúa, chạy đi!", NoCalls()) == \
+        "Cecil: Công chúa, chạy đi!"
     assert pipeline._labelled("【美咲】ねえ、健太。", "【Misaki】Này, Kenta.", NoCalls()) == "Misaki: Này, Kenta."
     assert pipeline._labelled("【美咲】今日ひま？", "Hôm nay rảnh không?", NoCalls()) == "Misaki: Hôm nay rảnh không?"
     assert pipeline._labelled("【健太】ああ。", "健太: Ừ.", NoCalls()) == "Ừ."
@@ -358,10 +362,10 @@ def test_round_8_kin_martial_honorifics_and_everyday_misses():
     assert said("삼촌, 나 왔어!") == ("cháu", "chú")
     assert said("お母さん、ただいま！") == ("con", "mẹ")
     assert said("사부님, 제자가 돌아왔습니다.") == ("đệ tử", "sư phụ")
-    assert said("사저, 이 검 좀 봐 주세요.") == ("", "sư tỷ")
-    assert said("師兄，等等我！") == ("", "sư huynh")
+    assert said("사저, 이 검 좀 봐 주세요.") == ("đệ", "sư tỷ")
+    assert said("師兄，等等我！") == ("đệ", "sư huynh")
     assert said("Noona, did you eat my pudding?") == ("em", "chị")
-    assert said("林风\n师兄替你挡着，你快走！") == ("sư huynh", "")
+    assert said("林风\n师兄替你挡着，你快走！") == ("sư huynh", "đệ")
     for line in ("兄さんに任せとけ。", "어머니아까전화하셨는데안받았지?", "엄마아빠다오셨어.", "Young lady, you are grounded.",
                  "小姐，您的咖啡好了。", "아가씨, 여기 소주 한 병 주세요.", "Oh my Lord, look at the size of you!"):
         assert guess_facts(line, "A", "B") is None, line
@@ -398,4 +402,25 @@ def test_round_8_palace_ranks_and_office_titles():
         rel.heard(f"{who}\n{line}")
         time.sleep(0.2)
     assert notes[1:] == [("con", "mẹ"), ("mẹ", "con"), ("nô tì", "Thái hậu")]
+    rel.close()
+
+
+def test_round_9_self_words_label_roles_senpai_and_names():
+    from screen_translator.romanize import han_viet, romanized
+    from screen_translator.translator import address_zh, unlabelled
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("臣妾给皇上请安。") == ("thần thiếp", "hoàng thượng")
+    assert vietnamese(guess_facts("臣妾给皇上请安。", "A", "B"), "B", "A") == ("trẫm", "ái phi")
+    assert said("晚辈张无尘，拜见前辈。") == ("vãn bối", "tiền bối")
+    assert said("はい!先輩に早く会いたくて。") == ("em", "")
+    assert said("Thanks, bro.") is None
+    assert [han_viet(n) for n in ("华妃", "张无忌", "上官婉儿")] == ["Hoa Phi", "Trương Vô Kỵ", "Thượng Quan Uyển Nhi"]
+    assert [romanized(n) for n in ("ティファ", "ヴィクター", "ウィル")] == ["Tifa", "Vikuta", "Wiru"]
+    assert unlabelled("小姐，您的咖啡好了。", "Anh: Cô, cà phê đã xong rồi.") == "Cô, cà phê đã xong rồi."
+    assert address_zh(Address("the speaker", "the listener", "em", "")) == "说话人对对方说话，翻译成越南语时，说话人自称“em”。"
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    note = rel.address("Mom\nWhere do you think you're going?")
+    assert (note.me, note.you) == ("mẹ", "con")
     rel.close()

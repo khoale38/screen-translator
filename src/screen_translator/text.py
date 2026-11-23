@@ -59,9 +59,18 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
         letters = sum(ch.isalpha() for ch in text)
         # In bubbles a lone CJK character or Hangul syllable, or a line of just a number ("30!"), is real text too.
         lone = lone_cjk and ((letters and re.search("[\u3040-\u9fff\uac00-\ud7a3]", text)) or re.search(r"\d", text))
-        if line.confidence >= min_confidence and (letters >= 2 or lone):
+        # "爸，" read as a box of its own beside "我回来了。" is a call, not a stray glyph.
+        beside = letters == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) and any(
+            other is not line and sum(ch.isalpha() for ch in other.text) >= 2 and _same_row(line, other) for other in lines)
+        if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
+
+
+def _same_row(a: OcrLine, b: OcrLine) -> bool:
+    shared = min(a.box[1] + a.box[3], b.box[1] + b.box[3]) - max(a.box[1], b.box[1])
+    gap = max(a.box[0], b.box[0]) - min(a.box[0] + a.box[2], b.box[0] + b.box[2])
+    return shared > 0.5 * min(a.box[3], b.box[3]) and gap < 1.5 * max(a.box[3], b.box[3])
 
 
 def is_vertical(line: OcrLine, width: int = 1, height: int = 1) -> bool:
@@ -103,6 +112,7 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
     rows = [segment for row in rows for segment in _split_wide_gaps(row)]
 
     paragraphs: list[str] = []
+    spans: list[list[float]] = []
     previous: tuple[str, OcrLine, float] | None = None
     for row in rows:
         ordered = sorted(row, key=lambda item: item.box[0])
@@ -112,11 +122,20 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         width = ordered[-1].box[0] + ordered[-1].box[2] - ordered[0].box[0]
         same_baseline = previous is not None and abs(
             (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
+        left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
         if previous is not None and not same_baseline and not _starts_new_paragraph(*previous, row[0], width):
             paragraphs[-1] = _join(paragraphs[-1], row_text)
+            spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
         else:
             paragraphs.append(row_text)
+            spans.append([left, right, bottom, row[0].box[1]])
         previous = (row_text, row[0], width)
+    # Buttons in a far corner above the dialogue ("Auto  Skip") go last, so the name over the line is read as its tab.
+    if len(paragraphs) > 2:
+        first, second = spans[0], spans[1]
+        apart = second[3] - first[2] > 2 * rows[0][0].box[3] and (first[0] > second[1] or first[1] < second[0])
+        if apart and _name_like(paragraphs[1]):
+            paragraphs.append(paragraphs.pop(0))
     return "\n".join(paragraphs)
 
 
@@ -144,7 +163,10 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
         return True
     # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
     left_aligned = abs(above.box[0] - below.box[0]) < height
-    return _name_like(above_text) and left_aligned and above_width < 0.6 * below_width and gap > -0.5 * height
+    centred = (abs((above.box[0] + above_width / 2) - (below.box[0] + below_width / 2)) < height
+               and gap > 0.08 * height and above.box[3] < 0.92 * below.box[3])
+    return (_name_like(above_text) and (left_aligned or centred) and above_width < 0.6 * below_width
+            and gap > -0.5 * height)
 
 
 def _name_like(text: str) -> bool:
@@ -320,7 +342,8 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
         blocks.append(Block(text, (left, top, right - left, bottom - top),
                             median(char_size(l, width, height) for l in columns), vertical=vertical))
     if sum(b.vertical for b in blocks) * 2 > len(blocks):
-        return _manga_order(blocks)
+        # A short "！" column OCR reads as 一 or ー is not a bubble of its own.
+        return _manga_order([block for block in blocks if block.text.strip() not in ("一", "ー", "口", "|", "丨")])
     blocks.sort(key=lambda b: (round(b.box[1] * 50), b.box[0]))
     return _with_name_boxes(blocks)
 
@@ -345,9 +368,15 @@ def _name_over_line(upper: tuple, lower: tuple) -> bool:
     name, line = upper[5].strip(), lower[5].strip()
     if not _name_like(name) or name.isupper() or upper[2] >= lower[2] / 3:
         return False
-    if _cjk(line):
-        return len(name) <= 4 and len(line.replace(" ", "")) >= 16
-    return len(line) >= 30
+    eastern = _cjk(line) or re.search("[\uac00-\ud7a3]", line)
+    if eastern and len(name.replace(" ", "")) <= 4 and len(line.replace(" ", "")) >= 16 or not eastern and len(line) >= 30:
+        return True
+    # Set smaller, centred, a little apart over a line of its own: "ユイ" over "お兄ちゃん、待って！". A bubble's rows touch.
+    centred = abs((upper[0] + upper[2] / 2) - (lower[0] + lower[2] / 2)) < lower[3]
+    apart = lower[1] - (upper[1] + upper[3]) > 0.08 * lower[3]
+    enough = len(line.replace(" ", "")) >= 4 if eastern else len(line.split()) >= 2 and not line[:1].islower()
+    return (centred and apart and upper[3] < 0.92 * lower[3] and enough
+            and len(name.replace(" ", "")) <= (6 if eastern else 20))
 
 
 def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:

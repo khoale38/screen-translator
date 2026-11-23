@@ -68,7 +68,11 @@ def _date(match: re.Match) -> str:
 
 def _slash(match: re.Match) -> str:
     top, bottom = int(match.group(1)), int(match.group(2))
+    rating = re.match(r"\s*(?:sao|điểm|stars?)\b", match.string[match.end():], re.I) or (top, bottom) in ((24, 7),) \
+        or top == bottom or bottom in (5, 10, 100) and top <= bottom and not match.group(3)
     dated = re.search(r"(ngày|hôm|từ|đến|tới|sáng|chiều|tối)\s*$", match.string[:match.start()], re.IGNORECASE)
+    if rating and not dated:
+        return f"{spoken_integer(top)} trên {spoken_integer(bottom)}"
     if top < bottom <= 4 and not dated:
         return "nửa" if (top, bottom) == (1, 2) else f"{spoken_integer(top)} phần {spoken_integer(bottom)}"
     if 1 <= top <= 31 and 1 <= bottom <= 12 and (dated or match.group(3) or top >= bottom):
@@ -80,15 +84,25 @@ _NUMBER = r"\d+(?:[.,]\d+)*"
 _TIME = re.compile(r"\b(\d{1,2}):(\d{2})\b")
 _HOURS = re.compile(r"\b(\d{1,2})h(\d{2})?\b")
 _FULL_DATE = re.compile(r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{4})\b")
-_SLASH = re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{4}))?\b")
+_SLASH = re.compile(r"\b(\d{1,2})/(\d{1,3})(?:/(\d{4}))?\b")
+_DECIMAL_SLASH = re.compile(r"\b(\d+[.,]\d+)/(\d+)\b")
+_SCORE = re.compile(r"\b(\d):(\d)\b")
+_CLOCK = re.compile(r"\b(\d{1,2}):(\d{2}):(\d{2})\b")
+_CURRENCY = {"₫": "đồng", "¥": "yên", "€": "ơ-rô", "₩": "won", "£": "bảng"}
+_CURRENCY_BEFORE = re.compile(r"([₫¥€₩£])\s*(\d+(?:[.,]\d+)*)")
+_CURRENCY_AFTER = re.compile(r"(\d)\s*([₫¥€₩£])")
+_DECADE = re.compile(r"\b(?:19|20)(\d)0s\b")
+_ORDINAL = re.compile(r"\b(thứ)\s+([14])\b", re.I)
+_CLOCK_SUFFIX = re.compile(r"\b(\d{1,2})\s*([ap])(?:\.m\.|m\b)", re.I)
+_THOUSANDS = re.compile(r"(\d)K(?=\s*(?:người|lượt|view|sub|follow|like|đô|đồng|USD)\b)", re.I)
 _PHONE = re.compile(r"(?<![\d.,])0\d{2,}(?: \d{2,})*")
 _PERCENT = re.compile(rf"({_NUMBER})\s*%")
 _DOLLARS = re.compile(rf"\$\s*({_NUMBER})")
 _DEGREES = re.compile(r"(\d)\s*°\s*([CF]\b)?")
 _NEGATIVE = re.compile(r"(?<![\w.,])-(?=\d)")
 _TIMES = re.compile(r"(?<![\w])[x×](?=\d)|(?<=\d)[x×](?!\w)")
-_UNIT_WORDS = [("kg", "ki lô gam"), ("km", "ki lô mét"), ("cm", "xen ti mét"), ("mm", "mi li mét"),
-               ("ml", "mi li lít"), ("g", "gam"), ("k", "nghìn"), ("K", "nghìn"), ("đ", "đồng"), ("vnđ", "đồng"),
+_UNIT_WORDS = [("km/h", "ki lô mét trên giờ"), ("kg", "ki lô gam"), ("km", "ki lô mét"), ("cm", "xen ti mét"), ("mm", "mi li mét"),
+               ("ml", "mi li lít"), ("g", "gam"), ("k", "nghìn"), ("đ", "đồng"), ("vnđ", "đồng"),
                ("VNĐ", "đồng"), ("VND", "đồng")]
 _UNITS_AFTER = re.compile(r"(\d)\s*(" + "|".join(unit for unit, _ in sorted(_UNIT_WORDS, key=lambda u: -len(u[0])))
                           + r")(?!\w)")
@@ -97,6 +111,18 @@ _PLAIN = re.compile(_NUMBER)
 
 def spoken_numbers(text: str) -> str:
     """'Pin còn 15% lúc 7:30, giá $999' -> 'Pin còn mười lăm phần trăm lúc bảy giờ ba mươi, giá chín trăm chín mươi chín đô'."""
+    text = _CLOCK.sub(lambda m: f"{spoken_integer(int(m.group(1)))} tiếng {spoken_integer(int(m.group(2)))} phút "
+                      f"{spoken_integer(int(m.group(3)))} giây", text)
+    text = _SCORE.sub(lambda m: f"{_UNITS[int(m.group(1))]} - {_UNITS[int(m.group(2))]}", text)
+    text = _CLOCK_SUFFIX.sub(lambda m: f"{m.group(1)} giờ " + ("sáng" if m.group(2).lower() == "a" else "tối"), text)
+    text = _THOUSANDS.sub(r"\1 nghìn", text)
+    text = _DECADE.sub(lambda m: f"những năm {spoken_integer(int(m.group(1)) * 10)}", text)
+    text = _ORDINAL.sub(lambda m: f"{m.group(1)} {'nhất' if m.group(2) == '1' else 'tư'}", text)
+    text = _CURRENCY_BEFORE.sub(lambda m: f"{m.group(2)} {_CURRENCY[m.group(1)]}", text)
+    text = _CURRENCY_AFTER.sub(lambda m: f"{m.group(1)} {_CURRENCY[m.group(2)]}", text)
+    text = _DECIMAL_SLASH.sub(lambda m: f"{_number(m.group(1))} trên {_number(m.group(2))}", text)
+    text = re.sub(r"(?<=\d)\s*\+\s*(?=\d)", " cộng ", text)
+    text = re.sub(r"\b(\d)m(\d{2})\b", r"\1 mét \2", text)
     text = _TIME.sub(lambda m: f"{spoken_integer(int(m.group(1)))} giờ"
                      + (f" {spoken_integer(int(m.group(2)))}" if int(m.group(2)) else ""), text)
     text = _HOURS.sub(lambda m: f"{spoken_integer(int(m.group(1)))} giờ"
@@ -110,6 +136,7 @@ def spoken_numbers(text: str) -> str:
     units = dict(_UNIT_WORDS)
     text = _UNITS_AFTER.sub(lambda m: f"{m.group(1)} {units[m.group(2)]}", text)
     text = re.sub(r"(\d)(?=[^\W\d_])", r"\1 ", text)
+    text = re.sub(r"(?<=[^\W\d_])(?=\d)", " ", text)
     text = _PERCENT.sub(lambda m: f"{_number(m.group(1))} phần trăm", text)
     text = _DOLLARS.sub(lambda m: f"{_number(m.group(1))} đô", text)
     return re.sub(r"\s{2,}", " ", _PLAIN.sub(lambda m: _number(m.group(0)), text)).strip()

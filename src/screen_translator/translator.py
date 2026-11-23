@@ -66,14 +66,23 @@ def build_messages(
     terms = address.terms(source_lang) if address else {}
     messages = [{"role": "system", "content": system, "target": target, "glossary": dict(glossary or {}),
                  "notes": notes.strip(), "address_terms": terms, "budget": budget,
-                 "address_zh": (f"{address.speaker}对{address.listener}说话，翻译成越南语时，{address.speaker}自称"
-                                f"“{address.me}”，称对方“{address.you}”。") if address else ""}]
+                 "address_zh": address_zh(address)}]
     for turn in history:
         messages.append(_asking(turn.source, turn.note))
         messages.append({"role": "assistant", "content": turn.translation})
     note = " ".join(filter(None, (aside, address.note() if address else "", dub_note(budget))))
     messages.append(_asking(current, note))
     return messages
+
+
+def address_zh(address) -> str:
+    """The pronoun cue in HY-MT's own language, with only the parts that are known."""
+    if not address or not (address.me or address.you):
+        return ""
+    speaker = "说话人" if address.speaker == "the speaker" else address.speaker
+    listener = "对方" if address.listener == "the listener" else address.listener
+    parts = ([f"{speaker}自称“{address.me}”"] if address.me else []) + ([f"称{listener}“{address.you}”"] if address.you else [])
+    return f"{speaker}对{listener}说话，翻译成越南语时，{'，'.join(parts)}。"
 
 
 def dub_note(budget: str) -> str:
@@ -127,13 +136,14 @@ def build_screen_messages(
     glossary: dict[str, str] | None = None,
     notes: str = "",
     note: str = "",
+    address=None,
 ) -> list[dict]:
     """Item `index` of a screen's text, to be translated on its own with the whole screen as context.
 
     Every item of a screen gets the same prompt up to the closing "Translate item C.", so all of them share that
     prompt and are decoded side by side.
     """
-    messages = build_messages("", history, source_lang, target_lang, glossary, notes)
+    messages = build_messages("", history, source_lang, target_lang, glossary, notes, address=address)
     messages[0]["content"] += SCREEN_NOTE
     listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
     # Quoting the item spares a small model looking its letter up, where it often lands on a neighbour.
@@ -241,6 +251,31 @@ def is_name_tab(text: str) -> bool:
     head, _, body = text.partition("\n")
     # A party member's HP ("Bram" over "1,430 / 1,600") is not a line they say.
     return bool(body) and speaker_of(text) == head.strip() and bool(re.search(r"[^\W\d_]{2}", body))
+
+
+def unlabelled(source: str, translation: str) -> str:
+    """Speech has no speaker names: a short label the model put on ("Anh: Cô, cà phê xong rồi.") would be spoken."""
+    found = _LABEL.match(translation.strip())
+    if not found or speaker_of(source):
+        return translation
+    label = found.group(1).strip()
+    return found.group(2).strip() if len(label.split()) <= 2 and label.lower() not in source.lower() else translation
+
+
+def without_echo(source: str, translation: str) -> str:
+    """Drop an answer line that only copies the source's CJK text when another line is already translated."""
+    lines = [line for line in translation.split("\n") if line.strip()]
+    if len(lines) < 2:
+        return translation
+    body = re.sub(r"\s", "", body_of(source))
+
+    def echo(line: str) -> bool:
+        text = re.sub(r"\s", "", _LABEL.sub(r"\2", line.strip()))
+        foreign = NOT_LATIN.findall(text)
+        return len(foreign) >= 0.5 * len(text) and sum(ch in body for ch in foreign) >= 0.8 * len(foreign)
+
+    kept = [line for line in lines if not echo(line)]
+    return "\n".join(kept) if kept else translation
 
 
 def model_label(translation: str) -> str:

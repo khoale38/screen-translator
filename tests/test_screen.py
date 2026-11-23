@@ -468,3 +468,18 @@ def test_round_8_cutscene_names_hp_readouts_and_quest_titles_stay_apart():
     assert len(group_blocks(toast, 1920, 1080)) == 3
     bubble = [px("哥，你明天", 253, 169, 155, 38, 1920, 1080), px("陪我去买书好不好？", 194, 209, 260, 33, 1920, 1080)]
     assert len(group_blocks(bubble, 1920, 1080)) == 1
+
+
+def test_round_9_short_cutscene_lines_and_hud_buttons_keep_the_name_apart():
+    from screen_translator.text import assemble
+
+    for name, line in (("星璃", "旅行者，快跟上！"), ("세라", "괜찮아, 내가 있잖아."), ("Aria", "Stay close to me.")):
+        rows = [px(name, 930, 860, 60, 34, 1920, 1080), px(line, 800, 902, 320, 40, 1920, 1080)]
+        blocks = [b.text for b in group_blocks(rows, 1920, 1080)]
+        assert len(blocks) == 1 and blocks[0].split("\n")[0] == name, blocks
+    window = [px("オート", 1595, 46, 85, 34, 1920, 1080), px("スキップ", 1754, 42, 117, 41, 1920, 1080),
+              px("ユイ", 920, 860, 72, 41, 1920, 1080), px("お兄ちゃん、待って！", 760, 908, 400, 65, 1920, 1080)]
+    assert assemble(window, width=1920, height=1080).split("\n")[0] == "ユイ"
+    bubble = [px("형", 240, 107, 38, 40), px("어디 가?", 201, 145, 118, 44)]
+    blocks = [b.text for b in group_blocks(bubble, 1000, 1000)]
+    assert len(blocks) == 1 and "어디 가?" in blocks[0]

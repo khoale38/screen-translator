@@ -28,6 +28,12 @@ def test_versions_dates_units_and_codes_are_read_without_failing():
         "Điệp viên 007.": "Điệp viên không không bảy.",
         "Trời -5 độ.": "Trời âm năm độ.",
         "Hạ 3/5 kẻ địch.": "Hạ ba trên năm kẻ địch.",
+        "Mình cho 10/10, mở 24/7.": "Mình cho mười trên mười, mở hai mươi tư trên bảy.",
+        "Màn hình 4K, có 10K người xem.": "Màn hình bốn K, có mười nghìn người xem.",
+        "Chơi trên PS5, cao 1m75.": "Chơi trên PS năm, cao một mét bảy mươi lăm.",
+        "Thứ 4, lần thứ 1.": "Thứ tư, lần thứ nhất.",
+        "Giá €20, live lúc 8pm.": "Giá hai mươi ơ-rô, live lúc tám giờ tối.",
+        "Tỷ số 1:0, phút 90+3.": "Tỷ số một - không, phút chín mươi cộng ba.",
     }
     assert {text: spoken_numbers(text) for text in cases} == cases
 

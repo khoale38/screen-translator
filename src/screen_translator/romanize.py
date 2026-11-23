@@ -44,6 +44,13 @@ def _kana(name: str) -> str:
             continue
         if ch == "ー":
             continue
+        if ch in "ぁぃぅぇぉ" and sounds and sounds[-1][:1].isalpha() and (len(sounds[-1]) > 1 or sounds[-1] == "u"):
+            # A small vowel changes the sound before it: ティ is ti, ファ is fa, ヴィ is vi, シェ is she.
+            last = sounds.pop()
+            stem = {"te": "t", "de": "d", "fu": "f", "vu": "v", "tsu": "ts", "u": "w", "to": "t", "do": "d"}.get(
+                last, last[:-1] if last.endswith(("i", "u")) else last)
+            sounds.append(stem + _KANA[ch])
+            continue
         if ch in _DIGRAPHS and sounds and sounds[-1].endswith("i"):
             last = sounds.pop()
             sounds.append(last[:-1] + _DIGRAPHS[ch] if last in ("shi", "chi", "ji") else last[:-1] + "y" + _DIGRAPHS[ch])
@@ -100,6 +107,11 @@ ROLES_VI = {
 
 # Hán-Việt readings of common characters in Chinese names: 林风 is Lâm Phong, as Vietnamese viewers know them.
 _HAN_VIET = """
+无無Vô 儿兒Nhi 妃Phi 妾Thiếp 忌Kỵ 逍Tiêu 凯凱Khải 瑟Sắt 婉Uyển 灵Linh 容Dung 莫Mạc 霸Bá 武Vũ 侠俠Hiệp 剑劍Kiếm
+宝Bảo 钗釵Thoa 黛Đại 玉Ngọc 湘Tương 云Vân 熙Hy 嬛Hoàn 甄Chân 华華Hoa 皇Hoàng 贵貴Quý 淑Thục 德Đức 贤賢Hiền 惠Huệ
+静Tĩnh 怜憐Liên 香Hương 兮Hề 曼Mạn 菁Tinh 蕊Nhụy 瑛Anh 璎瓔Anh 珞Lạc 弘Hoằng 历歷Lịch 胤Dận 禛Chân 祯禎Trinh 康Khang
+乾Càn 隆Long 雍Ung 正Chính 顺順Thuận 治Trị 魏Ngụy 尔爾Nhĩ 杰Kiệt 峻Tuấn 旻Mân 晗Hàm 昭Chiêu 炎Viêm 焱Diễm 烈Liệt
+猛Mãnh 豹Báo 狼Lang 鹰鷹Ưng 凰Hoàng 麟Lân 雀Tước 蛇Xà 魂Hồn 魄Phách 霆Đình 震Chấn 岳Nhạc 嵩Tung 昆Côn 仑崙Lôn
 王Vương 李Lý 张張Trương 刘劉Lưu 陈陳尘塵Trần 杨楊阳陽Dương 黄黃皇Hoàng 赵趙Triệu 吴吳Ngô 周朱舟Chu 徐Từ 孙孫尊Tôn 马馬Mã 胡狐湖Hồ 郭Quách
 何荷霞河Hà 高Cao 林琳霖Lâm 罗羅La 郑鄭Trịnh 梁Lương 谢謝Tạ 宋Tống 唐Đường 许許Hứa 韩韓寒Hàn 冯馮Phùng 邓鄧Đặng 曹Tào 彭Bành 曾Tăng
 肖萧蕭霄Tiêu 田Điền 董Đổng 袁Viên 潘Phan 于Vu 蒋蔣Tưởng 蔡泰太Thái 余Dư 杜Đỗ 叶葉Diệp 程Trình 苏蘇Tô 魏Ngụy 吕呂Lã 丁Đinh 任Nhậm 沈Thẩm
