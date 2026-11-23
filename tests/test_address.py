@@ -572,3 +572,17 @@ def test_round_17_parents_calling_children_and_mothers_speaking_of_themselves():
     assert said("くそくらえ！") == ("tao", "mày") and said("やくそくだよ") is None
     assert han_viet("鬼王") == "Quỷ Vương"
     assert romanized("파티 초대") is None and role_label("파티 초대") == "Mời nhóm" and romanized("김 철수") == "Kim Cheolsu"
+
+
+def test_round_18_becoming_a_role_young_man_quotes_and_headings():
+    from screen_translator.translator import label_speaker
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("爸，你要当爷爷了！") == ("con", "bố")
+    assert said("老婆，我要当爸爸了！") == ("anh", "em")
+    assert said("妈妈，你当妈妈的怎么能这样说我？") == ("con", "mẹ")
+    assert said("妈妈,我也是第一次当妈妈,你们别吵了") == ("mẹ", "con")
+    for line in ("Come here, young man.", "Son, Kane and Kulusevski all scored.", "你个孙子！", "お母さんありがとうって言っといて"):
+        assert said(line) is None, line
+    assert label_speaker("システム\nクエスト：スライムを10匹倒せ", "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime.") == \
+        "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime."

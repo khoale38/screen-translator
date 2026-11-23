@@ -726,6 +726,9 @@ class Pipeline:
                 return
             if "\n" in source:
                 translation = translation.replace(" / ", "\n")
+            if self.store.settings.target_lang == "vi" and role_label(source.strip()):
+                # A role tab alone on screen ("간호사", "執事") is read from the table, not guessed next to its neighbour.
+                translation = role_label(source.strip())
             if translation.strip() == source.strip() and romanized(source):
                 # A name HY-MT handed back in kana or hangul, which a Vietnamese viewer cannot read.
                 translation = self._names.setdefault(source.strip(), romanized(source))

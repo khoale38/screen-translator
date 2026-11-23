@@ -589,3 +589,20 @@ def test_round_17_tightly_set_furigana_at_several_sizes():
         rows = [px("ハルカ", 100, 440, size * 3, size, W, H), px("せんせい ほんとう", 100, 500, size * 4, half + 6, W, H),
                 px("先生、本当にありがとうございました。", 100, 500 + half - 6, size * 18, size + 8, W, H)]
         assert assemble(rows, width=W, height=H, menus=True) == "ハルカ\n先生、本当にありがとうございました。"
+
+
+def test_round_18_menus_stay_apart_in_both_modes_and_family_titles_call():
+    from screen_translator.text import assemble
+    from screen_translator.vi_numbers import spoken_numbers
+
+    W, H = 1920, 1080
+    pause = [px("ポーズ", 860, 200, 200, 60, W, H), px("ゲームに戻る", 840, 400, 240, 40, W, H), px("設定", 920, 468, 80, 40, W, H),
+             px("操作方法", 880, 536, 160, 40, W, H), px("タイトルに戻る", 820, 604, 280, 40, W, H)]
+    assert [b.text for b in group_blocks(pause, W, H)] == ["ポーズ", "ゲームに戻る", "設定", "操作方法", "タイトルに戻る"]
+    W, H = 1280, 720
+    menu = [px("What will you do?", 60, 400, 320, 36, W, H), px("Attack", 100, 448, 120, 36, W, H),
+            px("Defend", 100, 496, 120, 36, W, H), px("Use item", 100, 544, 150, 36, W, H)]
+    assert assemble(menu, width=W, height=H, menus=True) == "What will you do?\nAttack\nDefend\nUse item"
+    call = [px("Mom", 600, 560, 80, 40, W, H), px("I'm home.", 560, 610, 160, 44, W, H)]
+    assert assemble(call, width=W, height=H, menus=True) == "Mom, I'm home."
+    assert spoken_numbers("3:45 PM, 12 AM") == "ba giờ bốn mươi lăm chiều, mười hai giờ đêm"

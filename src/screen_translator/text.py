@@ -83,6 +83,9 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 # A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
+_TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
+    "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
 _ONE_CHARACTER_NAME = re.compile("(?![嗯好啊哦是对喂嘿哈呃唉呀嘛吧呢哎噢欸行])[\u3400-\u9fff]")
@@ -145,6 +148,7 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
     rows = [segment for row in rows for segment in _split_wide_gaps(row)]
 
     frame_w, frame_h = width, height
+    menu_left: float | None = None
     paragraphs: list[str] = []
     spans: list[list[float]] = []
     previous: tuple[str, OcrLine, float] | None = None
@@ -173,10 +177,15 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                 previous = (paragraphs[-1], row[0], width)
                 continue
         asked = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？" and paragraphs[-1] == previous[0]
-        menu = menus and previous is not None and not same_baseline and _choice_rows(previous, row[0], row_text,
-                                                                                    frame_w, frame_h, asked)
-        if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(*previous, row[0], width):
-            paragraphs[-1] = _join(paragraphs[-1], row_text)
+        menu = menus and previous is not None and not same_baseline and _choice_rows(
+            previous, row[0], row_text, frame_w, frame_h, asked, menu_left)
+        menu_left = row[0].box[0] if menu else None
+        if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(
+                *previous, row[0], width, frame_w, frame_h):
+            if paragraphs[-1].strip() in _TITLE_WORDS:
+                paragraphs[-1] = paragraphs[-1].strip() + ("，" if _cjk(paragraphs[-1]) else ", ") + row_text
+            else:
+                paragraphs[-1] = _join(paragraphs[-1], row_text)
             spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
         else:
             paragraphs.append(row_text)
@@ -192,13 +201,25 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
 
 
 def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: float, frame_h: float,
-                 asked: bool) -> bool:
-    """Short choices stacked under a question ("是" / "否"); two short subtitle rows with no question are one line."""
+                 asked: bool, menu_left: float | None) -> bool:
+    """Short choices stacked under a prompt or each other; a centred two-row subtitle is one line.
+
+    Menu rows share a left edge but not a centre; the wrapped rows of a centred subtitle share a centre.
+    """
     above_text, above = previous[0].strip(), previous[1]
+    height = max(above.box[3], below.box[3]) * frame_h
     short = lambda text: len(text.replace(" ", "")) <= 8
-    if abs(above.box[0] - below.box[0]) * frame_w >= 1.5 * max(above.box[3], below.box[3]) * frame_h:
+    left = abs(above.box[0] - below.box[0]) * frame_w
+    centre = abs((above.box[0] + above.box[2] / 2) - (below.box[0] + below.box[2] / 2)) * frame_w
+    if not short(below_text):
         return False
-    return short(below_text) and (above_text[-1:] in "?？" or asked and short(above_text))
+    if menu_left is not None and abs(below.box[0] - menu_left) * frame_w < height:
+        return True
+    indented = (below.box[0] - above.box[0]) * frame_w > 0.5 * height and above_text[-1:] in "。.!！:：?？"
+    if left >= 1.5 * height and not indented:
+        return False
+    flush = left < 0.15 * height and centre > 0.15 * height and short(above_text)
+    return above_text[-1:] in "?？" or asked and short(above_text) or flush or indented
 
 
 def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
@@ -213,7 +234,8 @@ def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
     return segments
 
 
-def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, below: OcrLine, below_width: float) -> bool:
+def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, below: OcrLine, below_width: float,
+                          frame_w: float = 1, frame_h: float = 1) -> bool:
     """Wrapped text fills its first row, so a wide gap, a size change or a short row over a wide one is a new line."""
     height = max(above.box[3], below.box[3])
     gap = below.box[1] - (above.box[1] + above.box[3])
@@ -225,8 +247,12 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
         return True
     # A name box over its dialogue: OCR pads boxes, so the name often overlaps the line below it.
     left_aligned = abs(above.box[0] - below.box[0]) < height
+    # A family title alone over the line ("Mom" / "I'm home.") calls the listener unless set clearly smaller as a tab.
+    titled = above_text.strip().strip(",，、") in _TITLE_WORDS
+    if titled:
+        left_aligned = abs(above.box[0] - below.box[0]) * frame_w < 0.5 * height * frame_h
     centred = (abs((above.box[0] + above_width / 2) - (below.box[0] + below_width / 2)) < height
-               and gap > 0.08 * height and above.box[3] < 0.92 * below.box[3])
+               and gap > 0.08 * height and above.box[3] < (0.85 if titled else 0.92) * below.box[3])
     return (_name_like(above_text) and (left_aligned or centred) and above_width < 0.6 * below_width
             and gap > -0.5 * height)
 
@@ -309,6 +335,8 @@ class Block:
     bg: str = "#000000"
     fg: str = "#ffffff"
     vertical: bool = False
+    # One item of a menu or choice list, never a speaker's name tab or a wrapped line.
+    listed: bool = False
 
 
 def _orientation(line: OcrLine, width: int, height: int) -> str:
@@ -372,6 +400,7 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
     pixels = [(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height,
                _orientation(l, width, height), l.text.strip()) for l in kept]
     ruby = _ruby(pixels)
+    listed = _list_rows(pixels)
     parent = list(range(len(kept)))
 
     def root(i: int) -> int:
@@ -382,7 +411,11 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
 
     for i in range(len(kept)):
         for j in range(i + 1, len(kept)):
-            if i not in ruby and j not in ruby and _same_block(pixels[i], pixels[j]):
+            # A menu row stays apart from the rows above and below it, not from text beside it on its own row.
+            stacked = abs((pixels[i][1] + pixels[i][3] / 2) - (pixels[j][1] + pixels[j][3] / 2)) >= 0.5 * max(
+                pixels[i][3], pixels[j][3])
+            if i not in ruby and j not in ruby and not ((i in listed or j in listed) and stacked) \
+                    and _same_block(pixels[i], pixels[j]):
                 parent[root(i)] = root(j)
     for small, base in ruby.items():
         parent[root(small)] = root(base)
@@ -407,7 +440,8 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
             continue
         columns = [l for l in words if is_vertical(l, width, height)] or words
         blocks.append(Block(text, (left, top, right - left, bottom - top),
-                            median(char_size(l, width, height) for l in columns), vertical=vertical))
+                            median(char_size(l, width, height) for l in columns), vertical=vertical,
+                            listed=any(i in listed for i in members)))
     if sum(b.vertical for b in blocks) * 2 > len(blocks):
         # A short "！" column OCR reads as 一 or ー is not a bubble of its own.
         return _manga_order([block for block in blocks if block.text.strip() not in ("一", "ー", "口", "|", "丨")])
@@ -446,15 +480,39 @@ def _name_over_line(upper: tuple, lower: tuple) -> bool:
             and len(name.replace(" ", "")) <= (6 if eastern else 20))
 
 
+def _list_rows(pixels: list[tuple]) -> set[int]:
+    """Rows of a menu: three or more short rows of one size, lined up, at an even pitch (pause menus, title screens)."""
+    rows = sorted((i for i, p in enumerate(pixels) if p[4] != "v" and len(p[5].replace(" ", "")) <= 12
+                   and not re.search("[。.!！?？,，、:：]", p[5])), key=lambda i: pixels[i][1])
+    listed: set[int] = set()
+    for start in rows:
+        chain = [start]
+        for i in rows:
+            a, b = pixels[chain[-1]], pixels[i]
+            if b[1] <= a[1]:
+                continue
+            height = max(a[3], b[3])
+            pitch = (b[1] + b[3] / 2) - (a[1] + a[3] / 2)
+            lined = abs(a[0] - b[0]) < 0.5 * height or abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < 0.5 * height
+            if min(a[3], b[3]) >= 0.85 * height and lined and 1.2 * height <= pitch <= 4 * height:
+                chain.append(i)
+        if len(chain) >= 3:
+            pitches = [(pixels[b][1] - pixels[a][1]) for a, b in zip(chain, chain[1:])]
+            middle = median(pitches)
+            if all(abs(p - middle) <= 0.15 * middle for p in pitches):
+                listed.update(chain)
+    return listed
+
+
 def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
     pairs: list[tuple[int, int]] = []
     used: set[int] = set()
     for i, name in enumerate(blocks):
         header = name.text.isupper() and len(name.text.split()) == 1 and len(name.text) > 3
-        if i in used or not _name_like(name.text) or name.vertical or header:
+        if i in used or not _name_like(name.text) or name.vertical or header or name.listed:
             continue
         for j, block in enumerate(blocks):
-            if j == i or j in used or block.vertical:
+            if j == i or j in used or block.vertical or block.listed:
                 continue
             words = sum(ch.isalpha() for ch in block.text)
             enough = max(4, 2 * len(name.text)) if _cjk(block.text) else max(12, 2 * len(name.text))

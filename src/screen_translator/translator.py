@@ -319,7 +319,10 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
             return f"{label}: {' '.join(body.split())}" if label else " ".join(body.split())
     labelled = _LABEL.match(translation.strip())
     inner = _LABEL.match(labelled.group(2).strip()) if labelled else None
-    if inner and len(inner.group(1).split()) <= 3:
+    # "Hệ thống: Nhiệm vụ: …" keeps its heading; only a called listener becomes a call ("…: Quỷ Vương, …").
+    body = body_of(source)
+    calls = called_title(body) or re.match(r"[^，,:：\s]{1,6}[，,]", body)
+    if inner and len(inner.group(1).split()) <= 3 and calls and not re.search("[:：]", body):
         # "Diệp Phàm: Quỷ Vương: Đối thủ…": the second label is the listener being called.
         translation = f"{labelled.group(1)}: {inner.group(1)}, {inner.group(2)}"
         labelled = _LABEL.match(translation.strip())

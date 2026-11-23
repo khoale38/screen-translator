@@ -110,6 +110,13 @@ _UNITS_AFTER = re.compile(r"(\d)\s*(" + "|".join(unit for unit, _ in sorted(_UNI
 _PLAIN = re.compile(_NUMBER)
 
 
+def _part_of_day(hour: int, half: str) -> str:
+    """3 PM is chiều, 8 PM tối, 12 PM trưa, 12 AM đêm."""
+    if half.lower() == "a":
+        return "đêm" if hour == 12 else "sáng"
+    return "trưa" if hour == 12 else "chiều" if hour < 6 else "tối"
+
+
 def spoken_numbers(text: str) -> str:
     """'Pin còn 15% lúc 7:30, giá $999' -> 'Pin còn mười lăm phần trăm lúc bảy giờ ba mươi, giá chín trăm chín mươi chín đô'."""
     text = _CLOCK.sub(lambda m: f"{spoken_integer(int(m.group(1)))} tiếng {spoken_integer(int(m.group(2)))} phút "
@@ -117,8 +124,8 @@ def spoken_numbers(text: str) -> str:
     text = _SCORE.sub(lambda m: f"{_UNITS[int(m.group(1))]} - {_UNITS[int(m.group(2))]}", text)
     text = _TIME_SUFFIX.sub(lambda m: f"{spoken_integer(int(m.group(1)))} giờ"
                             + (f" {spoken_integer(int(m.group(2)))}" if int(m.group(2)) else "")
-                            + (" sáng" if m.group(3).lower() == "a" else " tối"), text)
-    text = _CLOCK_SUFFIX.sub(lambda m: f"{m.group(1)} giờ " + ("sáng" if m.group(2).lower() == "a" else "tối"), text)
+                            + f" {_part_of_day(int(m.group(1)), m.group(3))}", text)
+    text = _CLOCK_SUFFIX.sub(lambda m: f"{m.group(1)} giờ {_part_of_day(int(m.group(1)), m.group(2))}", text)
     text = _THOUSANDS.sub(r"\1 nghìn", text)
     text = _DECADE.sub(lambda m: "những năm " + spoken_integer(int(m.group(3)) * 10 if m.group(2) == "19" else int(m.group(1))),
                        text)
@@ -145,5 +152,6 @@ def spoken_numbers(text: str) -> str:
     text = re.sub(r"(\d)(?=[^\W\d_])", r"\1 ", text)
     text = re.sub(r"(?<=[^\W\d_])(?=\d)", " ", text)
     text = _PERCENT.sub(lambda m: f"{_number(m.group(1))} phần trăm", text)
+    text = re.sub(rf"\$\s*({_NUMBER})\s*(nghìn|triệu|tỷ)", lambda m: f"{_number(m.group(1))} {m.group(2)} đô", text)
     text = _DOLLARS.sub(lambda m: f"{_number(m.group(1))} đô", text)
     return re.sub(r"\s{2,}", " ", _PLAIN.sub(lambda m: _number(m.group(0)), text)).strip()

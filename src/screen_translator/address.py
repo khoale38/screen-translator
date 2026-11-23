@@ -86,9 +86,10 @@ YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|br
                      re.I)
 # A parent or grandparent calling the child: "儿子，…", "乖孙", "Son, …", "아들, …".
 TO_CHILD = {
-    "grandparent and grandchild": re.compile(r"乖孙|乖孫|孙子|孫子|孙女|孫女|손자|손녀|孫よ", re.I),
-    "parent and child": re.compile(_VOCATIVE.format(r"(?:son|kiddo|young man)") + r"|儿子|兒子|闺女|閨女|아들|딸아|息子よ",
-                                   re.I),
+    "grandparent and grandchild": re.compile(r"乖孙|乖孫|孙女|孫女|손자|손녀|孫よ", re.I),
+    # Not "young man" (anyone older says it) or "Son, Kane and Kulusevski" (a name list).
+    "parent and child": re.compile(_VOCATIVE.format(r"(?:son(?!\s*,\s*[A-Z]\w+\s*(?:,|and\b))|kiddo)")
+                                   + r"|儿子|兒子|闺女|閨女|아들아?|딸아|息子よ", re.I),
 }
 # What one spouse or lover calls the other; 老公 is said to a husband, 老婆 and 마누라 to a wife, 여보 to either.
 COUPLE = {
@@ -115,7 +116,7 @@ SELF_WORDS_CUES = [
 # "Baby, don't cry. Mommy's here.": a parent comforting a child, not a lover.
 # A scanlator's gloss ("T/N: Hyung = older brother") explains words; nobody says it to anyone.
 _TRANSLATOR_NOTE = re.compile(r"^\s*(?:T/?N|TL ?note|TN|Note|N/A|注|註|※|작가의\s*말|역주)\s*[:：]", re.I)
-_PARENT_SELF = re.compile(r"\b(mommy|mummy|daddy|mom|mum|dad|your (?:mother|father|mom|dad))\b|엄마가|아빠가|妈妈|爸爸",
+_PARENT_SELF = re.compile(r"\b(mommy|mummy|daddy|mom|mum|dad|your (?:mother|father|mom|dad))\b|엄마가|아빠가|妈妈在|爸爸在",
                           re.I)
 ROYAL_PARENTS = {"父皇": "phụ hoàng", "母后": "mẫu hậu", "母妃": "mẫu phi"}
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|姫様|왕자|공주|전하", re.I)
@@ -357,7 +358,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         return {**facts, f"{listener} gender": gender} if martial and gender else facts
     for role, cue in ROLES.items():
         title = cue.search(line)
-        if title and re.search(f"(?:当|做|作为|當|作為){re.escape(title.group(0))}", line):
+        # Only the speaker being that role already: "我也是第一次当妈妈", not "你要当爷爷了" or "我要当爸爸了".
+        if title and re.search(f"我(?:(?![你要想会會将將]).){{0,6}}?(?:当|做|作为|當|作為){re.escape(title.group(0))}", line):
             # "妈妈,我也是第一次当妈妈": the speaker is the one being a mother.
             gender = "female" if FEMALE_TITLES.search(title.group(0)) else "male" if MALE_TITLES.search(title.group(0)) else ""
             facts = {"relation": role, "senior": speaker, "older": speaker, "guess": True}
@@ -441,7 +443,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
         # A title before 我 with 你 later is either side ("姐姐我请你" from the elder, "姐姐我好想你" from the younger):
         # no cue for it either way.
-        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫)", after) or (
+        speaks_on = re.match(r"\s*(?:你|您|ただいま|おかえり|おはよう|待って|見て|聞いて|ごめん|ありがとう|助けて|大丈夫)(?!って|と言)", after) or (
             re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue
