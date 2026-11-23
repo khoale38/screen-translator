@@ -7,15 +7,23 @@ from statistics import median
 from difflib import SequenceMatcher
 
 from .ocr import BUTTON_MISREAD, OcrLine
+from .romanize import ROLES_VI
 
 _SPACELESS = re.compile(r"[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ฀-๿　-〿！-｠]")
+_KANA_FIX = {"八": "ハ", "口": "ロ", "工": "エ", "力": "カ", "夕": "タ"}
+_KANA_LOOKALIKE = re.compile("(?<=[ァ-ヺー])[八口工力夕]|[八口工力夕](?=[ァ-ヺー])")
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
 
 
 def normalize(text: str) -> str:
-    return _BREAKS.sub("\n", _SPACES.sub(" ", unicodedata.normalize("NFKC", text))).strip()
+    # NFKC turns Korean chat laughter (ㅋㅋ, ㅠㅠ) into conjoining jamo, which then render broken; those keep their form.
+    parts = re.split("([\u3131-\u318e]+)", text)
+    text = "".join(part if i % 2 else unicodedata.normalize("NFKC", part) for i, part in enumerate(parts))
+    # RapidOCR reads katakana ハ, ロ, エ, カ, タ as look-alike kanji when they sit among katakana.
+    text = _KANA_LOOKALIKE.sub(lambda m: _KANA_FIX[m.group(0)], text)
+    return _BREAKS.sub("\n", _SPACES.sub(" ", text)).strip()
 
 
 def similar(a: str, b: str, threshold: float = 0.9) -> bool:
@@ -31,8 +39,9 @@ def _join(left: str, right: str) -> str:
         return left + right
     if (_SPACELESS.match(left[-1]) and right[0].isdigit()) or (left[-1].isdigit() and _SPACELESS.match(right[0])):
         return left + right
-    if re.search(r"[A-Za-z]{2,}-$", left) and right[0].isalpha():
-        return (left[:-1] if left[-2].islower() == right[0].islower() else left) + right
+    # A word broken across lines ("tomor-" / "row"), not a cut-off sentence ("you-" / "Don't").
+    if re.search(r"[a-z]{2}-$", left) and right[0].islower():
+        return left[:-1] + right
     return f"{left} {right}"
 
 
@@ -141,7 +150,7 @@ def _name_like(text: str) -> bool:
     words = text.split()
     if not 0 < len(text) <= 20 or len(words) > 3 or text.endswith(_ENDS) or _MID_PHRASE.search(text):
         return False
-    if re.search("[\u3041-\u309f]", text):
+    if re.search("[\u3041-\u309f]", text) and text not in ROLES_VI:
         return False
     capitalised = all(word[0].isupper() or not word[0].isascii() for word in words)
     return capitalised and not (text.isupper() and len(words) > 1)
@@ -297,7 +306,8 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
         vertical = any(pixels[i][4] == "v" for i in members)
         text = normalize(assemble(words, min_confidence, width, height, lone_cjk=True, vertical=vertical))
         letters = sum(ch.isalpha() for ch in text)
-        if letters < 2 and not (letters == 1 and re.search(r"[?!。！？…]", text)):
+        lone = letters == 1 and re.search(r"[?!。！？…]|[\u3040-\u9fff\uac00-\ud7a3]", text)
+        if letters < 2 and not lone:
             continue
         columns = [l for l in words if is_vertical(l, width, height)] or words
         blocks.append(Block(text, (left, top, right - left, bottom - top),
@@ -333,7 +343,10 @@ def _name_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
         for j, block in enumerate(blocks):
             if j == i or j in used or block.vertical:
                 continue
-            spoken = len(block.text) >= max(12, 2 * len(name.text))
+            words = sum(ch.isalpha() for ch in block.text)
+            enough = max(4, 2 * len(name.text)) if _cjk(block.text) else max(12, 2 * len(name.text))
+            # A stat readout ("1,430 / 1,600") under a party member's name is not their line.
+            spoken = words >= 4 and (len(block.text) >= enough or block.text.rstrip().endswith(_ENDS))
             same_size = 0.6 * block.line_height <= name.line_height <= 1.3 * block.line_height
             if not (spoken and same_size):
                 continue

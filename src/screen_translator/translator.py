@@ -4,7 +4,7 @@ import re
 from typing import Callable, Protocol
 
 from . import languages
-from .address import _LABEL, body_of, speaker_of
+from .address import _BRACKETED, _LABEL, body_of, speaker_of
 from .romanize import NOT_LATIN
 from .context import Turn
 
@@ -156,6 +156,7 @@ def for_hy_mt(messages: list[dict]) -> list[dict]:
     # On a screen "剩余时间：02:15" is a label, not a speaker; only a name tab over its line ("Name\nline") is one.
     if not screen or is_name_tab(text):
         text = body_of(text)
+    text = sentence_case(text)
     glossary = {**facts.get("address_terms", {}), **facts.get("glossary", {})}
     terms = "".join(f"{src} 翻译成 {dst}\n" for src, dst in glossary.items() if src.strip())
     parts = [f"参考下面的翻译：\n{terms}"] if terms else []
@@ -223,11 +224,24 @@ def clean_output(raw: str) -> str:
     return text
 
 
+def sentence_case(text: str) -> str:
+    """ALL-CAPS comic lettering in sentence case, which the 1.8B model reads far better; short acronyms stay."""
+    letters = [ch for ch in text if ch.isascii() and ch.isalpha()]
+    if len(letters) < 8 or sum(ch.isupper() for ch in letters) < 0.8 * len(letters):
+        return text
+    lowered = re.sub(r"[A-Za-z]+", lambda m: m.group(0) if m.group(0) in _ACRONYMS else m.group(0).lower(), text)
+    lowered = re.sub(r"\bi\b", "I", lowered)
+    return re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), lowered)
+
+
+_ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "AI", "DNA", "CEO", "PC", "GPS", "VIP"}
+
+
 def is_name_tab(text: str) -> bool:
     return "\n" in text and speaker_of(text) == text.split("\n", 1)[0].strip()
 
 
-def label_speaker(source: str, translation: str, names: dict[str, str] | None = None) -> str:
+def label_speaker(source: str, translation: str, names: dict[str, str] | None = None, raw_names: bool = True) -> str:
     """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line".
 
     A source with a speaker whose name the model dropped gets the name back, so it is clear who speaks; `names`
@@ -235,6 +249,11 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
     """
     name = speaker_of(source)
     known = (names or {}).get(name) if name else None
+    # With raw_names off, a name in a script the viewer cannot read is left off rather than shown in hanzi.
+    shown = known or (name if raw_names or not NOT_LATIN.search(name or "") else None)
+    bracket = _BRACKETED.match(translation.strip())
+    if name and bracket and translation.strip()[0] in "【〔":
+        return f"{shown}: {bracket.group(2)}" if shown else bracket.group(2)
     label, _, rest = source.partition("\n")
     if rest and name == label.strip():
         head, _, body = translation.partition("\n")
@@ -246,7 +265,7 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
     if labelled and known:
         return f"{known}: {labelled.group(2)}"
     if name and name in source.lstrip()[:len(name) + 2] and not labelled:
-        return f"{known or name}: {translation.strip()}"
+        return f"{shown}: {translation.strip()}" if shown else translation.strip()
     return translation
 
 

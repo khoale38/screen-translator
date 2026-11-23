@@ -60,21 +60,23 @@ RELATIONS = ("parent and child", "grandparent and grandchild", "siblings or cous
 # a 4B judge otherwise mixes up who outranks whom.
 ROLES = {
     "teacher and student": re.compile(r"先生|せんせい|\bsensei\b|\bteacher\b|\bprofessor\b|老师|老師|선생님|교수님", re.I),
-    "master and disciple": re.compile(r"师父|師父|師匠|师傅|\bmaster\b|sư phụ", re.I),
-    "ruler and subject": re.compile(r"\b(princess|prince|king|queen|emperor|empress|majesty|highness|my lady|my lord)\b|"
+    "master and disciple": re.compile(r"师父|師父|師匠|师傅|(?<!young )\bmaster\b|sư phụ", re.I),
+    "ruler and subject": re.compile(r"\b(princess|prince|king|queen|emperor|empress|majesty|highness)\b|"
                                     r"陛下|殿下|王子|公主|皇上|왕자|공주|폐하|전하", re.I),
+    "noble and servant": re.compile(r"\b(my lady|milady|m'lady|my lord|milord|young master|young lady)\b|"
+                                    r"お嬢様|お坊ちゃま|ご主人様|旦那様|小姐|少爷|아가씨|도련님", re.I),
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|祖母|祖父|奶奶|爷爷|外婆|外公", re.I),
     "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|母さん|父さん|妈妈|爸爸|"
-                                   r"^(?:妈|爸)(?=[，,！!？?])", re.I),
+                                   r"^(?:妈|爸)(?=[，,！!？?])|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)") + r"|동생아|"
                      r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|小妹)(?=[，,。！？!?])", re.I)
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|왕자|공주|전하", re.I)
-FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|grandma|grandmother|granny|mom|mum|mother)\b|공주|할머니|엄마|"
-                           r"어머니|おばあ|お母|母さん|祖母|奶奶|外婆|妈妈|公主", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|grandpa|grandfather|dad|father)\b|왕자|할아버지|아빠|아버지|おじい|"
-                         r"お父|父さん|祖父|爷爷|外公|爸爸|王子", re.I)
+FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother)\b|공주|"
+                           r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father)\b|왕자|할아버지|아빠|아버지|"
+                         r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
 RECHECK_AT = (4, 10)
 
@@ -102,9 +104,8 @@ def body_of(text: str) -> str:
     match = _LABEL.match(text.strip())
     if match and _looks_like_name(match.group(1)):
         return match.group(2)
-    bracketed = _BRACKETED.match(text.strip())
-    if bracketed:
-        return bracketed.group(2)
+    if _bracketed_name(text):
+        return _BRACKETED.match(text.strip()).group(2)
     name = speaker_of(text)
     if name:
         first, _, rest = text.strip().partition("\n")
@@ -113,15 +114,30 @@ def body_of(text: str) -> str:
     return text
 
 
+def _bracketed_name(text: str) -> str | None:
+    """【ハルカ】, （ハルカ） or (MOM) before a line; a bracketed aside such as （まずい……） or (Sighs) is not a speaker."""
+    match = _BRACKETED.match(text.strip())
+    if not match:
+        return None
+    name, opener = match.group(1).strip(), text.strip()[0]
+    if opener in "【〔":
+        return name
+    if re.search(r"[.…!?！？。、,]", name):
+        return None
+    if opener == "（" and re.fullmatch("[\u30a0-\u30ff\u4e00-\u9fff]{1,6}", name):
+        return name
+    return name if name.isupper() and name.isascii() else None
+
+
 def speaker_of(text: str) -> str | None:
     """The name in "Name: line" or a short name on its own first line, if the text has one."""
     text = text.strip()
     match = _LABEL.match(text)
     if match and _looks_like_name(match.group(1)):
         return match.group(1).strip()
-    bracketed = _BRACKETED.match(text)
+    bracketed = _bracketed_name(text)
     if bracketed:
-        return bracketed.group(1).strip()
+        return bracketed
     first, _, rest = text.partition("\n")
     first, rest = first.strip(), rest.strip()
     if not rest or first.endswith(_SENTENCE_END) or not _looks_like_name(first) or rest[:1].islower():
@@ -154,6 +170,10 @@ def vietnamese(facts: dict, speaker: str, listener: str) -> tuple[str, str]:
         return ("ta", "con") if top == speaker else ("đệ tử", "sư phụ")
     if relation.startswith("ruler") and top:
         return ("ta", "ngươi") if top == speaker else ("thần", facts.get("royal", "bệ hạ"))
+    if relation.startswith("noble") and top:
+        if top == speaker:
+            return "ta", ""
+        return "tôi", {"female": "tiểu thư", "male": "ngài"}.get(gender(listener), "ngài")
     if "customer" in relation:
         if senior == listener:
             return "tôi", {"female": "chị", "male": "anh"}.get(gender(listener), "bạn")
@@ -211,7 +231,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
             return {**facts, f"{listener} gender": gender} if gender else facts
     for gender, cue in TO_ELDER.items():
         found = cue.search(line)
-        if found and not _MENTIONED.search(line[:found.start()]):
+        self_reference = found and re.match(r"(?:ちゃん|さん|様|さま)?(?:が|は|も|の|会|给|帮|也)", line[found.end():])
+        if found and not _MENTIONED.search(line[:found.start()]) and not self_reference:
             facts = {"relation": "school senior and junior", "older": listener, "guess": True}
             return {**facts, f"{listener} gender": gender} if gender else facts
     if ROUGH.search(line):
@@ -241,8 +262,8 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
         if not hangul and opening and not closing:
             continue
-        # "어머니 말씀이…": a Korean title then a space and a word is a mention; a call runs straight on or pauses.
-        if hangul and opening and not closing and re.match(r"\s+[\uac00-\ud7a3]", after):
+        # "엄마 나 오늘 늦어" calls; "어머니병원에 갔었어" or "어머니 말씀이" mentions: a call goes on with "I", "you", "why", "hurry".
+        if hangul and opening and not closing and not _KOREAN_CALL_ON.match(after):
             continue
         if opening or closing:
             return True
@@ -321,6 +342,7 @@ def parse_facts(answer: str) -> dict | None:
 
 
 NOBODY = "?"
+_KOREAN_CALL_ON = re.compile(r"\s*(?:나|저|우리|너|왜|빨리|어디|이거|지금|야|아|좀|진짜|잠깐)")
 
 
 def _calls_a_title(body: str) -> bool:
@@ -380,7 +402,13 @@ class Relationships:
         return next((who for who in recent if self._spoken[who] >= 2), recent[0] if recent else None)
 
     def address(self, text: str) -> Address | None:
-        if self.settings().target_lang not in SUPPORTED or GROUP.search(body_of(text)):
+        body = body_of(text)
+        if self.settings().target_lang not in SUPPORTED:
+            return None
+        if GROUP.search(body) and not _calls_a_title(body):
+            return None
+        # Two speakers in one subtitle ("- Where were you?\n- At home."): one note cannot fit both.
+        if re.search(r"\n\s*[-–－]", text):
             return None
         speaker = speaker_of(text)
         if not speaker:

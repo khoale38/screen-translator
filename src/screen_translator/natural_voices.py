@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from .dub import MAX_PACE, Delivery, Voice
+from .vi_numbers import spoken_numbers
 
 LANGS = {"en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi", "hr", "hu", "id", "it",
          "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi"}
@@ -46,6 +47,8 @@ def language_of(target: str) -> str | None:
 
 def prepare(text: str, lang: str) -> str:
     """The text as the model was trained to read it, wrapped in its language tag."""
+    if lang == "vi":
+        text = spoken_numbers(text)
     text = _EMOJI.sub("", unicodedata.normalize("NFKD", text)).translate(_SYMBOLS).replace("@", " at ")
     text = re.sub(r" ([,.!?;:'])", r"\1", text)
     text = re.sub(r"\s+", " ", re.sub(r"([\"'])\1+", r"\1", text)).strip()

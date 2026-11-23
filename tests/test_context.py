@@ -120,3 +120,17 @@ def test_one_spelling_per_character_and_a_leaked_item_list_is_trimmed():
     assert label_speaker("박 팀장\n보고서 줘.", "Team Leader Park: Đưa báo cáo đây.", names) == "Trưởng nhóm Park: Đưa báo cáo đây."
     assert strip_item_letter("A. Cài đặt\nB. Âm thanh\nC. Thoát", 1) == "Âm thanh"
     assert strip_item_letter("A.丽娜", 0) == "丽娜"
+
+
+def test_bracketed_names_get_one_label_and_asides_none():
+    assert label_speaker("【ソウタ】行こう！", "【Souta】Đi thôi!", {"ソウタ": "Sota"}) == "Sota: Đi thôi!"
+    assert label_speaker("（まずい……）早く逃げないと", "Phải chạy nhanh thôi") == "Phải chạy nhanh thôi"
+    assert label_speaker("(Sighs) Fine.", "Thôi được.") == "Thôi được."
+
+
+def test_all_caps_lettering_goes_to_hy_mt_in_sentence_case():
+    from screen_translator.translator import sentence_case
+
+    assert sentence_case("WAIT! WHERE ARE YOU GOING?") == "Wait! Where are you going?"
+    assert sentence_case("I TOLD YOU, THE HP POTION IS GONE.") == "I told you, the HP potion is gone."
+    assert sentence_case("Already normal.") == "Already normal."

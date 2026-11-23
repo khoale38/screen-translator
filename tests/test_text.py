@@ -157,3 +157,12 @@ def test_furigana_rows_and_a_choice_menu_beside_the_dialogue_are_kept_out():
              OcrLine("本当にありがとう。", 0.99, (0.28, 0.716, 0.25, 0.03)),
              OcrLine("はい", 0.99, (0.85, 0.716, 0.04, 0.03))]
     assert assemble(lines) == "本当にありがとう。\nはい"
+
+
+def test_hyphens_rejoin_only_a_broken_word_and_korean_laughter_survives():
+    from screen_translator.text import _join, normalize
+
+    assert _join("tomor-", "row") == "tomorrow"
+    assert _join("Wait, you-", "Don't go!") == "Wait, you- Don't go!"
+    assert normalize("ㅋㅋㅋ 진짜?") == "ㅋㅋㅋ 진짜?"
+    assert normalize("八ルカ") == "ハルカ"

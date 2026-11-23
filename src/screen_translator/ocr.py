@@ -177,19 +177,27 @@ class RapidOcr:
 
 def _with_dashes(lines: list[OcrLine], width: int, height: int) -> list[OcrLine]:
     """A two-speaker subtitle's leading dash, read as a box of its own, put back on the line it starts."""
+    def same_row(line: OcrLine, mark: OcrLine) -> bool:
+        return abs((line.box[1] + line.box[3] / 2) - (mark.box[1] + mark.box[3] / 2)) < line.box[3] / 2
+
+    def starts_row(mark: OcrLine) -> bool:
+        return not any(other is not mark and same_row(other, mark) and other.box[0] < mark.box[0] for other in lines)
+
     def small_mark(line: OcrLine) -> bool:
-        # OCR reads a lone dash as "0", "口" or "o" too; its small, squat box gives it away.
-        if line.text.strip() in ("-", "–", "—", "－", "·", "•"):
-            return True
-        tall = [other.box[3] for other in lines if other is not line and len(other.text.strip()) > 3]
-        return (len(line.text.strip()) <= 2 and bool(tall) and line.box[3] < 0.45 * max(tall)
-                and line.box[2] * width < 1.5 * line.box[3] * height)
+        # OCR also reads a lone subtitle dash as "0", "口" or "一"; only such a squat glyph opening its row counts.
+        text = line.text.strip()
+        if text in ("-", "–", "—", "－", "·", "•"):
+            return starts_row(line)
+        rows = [other.box[3] for other in lines if other is not line and same_row(other, line)]
+        return (text in ("0", "o", "O", "口", "一", "ー") and bool(rows) and line.box[3] < 0.6 * max(rows)
+                and line.box[2] * width < 1.5 * line.box[3] * height and starts_row(line))
 
     dashes = [line for line in lines if small_mark(line)]
     kept = [line for line in lines if line not in dashes]
     for dash in dashes:
-        row = [line for line in kept if abs((line.box[1] + line.box[3] / 2) - (dash.box[1] + dash.box[3] / 2))
-               < line.box[3] / 2 and 0 <= (line.box[0] - dash.box[0] - dash.box[2]) * width <= 1.5 * line.box[3] * height]
+        row = [line for line in kept if same_row(line, dash)
+               and -0.5 * line.box[3] * height <= (line.box[0] - dash.box[0] - dash.box[2]) * width
+               <= 1.5 * line.box[3] * height]
         if row:
             line = min(row, key=lambda item: item.box[0])
             right = line.box[0] + line.box[2]

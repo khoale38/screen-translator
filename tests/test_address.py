@@ -329,4 +329,20 @@ def test_naming_a_speaker_never_asks_the_translator():
     store = SettingsStore(pathlib.Path(tempfile.mkdtemp()) / "settings.json")
     store.update({"target_lang": "vi"})
     pipeline = Pipeline(store, lambda e: None)
-    assert pipeline._labelled("村長\nよく来たな。", "Con đến rồi à.", NoCalls()) == "村長: Con đến rồi à."
+    assert pipeline._labelled("村長\nよく来たな。", "Con đến rồi à.", NoCalls()) == "Trưởng làng: Con đến rồi à."
+    assert pipeline._labelled("萧寒\n走吧。", "Đi thôi.", NoCalls()) == "Đi thôi."
+
+
+def test_round_7_cues_parent_gender_korean_calls_nobles_and_groups():
+    assert vietnamese(guess_facts("妈，我回来了！", "the speaker", "the listener"), "the speaker", "the listener") == ("con", "mẹ")
+    assert guess_facts("엄마 나 오늘 늦어.", "the speaker", "the listener")["senior"] == "the listener"
+    assert guess_facts("어머니병원에갔었어.", "the speaker", "the listener") is None
+    assert guess_facts("Young Master, the carriage is ready.", "Maid", "Kai")["relation"] == "noble and servant"
+    lady = guess_facts("My lady, the road is clear.", "Knight", "Elena")
+    assert vietnamese(lady, "Knight", "Elena") == ("tôi", "tiểu thư")
+    assert guess_facts("お姉ちゃんが守ってあげるからね。", "the speaker", "the listener") is None
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    assert rel.address("You guys are the best. Mom, can I go?") is not None
+    assert rel.address("- Don't lie to me, Tom.\n- I'm not lying, Mom!") is None
+    rel.close()

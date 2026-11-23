@@ -262,6 +262,7 @@ class Pipeline:
     def clear_context(self) -> None:
         self.context.clear()
         self.relationships.clear()
+        self._last_voice, self._previous_voice, self._previous_pitch = None, "", 0.0
         self._cache.clear()
         self._reset_stabilizer.set()
         self.emit({"type": "clear"})
@@ -554,7 +555,7 @@ class Pipeline:
                     screen_height = settings.screen_height or frame.height
                     blocks = [
                         b for b in group_blocks(ocr.recognize(frame, settings.source_lang), frame.width, frame.height)
-                        if len(b.text) >= settings.min_text_chars
+                        if (len(b.text) >= settings.min_text_chars or re.fullmatch("[\u3040-\u9fff\uac00-\ud7a3][!?！？。…]*", b.text))
                         and b.line_height * screen_height >= settings.min_text_px
                         and not already_in(settings.target_lang, b.text)
                         and not _cut_off(b, frame.height)
@@ -866,7 +867,8 @@ class Pipeline:
                 self._names[name] = fixed
             elif written and not NOT_LATIN.search(written):
                 self._names[name] = written
-        return label_speaker(source, translation, self._names)
+        latin_target = self.store.settings.target_lang not in ("ja", "zh", "zh-Hant", "ko")
+        return label_speaker(source, translation, self._names, raw_names=not latin_target)
 
     def _fixed_name(self, name: str) -> str | None:
         role = role_label(name) if self.store.settings.target_lang == "vi" else None
