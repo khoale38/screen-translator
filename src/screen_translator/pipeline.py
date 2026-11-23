@@ -150,8 +150,16 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
 
 
 def _without_hanzi(translation: str) -> str:
-    """Hanzi still left after asking again: drawn on screen they mean nothing to a Vietnamese reader."""
-    return re.sub(r"\s{2,}", " ", re.sub(r"[\u3400-\u9fff]+", " ", translation)).strip()
+    """Hanzi still left after asking again: a name is read in Hán-Việt, anything else means nothing to a reader."""
+    def read(run: str) -> str:
+        return (han_viet(run) if 2 <= len(run) <= 3 and run[0] in _COMMON_SURNAMES else None) or " "
+
+    return re.sub(r"\s{2,}", " ", re.sub(r"[\u3400-\u9fff]+", lambda m: read(m.group(0)), translation)).strip()
+
+
+_COMMON_SURNAMES = set("王李张張刘劉陈陳杨楊黄黃赵趙吴吳周徐孙孫马馬朱胡郭何高林罗羅郑鄭梁谢謝宋唐许許韩韓冯馮邓鄧曹彭曾萧蕭田董袁潘蒋蔣"
+                       "蔡余杜叶葉程苏蘇魏吕呂丁任沈姚卢盧姜崔钟鍾谭譚陆陸汪范金石廖贾賈夏韦韋傅方白邹鄒孟熊秦邱江尹薛段雷侯龙龍史陶黎"
+                       "顾顧毛邵万萬钱錢严嚴武戴莫孔向汤湯慕上欧歐司令楚燕凌柳云雲叶")
 
 
 def _body(translation: str) -> str:
@@ -162,7 +170,7 @@ def _body(translation: str) -> str:
 def _punctuated(text: str) -> str:
     """Recognized speech without spaces or commas, with a comma after a call it opens or ends with ("네, 마마.")."""
     # Not "할아버지어디가셨어" or "형지금없어요": an honorific verb or "isn't here" means the title is talked about.
-    if not re.search(r"셨|시[어었고는]|계셔|계세|께서|없어|안\s*계", text):
+    if not re.search(r"셨|시[어었고는지]|세요|계셔|계세|께서|주무|없어|안\s*계", text):
         text = re.sub(r"^(\W*(?:할머니|할아버지|엄마|아빠|오빠|언니|누나|형|선배님|선배|선생님|사장님|부장님|팀장님))"
                       r"(?=(?:저|나|우리|빨리|왜|어디|지금|이거|잠깐|같이)[가-힣])", r"\1, ", text)
     text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])(?!세요)", r"\1, ", text)
@@ -922,6 +930,8 @@ class Pipeline:
                               heard.get("paused", True)))
 
     def _speech_line(self, heard: dict, translation: str, final: bool, **extra) -> None:
+        if final and self._leaks(translation):
+            translation = re.sub(r"[\u3040-\u30ff\uac00-\ud7a3]+", lambda m: romanized(m.group(0)) or "", translation)
         self.emit({"type": "line", "id": f"speech-{heard['id']}", "area": "speech", "source": heard["text"],
                    "translation": translation, "final": final, **extra})
 
@@ -952,6 +962,8 @@ class Pipeline:
         if self.store.settings.target_lang != "vi":
             return translation
         translation = re.sub(r"ㅋ{2,}\s*", "haha ", re.sub(r"[ㅠㅜ]{2,}\s*", "huhu ", translation))
+        translation = re.sub(r"ㅎ{2,}\s*", "hehe ", translation)
+        translation = re.sub(r"(?<![가-힣ㄱ-ㅎ])[ㄱ-ㅎ](?![가-힣ㄱ-ㅎ])", "", translation)
         translation = re.sub(r"(?<![가-힣])ㅇㅋ", "ok", translation).replace("ㅇㅇ", "ừ").replace("ㄴㄴ", "không").strip()
         if "\n" in translation:
             return "\n".join(self._capitalised(line) for line in translation.split("\n"))
@@ -1075,18 +1087,20 @@ class Pipeline:
                 # Hangul and kana left in are spelled out ("떡볶이" is tteokbokki); hanzi would be read as nothing.
                 translation = re.sub(r"[\u3040-\u30ff\uac00-\ud7a3]+", lambda m: romanized(m.group(0)) or "", translation)
                 translation = re.sub(r"[\u3400-\u9fff]+", "", translation).strip()
-        return unlabelled(heard["text"], self._labelled(heard["text"], translation, translator))
+        # The label goes before labelling, which would turn "Con: Mẹ ơi…" into a spoken call "Con, mẹ ơi…".
+        return self._labelled(heard["text"], unlabelled(heard["text"], translation), translator)
 
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
         """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""
         earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
         # HY-MT can answer a short or garbled line with the last few translations strung together.
-        strung = any(len(line) >= 8 and line in translation and len(translation) > 1.5 * len(line) for line in earlier)
+        # Two or more earlier lines inside one answer; one alone may be a real line starting the same ("Xin chào, ai…").
+        strung = sum(1 for line in earlier if len(line) >= 8 and line in translation) >= 2
         if translation not in earlier and not strung:
             return translation
         again = self._plainly(translator, heard["text"])
         # Still the earlier line: better unsaid than said for the wrong person.
-        return "" if again in earlier or any(len(line) >= 8 and line in again for line in earlier) else again
+        return "" if again in earlier or sum(1 for line in earlier if len(line) >= 8 and line in again) >= 2 else again
 
     def _plainly(self, translator: Translator, text: str, address=None) -> str:
         """The line asked again on its own, with no earlier lines to copy from."""

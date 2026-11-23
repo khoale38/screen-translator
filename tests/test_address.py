@@ -531,9 +531,19 @@ def test_round_14_elders_speaking_of_themselves_and_honorific_mentions():
     from screen_translator.translator import label_speaker
 
     said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
-    assert said("姐姐我请你吃饭") == ("chị", "em")
+    assert said("姐姐我请你吃饭") is None and said("姐姐我好想你啊") is None
     assert said("爸爸我给你买了书包") is None
     assert said("奶奶我回来了") == ("cháu", "bà")
     assert [_punctuated(t) for t in ("할아버지어디가셨어", "형지금없어요", "언니같이가")] == [
         "할아버지어디가셨어", "형지금없어요", "언니, 같이가"]
     assert label_speaker("哥你今天怎么这么早", "Anh: Hôm nay em về sớm thế à?") == "Anh, hôm nay em về sớm thế à?"
+    assert label_speaker("提示 按E键调查", "Gợi ý: Nhấn E để điều tra") == "Gợi ý: Nhấn E để điều tra"
+
+
+def test_round_15_polite_calls_and_hanzi_names_after_a_leak():
+    from screen_translator.pipeline import _without_hanzi
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("师父我替您报仇了") == ("đệ tử", "sư phụ")
+    assert said("姐姐我好想你啊") is None
+    assert _without_hanzi("Anh,李明 đang tìm anh đấy.") == "Anh,Lý Minh đang tìm anh đấy."

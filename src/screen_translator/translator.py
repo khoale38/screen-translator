@@ -4,7 +4,7 @@ import re
 from typing import Callable, Protocol
 
 from . import languages
-from .address import _BRACKETED, _LABEL, body_of, speaker_of
+from .address import _BRACKETED, _LABEL, body_of, called_title, speaker_of
 from .romanize import NOT_LATIN
 from .context import Turn
 
@@ -233,6 +233,8 @@ def clean_output(raw: str) -> str:
     introduces = first.rstrip().endswith((":", "：")) and len(first.split()) >= 4
     if rest.strip() and (introduces or _PREAMBLE.match(first)):
         text = rest.strip()
+    # A small model stuck on one word ("ba ba ba …") and markdown bold from HY-MT.
+    text = re.sub(r"\b(\w+)(?:[\s,]+\1\b){3,}", r"\1", text).replace("**", "")
     pairs = {'"': '"', "'": "'", "“": "”", "‘": "’"}
     if len(text) >= 2 and pairs.get(text[0]) == text[-1]:
         text = text[1:-1].strip()
@@ -322,10 +324,17 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
         return f"{known}: {labelled.group(2)}" if known else labelled.group(2)
     if name and name in source.lstrip()[:len(name) + 2] and not labelled:
         return f"{shown}: {translation.strip()}" if shown else translation.strip()
-    if labelled and not name and not re.search("[:：]", source) and len(labelled.group(1).split()) <= 2:
+    if labelled and not name and not re.search("[:：]", source) and len(labelled.group(1).split()) <= 2 \
+            and called_title(source):
         # "哥你今天怎么这么早" answered "Anh: Hôm nay…": the line calls its listener, it does not name its speaker.
         rest = labelled.group(2).strip()
-        return f"{labelled.group(1).strip()}, {rest[:1].lower()}{rest[1:]}"
+        words = rest.split()
+        # Lower-case an ordinary Vietnamese word ("Hôm nay" → "hôm nay"), not a name ("Lý Minh", "Tom").
+        name = len(words) > 1 and words[1][:1].isupper() or words[:1] and words[0].isascii() and words[0].lower() not in (
+            "anh", "em", "con", "ta", "ba", "me")
+        if words and not name:
+            rest = rest[:1].lower() + rest[1:]
+        return f"{labelled.group(1).strip()}, {rest}"
     return translation
 
 

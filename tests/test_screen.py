@@ -520,3 +520,30 @@ def test_round_13_one_syllable_lines_are_not_name_tabs():
     assert assemble(rows, width=1280, height=720) == "等等我！嗯。"
     rows = [px("姫", 100, 560, 30, 30, 1280, 720), px("お待ちください！", 100, 600, 600, 32, 1280, 720)]
     assert assemble(rows, width=1280, height=720).split("\n")[0] == "姫"
+
+
+def test_round_15_loops_markdown_jamo_and_katakana_name_ends():
+    import pathlib
+    import tempfile
+
+    from screen_translator.config import SettingsStore
+    from screen_translator.pipeline import Pipeline
+    from screen_translator.text import normalize
+    from screen_translator.translator import clean_output
+
+    assert clean_output("Ông ấy nhờ anh ba ba ba ba ba ba") == "Ông ấy nhờ anh ba"
+    assert clean_output("**Trận chiến Lượt thứ 3!**") == "Trận chiến Lượt thứ 3!"
+    assert normalize("【ミ力】行くよ") == "【ミカ】行くよ" and normalize("体力") == "体力"
+    store = SettingsStore(pathlib.Path(tempfile.mkdtemp()) / "settings.json")
+    store.update({"target_lang": "vi"})
+    assert Pipeline(store, lambda e: None)._capitalised("ㅎㅎ vui ㅎ") == "Hehe vui"
+
+
+def test_round_15_centred_one_character_calls_and_orphan_rows():
+    from screen_translator.text import assemble
+
+    rows = [px("妈", 595, 560, 79, 67, 1280, 720), px("我回来了。", 537, 610, 187, 67, 1280, 720)]
+    assert assemble(rows, width=1280, height=720) == "妈，我回来了。"
+    rows = [px("李明", 100, 500, 80, 40, 1280, 720), px("天色已晚，我们就在这破庙里歇一晚", 100, 550, 700, 40, 1280, 720),
+            px("吧。", 100, 595, 60, 40, 1280, 720), px("按空格键继续", 1000, 680, 200, 30, 1280, 720)]
+    assert assemble(rows, width=1280, height=720).split("\n")[-1] == "按空格键继续"

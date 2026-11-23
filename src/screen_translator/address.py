@@ -373,7 +373,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
             return {"relation": "school senior and junior", "older": listener, "guess": True}
         # An elder speaking of themself to the listener: "师兄替你挡着", "お姉ちゃんが守ってあげる", "오빠만 믿어".
         opening = not line[:found.start()].strip(" \"'「『(-—…")
-        if opening and gender and _SECOND_PERSON.search(line[found.end():]):
+        glued_i = re.match(r"\s*(?:我|私|僕|俺|나|내|저)", line[found.end():])
+        if opening and gender and not glued_i and _SECOND_PERSON.search(line[found.end():]):
             return {"relation": "school senior and junior", "older": speaker, f"{speaker} gender": gender,
                     "guess": True, "martial": martial}
     for gender, cue in COUPLE.items():
@@ -419,9 +420,10 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
         palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后|爹|娘|爸|妈", match.group(0))
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
-        # But "姐姐我请你", "爸爸我给你买了": an elder's title before 我 with 你 after is the elder speaking of themself.
+        # A title before 我 with 你 later is either side ("姐姐我请你" from the elder, "姐姐我好想你" from the younger):
+        # no cue for it either way.
         speaks_on = re.match(r"\s*(?:你|您)", after) or (
-            re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你|您", after))
+            re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue
         # "엄마아빠다오셨어", "어머니아까전화하셨는데": a parent mentioned with an honorific verb, not called.

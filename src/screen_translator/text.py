@@ -15,6 +15,9 @@ _KANA_FIX = {"八": "ハ", "口": "ロ", "工": "エ", "力": "カ", "夕": "タ
 _KANA_LOOKALIKE = re.compile("(?<=[ァ-ヴー])[八口工力夕](?=[ァ-ヴー])"
                              "|(?:(?<=^)|(?<=[【「『\\[(（\\s]))[八口工力夕](?=[ァ-ヴー]{1,5}(?:$|[】」』\\]):：)）\\s]))",
                              re.MULTILINE)
+# "ミ力" is ミカ: a look-alike closing a short katakana name on its own or in a label.
+_KANA_NAME_END = re.compile("(?:(?<=^)|(?<=[【「『\\[(（\\s]))([ァ-ヴー]{1,5})([八口工力夕])(?=$|[】」』\\]):：)）\\s])",
+                            re.MULTILINE)
 _SPACES = re.compile(r"[^\S\n]+")
 _BREAKS = re.compile(r" ?\n[\s]*")
 _DECORATION = "•·●○◦◆◇■□▪▫►▶◀◄▲▼★☆♦♥♠♣※→←↑↓|_=~"
@@ -26,6 +29,7 @@ def normalize(text: str) -> str:
     text = "".join(part if i % 2 else unicodedata.normalize("NFKC", part) for i, part in enumerate(parts))
     # RapidOCR reads katakana ハ, ロ, エ, カ, タ as look-alike kanji inside a katakana word or a short katakana name.
     text = _KANA_LOOKALIKE.sub(lambda m: _KANA_FIX[m.group(0)], text)
+    text = _KANA_NAME_END.sub(lambda m: m.group(1) + _KANA_FIX[m.group(2)], text)
     # OCR reads a vertical "。" as a degree sign after Japanese and Chinese text ("から°").
     text = re.sub("(?<=[\u3040-\u30ff\u4e00-\u9fff])°(?![CF])", "。", text)
     return _BREAKS.sub("\n", _SPACES.sub(" ", text)).strip()
@@ -80,7 +84,7 @@ def _stacked(short: OcrLine, line: OcrLine) -> bool:
     height = max(short.box[3], line.box[3])
     gap = max(line.box[1] - (short.box[1] + short.box[3]), short.box[1] - (line.box[1] + line.box[3]))
     centre = abs((short.box[0] + short.box[2] / 2) - (line.box[0] + line.box[2] / 2))
-    return -0.3 * height <= gap <= 1.2 * height and (abs(short.box[0] - line.box[0]) < 2 * height or centre < 2 * height)
+    return -0.5 * height <= gap <= 1.2 * height and (abs(short.box[0] - line.box[0]) < 2 * height or centre < 2 * height)
 
 
 def _same_row(a: OcrLine, b: OcrLine) -> bool:
@@ -140,10 +144,13 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         same_baseline = previous is not None and abs(
             (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
-        lone = previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip())
+        lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip())
+                and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0]))
         if lone and not same_baseline:
             # "哥" centred over "等等我！" calls the listener; only a role set flush left over its line names the speaker.
-            flush = abs(previous[1].box[0] - row[0].box[0]) * frame_w < row[0].box[3] * frame_h
+            left = abs(previous[1].box[0] - row[0].box[0])
+            centre = abs((previous[1].box[0] + previous[1].box[2] / 2) - (row[0].box[0] + row[0].box[2] / 2))
+            flush = left * frame_w < row[0].box[3] * frame_h and left < centre
             if not (flush and _ONE_CHARACTER_NAME.fullmatch(previous[0].strip())):
                 ends = previous[0].strip()[-1:] in "，,。.！!？?、…~"
                 comma = "" if ends else ", " if re.search("[\uac00-\ud7a3]", previous[0]) else "，"
