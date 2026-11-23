@@ -84,7 +84,7 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
 _TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
-    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "누나", "오빠", "형",
     "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
@@ -169,7 +169,8 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
             left = abs(previous[1].box[0] - row[0].box[0])
             centre = abs((previous[1].box[0] + previous[1].box[2] / 2) - (row[0].box[0] + row[0].box[2] / 2))
             flush = left * frame_w < row[0].box[3] * frame_h and left < centre
-            if not (flush and _ONE_CHARACTER_NAME.fullmatch(previous[0].strip())):
+            tab = _ONE_CHARACTER_NAME.fullmatch(previous[0].strip()) or len(previous[0].strip().strip("，,。.！!？?、…~")) > 1
+            if not (flush and tab):
                 ends = previous[0].strip()[-1:] in "，,。.！!？?、…~"
                 comma = "" if ends else ", " if re.search("[\uac00-\ud7a3]", previous[0]) else "，"
                 paragraphs[-1] = paragraphs[-1] + comma + row_text if not ends else _join(paragraphs[-1], row_text)
@@ -204,7 +205,6 @@ def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: floa
                  asked: bool, menu_left: float | None) -> bool:
     """Short choices stacked under a prompt or each other; a centred two-row subtitle is one line.
 
-    Menu rows share a left edge but not a centre; the wrapped rows of a centred subtitle share a centre.
     """
     above_text, above = previous[0].strip(), previous[1]
     height = max(above.box[3], below.box[3]) * frame_h
@@ -218,8 +218,7 @@ def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: floa
     indented = (below.box[0] - above.box[0]) * frame_w > 0.5 * height and above_text[-1:] in "。.!！:：?？"
     if left >= 1.5 * height and not indented:
         return False
-    flush = left < 0.15 * height and centre > 0.15 * height and short(above_text)
-    return above_text[-1:] in "?？" or asked and short(above_text) or flush or indented
+    return above_text[-1:] in "?？" or asked and short(above_text) or indented
 
 
 def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
@@ -414,7 +413,8 @@ def group_blocks(lines: list[OcrLine], width: int = 1, height: int = 1, min_conf
             # A menu row stays apart from the rows above and below it, not from text beside it on its own row.
             stacked = abs((pixels[i][1] + pixels[i][3] / 2) - (pixels[j][1] + pixels[j][3] / 2)) >= 0.5 * max(
                 pixels[i][3], pixels[j][3])
-            if i not in ruby and j not in ruby and not ((i in listed or j in listed) and stacked) \
+            stat = not re.search(r"[^\W\d_]", pixels[i][5]) or not re.search(r"[^\W\d_]", pixels[j][5])
+            if i not in ruby and j not in ruby and not ((i in listed or j in listed) and stacked and not stat) \
                     and _same_block(pixels[i], pixels[j]):
                 parent[root(i)] = root(j)
     for small, base in ruby.items():
@@ -494,7 +494,8 @@ def _list_rows(pixels: list[tuple]) -> set[int]:
             height = max(a[3], b[3])
             pitch = (b[1] + b[3] / 2) - (a[1] + a[3] / 2)
             lined = abs(a[0] - b[0]) < 0.5 * height or abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < 0.5 * height
-            if min(a[3], b[3]) >= 0.85 * height and lined and 1.2 * height <= pitch <= 4 * height:
+            # Menus are spaced wider than the lines of a speech bubble (1.1-1.4 line heights).
+            if min(a[3], b[3]) >= 0.85 * height and lined and 1.5 * height <= pitch <= 4 * height:
                 chain.append(i)
         if len(chain) >= 3:
             pitches = [(pixels[b][1] - pixels[a][1]) for a, b in zip(chain, chain[1:])]

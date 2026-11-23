@@ -606,3 +606,17 @@ def test_round_18_menus_stay_apart_in_both_modes_and_family_titles_call():
     call = [px("Mom", 600, 560, 80, 40, W, H), px("I'm home.", 560, 610, 160, 44, W, H)]
     assert assemble(call, width=W, height=H, menus=True) == "Mom, I'm home."
     assert spoken_numbers("3:45 PM, 12 AM") == "ba giờ bốn mươi lăm chiều, mười hai giờ đêm"
+
+
+def test_round_19_bubbles_and_dialogue_boxes_are_not_menus_and_two_character_tabs_name():
+    from screen_translator.text import assemble
+
+    W, H = 1280, 720
+    box = [px("如果明天", 100, 500, 160, 40, W, H), px("还不回来的话", 100, 545, 240, 40, W, H),
+           px("我们就去找他。", 100, 590, 280, 40, W, H)]
+    assert assemble(box, width=W, height=H, menus=True) == "如果明天还不回来的话我们就去找他。"
+    tab = [px("妈妈", 100, 480, 80, 40, W, H), px("你今天怎么回来这么晚？", 100, 530, 440, 40, W, H)]
+    assert assemble(tab, width=W, height=H, menus=True) == "妈妈\n你今天怎么回来这么晚？"
+    W, H = 1920, 1080
+    bubble = [px("WAIT", 900, 300, 100, 40, W, H), px("RIGHT HERE", 860, 345, 180, 40, W, H), px("NOW", 910, 390, 80, 40, W, H)]
+    assert len(group_blocks(bubble, W, H)) == 1

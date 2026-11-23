@@ -102,6 +102,7 @@ ROLES_VI = {
     "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
     "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
     "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
+    "우편함": "Hộp thư", "ログインボーナス": "Thưởng đăng nhập", "お知らせ": "Thông báo", "公告": "Thông báo",
     "알림": "Thông báo", "공지": "Thông báo", "안내": "Hướng dẫn", "경고": "Cảnh báo", "보상": "Phần thưởng",
     "퀘스트": "Nhiệm vụ", "이벤트": "Sự kiện", "우편": "Thư", "파티 초대": "Mời nhóm", "친구 요청": "Lời mời kết bạn",
     "길드 초대": "Mời bang hội", "執事": "Quản gia", "鍛冶屋": "Thợ rèn", "謎の男": "Người đàn ông bí ẩn",
@@ -114,7 +115,7 @@ ROLES_VI = {
     "노인": "Ông lão", "할멈": "Bà lão", "아이": "Đứa trẻ", "소녀": "Cô gái", "소년": "Cậu bé", "남자": "Người đàn ông",
     "여자": "Người phụ nữ", "전하": "Điện hạ", "중전": "Trung điện", "중전마마": "Trung điện nương nương", "대비": "Đại phi", "세자": "Thế tử",
     "상궁": "Thượng cung", "내관": "Nội quan", "왕": "Vua", "姫": "Công chúa", "兄": "Anh", "爹": "Bố",
-    "娘": "Mẹ", "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
+    "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
     "大人": "Đại nhân", "掌柜": "Chưởng quỹ", "长老": "Trưởng lão", "宗主": "Tông chủ",
 }
 

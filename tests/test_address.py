@@ -586,3 +586,17 @@ def test_round_18_becoming_a_role_young_man_quotes_and_headings():
         assert said(line) is None, line
     assert label_speaker("システム\nクエスト：スライムを10匹倒せ", "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime.") == \
         "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime."
+
+
+def test_round_19_calls_beat_self_roles_and_parent_words_are_not_swears():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("老公，我做妈妈的难道不心疼孩子吗？") == ("em", "anh")
+    assert said("爸，我当爸爸以后才明白你有多辛苦。") == ("con", "bố")
+    assert said("作为妈妈，我必须这么做。") == ("mẹ", "con")
+    assert said("Son, listen, this is important.") == ("", "con")
+    assert said("Son, Kane and Kulusevski all scored.") is None
+    for line in ("亲爱的，妈妈回来了。", "你都当妈妈的人了", "妈妈的话你要听", "师傅，去火车站。"):
+        assert said(line) is None, line
+    assert said("아들아밥은먹고다니니?") == ("", "con")
+    assert said("师傅，弟子知错了。") == ("đệ tử", "sư phụ")
+    assert said("お姉ちゃん早く来て！") == ("em", "chị")
