@@ -196,6 +196,14 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         menu = menus and previous is not None and not same_baseline and (_choice_rows(
             previous, row[0], row_text, frame_w, frame_h, asked, menu_left) or id(row[0]) in listed_lines)
         menu_left = row[0].box[0] if menu else None
+        # "DAD / NEVER CAME HOME THAT NIGHT": a family word as the subject of a narration line, not a speaker's tab.
+        subject_row = previous is not None and previous[0].strip() in _TITLE_WORDS and re.match(
+            r"(?:NEVER|ALWAYS|CAME|WENT|WAS|WERE|IS|HAD|HAS|SAID|TOLD|LEFT|DIED|WORKED|USED|WOULD|COULD|ONCE|STILL|"
+            r"LOVED|HATED|KNEW|THOUGHT|BROKE|LOST|FOUND|GAVE|TOOK|MADE)\b", row_text, re.I)
+        if subject_row and not same_baseline:
+            paragraphs[-1] = _join(paragraphs[-1], row_text)
+            previous = (paragraphs[-1], row[0], width)
+            continue
         if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(
                 *previous, row[0], width, frame_w, frame_h, menus):
             # Not "DAD / WILL KILL US", where the title is the subject of the next row.

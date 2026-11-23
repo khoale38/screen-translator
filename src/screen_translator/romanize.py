@@ -179,6 +179,8 @@ def role_label(name: str) -> str | None:
     name = name.strip()
     if name in ROLES_VI:
         return ROLES_VI[name]
+    if name.isascii() and name.isupper() and name.title() in ROLES_VI:
+        return ROLES_VI[name.title()]
     surname, _, title = name.partition(" ")
     if title in ROLES_VI and len(surname) == 1:
         return f"{ROLES_VI[title]} {_SURNAMES.get(surname) or romanized(surname) or surname}"

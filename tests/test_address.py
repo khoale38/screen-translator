@@ -648,11 +648,26 @@ def test_round_23_parents_at_the_clinic_in_laws_and_children_mentioning_hospital
 
 def test_round_24_doctors_and_teachers_to_parents_kin_words_and_caps_tabs():
     said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
-    for line in ("어머님, 걱정 마세요.", "お母さん、お薬を出しておきますね。", "妈妈，您放心，孩子只是感冒。", "선생님, 우리 애가 요즘 힘들어해요."):
+    for line in ("어머님, 검사 결과 나왔습니다.", "お母さん、お薬を出しておきますね。", "선생님, 우리 애가 요즘 힘들어해요."):
         assert said(line) is None, line
+    # A daughter-in-law says these too, so they keep the family cue.
+    assert said("어머님, 걱정 마세요. 제가 다 할게요.") == ("con", "mẹ")
+    assert said("妈，您别担心，孩子我来带。") == ("con", "mẹ")
     assert said("어머님, 식사하세요.") == ("con", "mẹ")
     assert said("舅舅，你来了！") == ("cháu", "cậu") and said("이모, 배고파요.") == ("cháu", "dì")
     assert said("장모님제가할게요.") == ("con", "mẹ")
     assert said("てめえ、ぶっ飛ばすぞ！") == ("tao", "mày")
     assert speaker_of("MOM\nWHERE HAVE YOU BEEN?") == "MOM"
     assert speaker_of("OBJECTIVE\nReach the extraction point.") is None
+
+
+def test_round_25_in_laws_first_kin_words_kiddo_and_non_speakers():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("어머님, 내일 약속 있으세요?") == ("con", "mẹ")
+    assert said("お母さん、学校に行ってきます！") == ("con", "mẹ")
+    assert said("외삼촌, 오셨어요?") == ("cháu", "cậu")
+    assert vietnamese(guess_facts("Come here, kiddo.", "Grandpa", "Tim"), "Grandpa", "Tim")[1] == "cháu"
+    assert said("岳父大人，请喝茶。") == ("con", "bố")
+    assert said("Okaa-san, I'm home!") == ("con", "mẹ")
+    for head in ("TV-14\n오늘 방송은…", "KBS2\n다음 이야기", "그날 밤\n아무도 없었다", "나\n선배, 같이 가요"):
+        assert speaker_of(head) is None, head

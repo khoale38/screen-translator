@@ -246,7 +246,14 @@ def sentence_case(text: str) -> str:
     letters = [ch for ch in text if ch.isascii() and ch.isalpha()]
     if len(letters) < 8 or sum(ch.isupper() for ch in letters) < 0.8 * len(letters):
         return text
-    lowered = re.sub(r"[A-Za-z][A-Za-z0-9]*", lambda m: m.group(0) if m.group(0) in _ACRONYMS else m.group(0).lower(), text)
+    def lower(m: re.Match) -> str:
+        word = m.group(0)
+        # Keys, buttons and ranks stay: "[E]", "PRESS X", "RANK S". An article "A" before a word does not.
+        single = len(word) == 1 and (word != "A" or not re.match(r"\s+[A-Za-z]", text[m.end():]))
+        bracketed = text[m.start() - 1:m.start()] == "[" and text[m.end():m.end() + 1] == "]"
+        return word if word in _ACRONYMS or single or bracketed else word.lower()
+
+    lowered = re.sub(r"[A-Za-z][A-Za-z0-9]*", lower, text)
     lowered = re.sub(r"\bi\b", "I", lowered)
     return re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), lowered)
 

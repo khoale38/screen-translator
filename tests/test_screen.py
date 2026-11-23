@@ -703,3 +703,15 @@ def test_round_24_centred_calls_join_and_caps_tabs_stay_tabs():
     mom = [px("MOM", 200, 800, 90, 36, W, H), px("WHERE HAVE YOU BEEN?", 200, 846, 420, 36, W, H)]
     assert [b.text for b in group_blocks(mom, W, H)] == ["MOM\nWHERE HAVE YOU BEEN?"]
     assert sentence_case("PRESS RT TO DASH AND L3 TO SPRINT") == "Press RT to dash and L3 to sprint"
+
+
+def test_round_25_narration_subjects_keys_and_buttons():
+    from screen_translator.pipeline import Pipeline
+    from screen_translator.translator import sentence_case
+
+    W, H = 1920, 1080
+    narration = [px("DAD", 200, 300, 80, 36, W, H), px("NEVER CAME HOME THAT NIGHT.", 200, 346, 520, 36, W, H)]
+    assert [b.text for b in group_blocks(narration, W, H)] == ["DAD NEVER CAME HOME THAT NIGHT."]
+    assert sentence_case("PRESS [E] TO OPEN THE DOOR") == "Press [E] to open the door"
+    assert sentence_case("GET A SWORD FROM THE SHOP") == "Get a sword from the shop"
+    assert Pipeline._keys_kept("PRESS [F] TO TALK", "Nhấn [Đ] để nói chuyện") == "Nhấn [F] để nói chuyện"

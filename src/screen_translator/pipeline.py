@@ -736,7 +736,7 @@ class Pipeline:
                 translation = self._labelled(source, translation, translator)
             # A line answered with an earlier line's translation was copied from the history.
             copied = any(translation == turn.translation for turn in history if turn.source != source)
-            translation = self._capitalised(translation)
+            translation = self._keys_kept(source, self._capitalised(translation))
             row = re.match(r"\s*([^\W\d_][^:：\n]{0,15})[:：]\s*(\S.*)", translation)
             if self._leaks(translation) and row and not NOT_LATIN.search(row.group(1)) and re.match(
                     r"[^:：\n]{1,8}[:：]", source):
@@ -838,6 +838,10 @@ class Pipeline:
         if not self._wait_for_translator():
             return
         recognizer, vad = self.recognizer_factory()
+        if self.store.settings.source_lang not in ("auto", "zh", "zh-Hant", "en", "ja", "ko", "yue"):
+            # SenseVoice hears only these; anything else comes out as confident nonsense.
+            self.emit({"type": "notice", "text": "Speech can only be heard in Chinese, Cantonese, English, Japanese and "
+                                                 "Korean. For other languages, translate the video's subtitles instead."})
         source = self.audio_factory()
         self._report_devices(None)
         segmenter = Segmenter(vad)
@@ -975,6 +979,16 @@ class Pipeline:
             translation = without_echo(source, translation)
         return label_speaker(source, translation, self._names, raw_names=not latin_target)
 
+    @staticmethod
+    def _keys_kept(source: str, translation: str) -> str:
+        """Keys in brackets ("[F]") as the game wrote them; a model may rewrite the letter ("[Đ]")."""
+        keys = re.findall(r"\[([A-Za-z0-9]{1,3})\]", source)
+        found = re.findall(r"\[([^\]\s]{1,3})\]", translation)
+        if not keys or len(keys) != len(found):
+            return translation
+        it = iter(keys)
+        return re.sub(r"\[([^\]\s]{1,3})\]", lambda m: f"[{next(it)}]", translation)
+
     def _capitalised(self, translation: str) -> str:
         """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
         if self.store.settings.target_lang != "vi":
@@ -1111,7 +1125,12 @@ class Pipeline:
 
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
         """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""
-        earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
+        turns = self.context.turns()
+        last = turns[-1].translation.strip() if turns and _bare(turns[-1].source) != _bare(heard["text"]) else ""
+        if len(last) >= 12 and translation.strip().startswith(last) and len(translation.strip()) > len(last) + 3:
+            # HY-MT can repeat the previous line before the new one: keep only the new part.
+            translation = translation.strip()[len(last):].lstrip(" ,.;:")
+        earlier = {turn.translation for turn in turns if _bare(turn.source) != _bare(heard["text"])}
         # HY-MT can answer a short or garbled line with the last few translations strung together.
         # Two or more earlier lines inside one answer; one alone may be a real line starting the same ("Xin chào, ai…").
         strung = sum(1 for line in earlier if len(line) >= 8 and line in translation) >= 2
