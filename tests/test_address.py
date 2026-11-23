@@ -89,7 +89,8 @@ def test_the_pronouns_ride_with_the_line_and_stay_in_the_history():
     assert messages[-1]["content"].endswith('says "tao" for I/me and "mày" for you.)')
     assert messages[-1]["item"] == "Lamar: You owe me."
     [hy] = for_hy_mt(messages)
-    assert "I 翻译成 tao\n" in hy["content"] and "you 翻译成 mày\n" in hy["content"]
+    assert "me 翻译成 tao\n" in hy["content"] and "you 翻译成 mày\n" in hy["content"]
+    assert "I 翻译成" not in hy["content"]
     assert "Lamar对Franklin说话" in hy["content"] and "Translator's note" not in hy["content"]
     assert hy["content"].endswith("\nYou owe me.") and "Lamar: You owe me." not in hy["content"]
 
@@ -362,10 +363,10 @@ def test_round_8_kin_martial_honorifics_and_everyday_misses():
     assert said("삼촌, 나 왔어!") == ("cháu", "chú")
     assert said("お母さん、ただいま！") == ("con", "mẹ")
     assert said("사부님, 제자가 돌아왔습니다.") == ("đệ tử", "sư phụ")
-    assert said("사저, 이 검 좀 봐 주세요.") == ("đệ", "sư tỷ")
-    assert said("師兄，等等我！") == ("đệ", "sư huynh")
+    assert said("사저, 이 검 좀 봐 주세요.") == ("", "sư tỷ")
+    assert said("師兄，等等我！") == ("", "sư huynh")
     assert said("Noona, did you eat my pudding?") == ("em", "chị")
-    assert said("林风\n师兄替你挡着，你快走！") == ("sư huynh", "đệ")
+    assert said("林风\n师兄替你挡着，你快走！") == ("sư huynh", "")
     for line in ("兄さんに任せとけ。", "어머니아까전화하셨는데안받았지?", "엄마아빠다오셨어.", "Young lady, you are grounded.",
                  "小姐，您的咖啡好了。", "아가씨, 여기 소주 한 병 주세요.", "Oh my Lord, look at the size of you!"):
         assert guess_facts(line, "A", "B") is None, line
@@ -423,4 +424,33 @@ def test_round_9_self_words_label_roles_senpai_and_names():
     rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
     note = rel.address("Mom\nWhere do you think you're going?")
     assert (note.me, note.you) == ("mẹ", "con")
+    rel.close()
+
+
+def test_round_10_hy_terms_set_words_guests_and_period_titles():
+    import json, time
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    grandpa = Address("the speaker", "the listener", "cháu", "ông")
+    assert grandpa.terms("ja", "おじいちゃん、これ見て!") == {"おじいちゃん": "ông"}
+    dad = Address("지은", "아빠", "con", "bố")
+    assert dad.terms("ko", "네? 내가 왜요?") == {}
+    assert Address("the speaker", "the listener", "em", "").terms("ko", "네,선배.") == {"선배": "tiền bối"}
+    assert said("엄마, 손님 왔어.") == ("con", "mẹ")
+    assert said("娘娘，奴婢该死，没能拦住她。") == ("nô tỳ", "nương nương")
+    assert said("娘，我回来了！") == ("con", "mẹ")
+    assert said("王总，这是您要的文件。") == ("em", "sếp")
+    assert vietnamese(guess_facts("小师弟，你又偷懒了？", "林师姐", "阿木"), "林师姐", "阿木") == ("sư tỷ", "sư đệ")
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    note = rel.address("师兄，等等我！", speaker_gender="female")
+    assert (note.me, note.you) == ("muội", "sư huynh")
+    notes = []
+    for who, line in [("华妃", "臣妾听说皇上今日又没用早膳。"), ("皇上", "爱妃有心了。坐下陪朕说说话吧。"),
+                      ("华妃", "皇上说笑了，我只是担心您的身子。"), ("皇上", "你啊，总是这么会说话。")]:
+        note = rel.address(f"{who}\n{line}")
+        notes.append(note and (note.me, note.you))
+        rel.heard(f"{who}\n{line}")
+        time.sleep(0.1)
+    assert notes[1:] == [("trẫm", "ái phi"), ("thần thiếp", "hoàng thượng"), ("trẫm", "ái phi")]
     rel.close()

@@ -145,6 +145,10 @@ def default_translator(settings: Settings) -> Translator:
 
 
 
+_ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+"
+                     r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
+
+
 def _sounds_alike(written: str, spelled: str) -> bool:
     """A model's Latin spelling of a katakana name that matches the rule spelling's first sound: Cecil for Seshiru."""
     if not re.fullmatch(r"[A-Za-z][A-Za-z' -]{1,19}", written):
@@ -681,9 +685,11 @@ class Pipeline:
             if translation.strip() == source.strip() and romanized(source):
                 # A name HY-MT handed back in kana or hangul, which a Vietnamese viewer cannot read.
                 translation = self._names.setdefault(source.strip(), romanized(source))
-            if is_name_tab(source):
+            if is_name_tab(source) or speaker_of(source) and source.lstrip()[:1] in "【〔":
                 translation = self._labelled(source, translation, translator)
-            if self._leaks(translation):
+            # A line answered with an earlier line's translation was copied from the history.
+            copied = any(translation == turn.translation for turn in history if turn.source != source)
+            if self._leaks(translation) or (copied and len(source) < 40):
                 # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
                 retry.append(source)
                 left.discard(source)
@@ -696,6 +702,14 @@ class Pipeline:
                        "batch": len(texts), "steps": translator.timing})
 
         translator.translate_each(conversations, [len(text) for text in texts], piece)
+        # A short header ("報酬") answered with its neighbour's sentence: the longer source keeps it, the rest go again.
+        by_answer: dict[str, list[str]] = {}
+        for source, translation in finished:
+            by_answer.setdefault(translation, []).append(source)
+        for sources in by_answer.values():
+            for source in sorted(sources, key=len)[:-1]:
+                retry.append(source)
+                finished[:] = [(s, t) for s, t in finished if s != source]
         done = dict(finished)
         for source in texts:
             if source in done:
@@ -705,7 +719,7 @@ class Pipeline:
                 if is_name_tab(source):
                     self.relationships.heard(source)
         for source in retry:
-            self._translate_block(translator, source)
+            self._translate_block(translator, source, retried=True)
 
     def _translate_batch(self, translator: Translator, texts: list[str]) -> list[str]:
         """Translate several blocks in one call; returns the ones the model skipped, to be done one by one."""
@@ -734,10 +748,12 @@ class Pipeline:
                        "ms": ms, "context_lines": len(history), "batch": len(texts)})
         return [text for number, text in enumerate(texts, 1) if number not in done]
 
-    def _translate_block(self, translator: Translator, text: str) -> None:
+    def _translate_block(self, translator: Translator, text: str, retried: bool = False) -> None:
         settings = self.store.settings
-        history = self.context.turns()
-        address = self.relationships.address(text)
+        # A screen item asked again alone, after leaking its script or copying a neighbour, gets no earlier lines to
+        # copy from and no pronoun note, the usual cause of a half-Chinese answer.
+        history = [] if retried else self.context.turns()
+        address = None if retried else self.relationships.address(text)
         messages = build_messages(text, history, settings.source_lang, settings.target_lang,
                                   settings.glossary, settings.notes, address=address)
         started = time.monotonic()
@@ -748,7 +764,10 @@ class Pipeline:
                 raise Superseded()
             self.emit({"type": "screen_text", "source": text, "translation": translation, "final": False})
 
-        translation = self._readable(text, self._labelled(text, translator.translate(messages, partial), translator))
+        translation = translator.translate(messages, partial)
+        if not retried or is_name_tab(text) or speaker_of(text) and text.lstrip()[:1] in "【〔":
+            translation = self._labelled(text, translation, translator)
+        translation = self._readable(text, translation, names_only=retried and not is_name_tab(text))
         self._remember(text, translation)
         self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
         self.relationships.heard(text)
@@ -882,25 +901,34 @@ class Pipeline:
                 self._names[name] = written
             elif fixed:
                 self._names[name] = fixed
-            elif written and not NOT_LATIN.search(written):
+            elif written and not NOT_LATIN.search(written) and (not self._japanese_kanji(name, source)
+                                                                  or _ROMAJI.fullmatch(written.lower())):
+                # A Japanese kanji name only from a romaji answer: not "Nếu Lá" (若葉 read for its meaning).
                 self._names[name] = written
         latin_target = self.store.settings.target_lang not in ("ja", "zh", "zh-Hant", "ko")
         if latin_target:
             translation = without_echo(source, translation)
         return label_speaker(source, translation, self._names, raw_names=not latin_target)
 
+    def _japanese_kanji(self, name: str, source: str) -> bool:
+        if not re.fullmatch("[\u4e00-\u9fff々]+", name):
+            return False
+        lang = self.store.settings.source_lang
+        return lang == "ja" or lang not in ("zh", "zh-Hant") and (
+            bool(re.search("[\u3040-\u30ff]", source)) or any(self._kana_recent))
+
     def _leaks(self, translation: str) -> bool:
         """Source-script text left in a Vietnamese translation."""
         return self.store.settings.target_lang == "vi" and bool(NOT_LATIN.search(re.sub(r"【[^】]*】", "", translation)))
 
-    def _readable(self, source: str, translation: str) -> str:
+    def _readable(self, source: str, translation: str, names_only: bool = False) -> str:
         """Names left in hanzi, kana or hangul after a second try, spelled the way this game's names already are."""
         if not self._leaks(translation):
             return translation
 
         def spelled(run: str) -> str:
             known = self._names.get(run)
-            return known or (self._fixed_name(run, source) if len(run) <= 4 else None) or run
+            return known or (self._fixed_name(run, source) if len(run) <= 4 and not names_only else None) or run
 
         return re.sub(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]+", lambda m: spelled(m.group(0)), translation)
 
@@ -943,7 +971,8 @@ class Pipeline:
         budget = speakable(settings.target_lang, heard.get("seconds", 0.0)) if settings.dub else ""
         # On the line itself, not in the notes: the notes open the prompt, and changing them rereads all of it.
         messages = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
-                                  settings.glossary, settings.notes, address=self.relationships.address(heard["text"]),
+                                  settings.glossary, settings.notes,
+                                  address=self.relationships.address(heard["text"], gender_of(heard.get("pitch", 0.0))),
                                   budget=budget, aside=self._voice_note(heard))
 
         started = time.monotonic()

@@ -63,7 +63,7 @@ def build_messages(
         system += f"\n\nBackground on what is being shown:\n{notes.strip()}"
 
     # The plain facts ride along for translation models that take their own short prompt instead (see for_hy_mt).
-    terms = address.terms(source_lang) if address else {}
+    terms = address.terms(source_lang, current) if address else {}
     messages = [{"role": "system", "content": system, "target": target, "glossary": dict(glossary or {}),
                  "notes": notes.strip(), "address_terms": terms, "budget": budget,
                  "address_zh": address_zh(address)}]
@@ -144,6 +144,7 @@ def build_screen_messages(
     prompt and are decoded side by side.
     """
     messages = build_messages("", history, source_lang, target_lang, glossary, notes, address=address)
+    messages[0]["address_terms"] = address.terms(source_lang, screen[index]) if address else {}
     messages[0]["content"] += SCREEN_NOTE
     listing = "\n".join(f"{SCREEN_LETTERS[i]}. {' / '.join(text.splitlines())}" for i, text in enumerate(screen))
     # Quoting the item spares a small model looking its letter up, where it often lands on a neighbour.
