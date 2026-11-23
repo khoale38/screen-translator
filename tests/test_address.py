@@ -666,7 +666,8 @@ def test_round_25_in_laws_first_kin_words_kiddo_and_non_speakers():
     assert said("어머님, 내일 약속 있으세요?") == ("con", "mẹ")
     assert said("お母さん、学校に行ってきます！") == ("con", "mẹ")
     assert said("외삼촌, 오셨어요?") == ("cháu", "cậu")
-    assert vietnamese(guess_facts("Come here, kiddo.", "Grandpa", "Tim"), "Grandpa", "Tim")[1] == "cháu"
+    # Any elder says "kiddo", and speech has no name tab to tell which: no cue rather than a wrong one.
+    assert guess_facts("Come here, kiddo.", "Grandpa", "Tim") is None
     assert said("岳父大人，请喝茶。") == ("con", "bố")
     assert said("Okaa-san, I'm home!") == ("con", "mẹ")
     for head in ("TV-14\n오늘 방송은…", "KBS2\n다음 이야기", "그날 밤\n아무도 없었다", "나\n선배, 같이 가요"):

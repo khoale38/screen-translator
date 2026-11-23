@@ -244,12 +244,15 @@ def clean_output(raw: str) -> str:
 def sentence_case(text: str) -> str:
     """ALL-CAPS comic lettering in sentence case, which the 1.8B model reads far better; short acronyms stay."""
     letters = [ch for ch in text if ch.isascii() and ch.isalpha()]
-    if len(letters) < 8 or sum(ch.isupper() for ch in letters) < 0.8 * len(letters):
+    if len(letters) < 4 or sum(ch.isupper() for ch in letters) < 0.8 * len(letters):
         return text
     def lower(m: re.Match) -> str:
         word = m.group(0)
         # Keys, buttons and ranks stay: "[E]", "PRESS X", "RANK S". An article "A" before a word does not.
-        single = len(word) == 1 and (word != "A" or not re.match(r"\s+[A-Za-z]", text[m.end():]))
+        # Not the letter after an apostrophe ("DON'T"); "PRESS A" keeps its button.
+        after_key = re.search(r"(?:PRESS|HOLD|TAP|PUSH)\s+$", text[:m.start()], re.I)
+        single = (len(word) == 1 and text[m.start() - 1:m.start()] not in "'’" and
+                  (word != "A" or after_key or not re.match(r"\s+[A-Za-z]", text[m.end():])))
         bracketed = text[m.start() - 1:m.start()] == "[" and text[m.end():m.end() + 1] == "]"
         return word if word in _ACRONYMS or single or bracketed else word.lower()
 

@@ -90,7 +90,7 @@ YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|br
 TO_CHILD = {
     "grandparent and grandchild": re.compile(r"乖孙|乖孫|孙女|孫女|손자|손녀|孫よ", re.I),
     # Not "young man" (anyone older says it) or "Son, Kane and Kulusevski" (a name list).
-    "parent and child": re.compile(_VOCATIVE.format(r"(?:son(?!\s*,\s*(?!(?:Mom|Dad|Mum)\b)(?-i:[A-Z])\w+\s*(?:,|and\b))|kiddo)")
+    "parent and child": re.compile(_VOCATIVE.format(r"(?:son(?!\s*,\s*(?!(?:Mom|Dad|Mum)\b)(?-i:[A-Z])\w+\s*(?:,|and\b)))")
                                    + r"|儿子|兒子|闺女|閨女|아들아(?!이)|아들(?!아이)|딸아(?!이)|息子よ|^傻孩子|^孩子(?=[，,！!？? ])|^丫头(?=[，,！!？? ])", re.I),
 }
 # What one spouse or lover calls the other; 老公 is said to a husband, 老婆 and 마누라 to a wife, 여보 to either.
@@ -380,7 +380,8 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     # A doctor or teacher to a patient's or pupil's parent: 어머님 with clinic or school words, お母さん in polite
     # speech with them, 妈妈 with 您 about 孩子.
     # Only phrases a doctor or teacher would use: a daughter-in-law also says "어머님, 걱정 마세요" or mentions 약.
-    others = re.search(r"お子さん|息子さん|娘さん|お嬢さん|아드님|따님|처음 ?뵙|您的孩子|你家孩子|出しておきます|処方|"
+    others = re.search(r"お子さん|息子さん|娘さん|お嬢さん|아드님|따님|처음 ?뵙|您的孩子|你家孩子|您家孩子|您孩子|开点药|打针|"
+                       r"退烧药|住院观察|出しておきます|処方|"
                        r"検査しましょう|様子を見ましょう|お大事に", line) or (
         re.search("어머님|아버님", line) and re.search(r"수술|진료|환자|퇴원|검사 결과|처방|입원|수업|상담|담임|학생|성적", line))
     for role, cue in ROLES.items():

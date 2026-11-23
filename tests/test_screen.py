@@ -715,3 +715,15 @@ def test_round_25_narration_subjects_keys_and_buttons():
     assert sentence_case("PRESS [E] TO OPEN THE DOOR") == "Press [E] to open the door"
     assert sentence_case("GET A SWORD FROM THE SHOP") == "Get a sword from the shop"
     assert Pipeline._keys_kept("PRESS [F] TO TALK", "Nhấn [Đ] để nói chuyện") == "Nhấn [F] để nói chuyện"
+
+
+def test_round_26_calls_and_tabs_before_questions_and_contractions():
+    from screen_translator.translator import sentence_case
+
+    W, H = 1920, 1080
+    call = [px("DAD", 920, 300, 80, 40, W, H), px("COULD YOU HELP ME?", 830, 350, 260, 40, W, H)]
+    assert [b.text for b in group_blocks(call, W, H)] == ["DAD, COULD YOU HELP ME?"]
+    tab = [px("Mom", 200, 800, 90, 36, W, H), px("Was that you who called?", 200, 846, 420, 36, W, H)]
+    assert [b.text for b in group_blocks(tab, W, H)] == ["Mom\nWas that you who called?"]
+    assert sentence_case("DON'T GO, IT'S DANGEROUS") == "Don't go, it's dangerous"
+    assert sentence_case("[F] PICK UP") == "[F] pick up" and sentence_case("PRESS A TO JUMP") == "Press A to jump"

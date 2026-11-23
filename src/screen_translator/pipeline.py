@@ -1127,7 +1127,9 @@ class Pipeline:
         """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""
         turns = self.context.turns()
         last = turns[-1].translation.strip() if turns and _bare(turns[-1].source) != _bare(heard["text"]) else ""
-        if len(last) >= 12 and translation.strip().startswith(last) and len(translation.strip()) > len(last) + 3:
+        # Unless the speaker really did start the same way again.
+        repeated = turns and _bare(heard["text"])[:6] == _bare(turns[-1].source)[:6]
+        if len(last) >= 12 and not repeated and translation.strip().startswith(last) and len(translation.strip()) > len(last) + 3:
             # HY-MT can repeat the previous line before the new one: keep only the new part.
             translation = translation.strip()[len(last):].lstrip(" ,.;:")
         earlier = {turn.translation for turn in turns if _bare(turn.source) != _bare(heard["text"])}
