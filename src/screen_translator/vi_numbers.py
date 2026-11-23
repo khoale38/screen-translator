@@ -143,6 +143,8 @@ def spoken_numbers(text: str) -> str:
                       + (f" {spoken_integer(int(m.group(2)))}" if m.group(2) and int(m.group(2)) else ""), text)
     text = _FULL_DATE.sub(_date, text)
     text = _SLASH.sub(_slash, text)
+    text = re.sub(r"\b(\d{2,3})/(\d{2,3})\b", lambda m: f"{m.group(1)} trên {m.group(2)}", text)
+    text = re.sub(r"/(ngày|tháng|năm|giờ|tuần|người|lần|cái|chiếc)\b", r" mỗi \1", text)
     text = _PHONE.sub(lambda m: _digits(m.group(0)), text)
     text = _DEGREES.sub(lambda m: f"{m.group(1)} độ" + (f" {m.group(2)}" if m.group(2) else ""), text)
     text = _NEGATIVE.sub("âm ", text)

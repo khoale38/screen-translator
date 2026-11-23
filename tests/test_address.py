@@ -634,3 +634,13 @@ def test_round_22_doctors_in_laws_fillers_and_phone_calls():
     assert said("あの、先輩、これどうぞ。") == ("em", "")
     assert said("喂，妈，是我。") == ("con", "mẹ")
     assert speaker_of("攻击\n技能\n物品\n逃跑") is None and speaker_of("はい\nいいえ") is None
+
+
+def test_round_23_parents_at_the_clinic_in_laws_and_children_mentioning_hospitals():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("선생님, 우리 아이 괜찮은 거죠?") is None
+    assert said("先生、うちの子は大丈夫なんですか？") is None
+    assert said("선생님, 질문 있어요.") == ("em", "")
+    assert said("엄마, 병원 가기 싫어.") == ("con", "mẹ")
+    assert said("어머님, 식사하세요.") == ("con", "mẹ")
+    assert said("네, 어머님. 수술은 잘 끝났습니다.") is None

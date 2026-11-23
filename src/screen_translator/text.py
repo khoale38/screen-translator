@@ -84,7 +84,9 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
 _ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
                            "[，,。.！!？?、…~]?")
 _TITLE_WORDS = {word for word in ROLES_VI if not re.search("[\u3400-\u9fff]{3}", word)} | {
-    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "누나", "오빠", "형",
+    "Mom", "Mum", "Dad", "Mother", "Father", "Grandpa", "Grandma", "Granny", "Sis", "Bro", "MOM", "DAD", "GRANDMA",
+    "GRANDPA", "SIS", "BRO", "先輩", "せんぱい", "선배", "선배님", "学长", "学姐", "Senpai", "姉ちゃん", "兄ちゃん", "母さん", "父さん",
+    "姉さん", "兄さん", "兄貴", "누나", "오빠", "형",
     "언니", "엄마", "아빠", "할머니", "할아버지", "お兄ちゃん", "お姉ちゃん", "先生", "哥哥", "姐姐", "哥", "姐"}
 _CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
                        r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
@@ -133,7 +135,18 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                                for l in kept], i) is None]
     # Visual-novel and gacha buttons on the name row ("AUTO SKIP LOG") are not part of anyone's line.
     if menus:
-        kept = [line for line in kept if not _CONTROLS.fullmatch(line.text.strip())]
+        def button_row(line: OcrLine) -> bool:
+            text = line.text.strip()
+            if not _CONTROLS.fullmatch(text):
+                return False
+            # Several buttons in one box or side by side; a lone セーブ in a stacked menu is an item.
+            return len(text.split()) > 1 or any(other is not line and _CONTROLS.fullmatch(other.text.strip())
+                                                and _same_row(line, other) for other in kept)
+        kept = [line for line in kept if not button_row(line)]
+        listed_lines = {id(kept[i]) for i in _list_rows([(l.box[0] * width, l.box[1] * height, l.box[2] * width,
+                                                          l.box[3] * height, "h", l.text.strip()) for l in kept])}
+    else:
+        listed_lines = set()
     kept.sort(key=lambda line: line.box[1] + line.box[3] / 2)
     rows: list[list[OcrLine]] = []
     for line in kept:
@@ -179,15 +192,19 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                 previous = (paragraphs[-1], row[0], width)
                 continue
         asked = len(paragraphs) >= 2 and paragraphs[-2].rstrip()[-1:] in "?？" and paragraphs[-1] == previous[0]
-        menu = menus and previous is not None and not same_baseline and _choice_rows(
-            previous, row[0], row_text, frame_w, frame_h, asked, menu_left)
+        menu = menus and previous is not None and not same_baseline and (_choice_rows(
+            previous, row[0], row_text, frame_w, frame_h, asked, menu_left) or id(row[0]) in listed_lines)
         menu_left = row[0].box[0] if menu else None
         if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(
-                *previous, row[0], width, frame_w, frame_h):
+                *previous, row[0], width, frame_w, frame_h, menus):
             # Not "DAD / WILL KILL US", where the title is the subject of the next row.
-            subject = re.match(r"(?:WILL|IS|WAS|SAID|SAYS|WANTS|HAS|CAN|DOESN'T|DIDN'T|WON'T|ISN'T|HATES|LOVES|KNOWS|THINKS)\b",
-                               row_text, re.I)
-            if paragraphs[-1].strip() in _TITLE_WORDS and not subject:
+            # Only before words that address the listener ("MOM / I'M HOME!"), not "DAD / BROKE THE VASE", and not a
+            # name tab set flush left over a game's dialogue box.
+            addresses = re.match(r"(?:I|I'M|I'LL|I'VE|YOU|WE|WHERE|WHAT|WHY|HOW|CAN|COULD|LOOK|WAIT|COME|HELP|PLEASE|HEY|"
+                                 r"ARE|DID|DO|STOP|DON'T|LET'S|THANK|TELL|GIVE|SHOW|LET|TAKE|GET|GO|SIT|EAT|READ|PLAY|BUY|LISTEN|HURRY|RUN|"
+                                 r"KEEP|TRY|WAKE|OPEN|GUESS|SORRY|GOOD)\b", row_text, re.I) or not row_text[:1].isascii()
+            flush_tab = abs(previous[1].box[0] - row[0].box[0]) * frame_w < 0.5 * row[0].box[3] * frame_h
+            if paragraphs[-1].strip() in _TITLE_WORDS and addresses and not flush_tab:
                 paragraphs[-1] = paragraphs[-1].strip() + ("，" if _cjk(paragraphs[-1]) else ", ") + row_text
             else:
                 paragraphs[-1] = _join(paragraphs[-1], row_text)
@@ -240,7 +257,7 @@ def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
 
 
 def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, below: OcrLine, below_width: float,
-                          frame_w: float = 1, frame_h: float = 1) -> bool:
+                          frame_w: float = 1, frame_h: float = 1, menus: bool = False) -> bool:
     """Wrapped text fills its first row, so a wide gap, a size change or a short row over a wide one is a new line."""
     height = max(above.box[3], below.box[3])
     gap = below.box[1] - (above.box[1] + above.box[3])
@@ -259,7 +276,7 @@ def _starts_new_paragraph(above_text: str, above: OcrLine, above_width: float, b
     centred = (abs((above.box[0] + above_width / 2) - (below.box[0] + below_width / 2)) < height
                and gap > 0.08 * height and above.box[3] < (0.85 if titled else 0.92) * below.box[3])
     # A visual-novel name tab over a short reply ("小林" / "好吧"): both short, set apart a little.
-    short_reply = (left_aligned and len(above_text.strip()) <= 4 and len(below.text.strip()) <= 6 and gap > 0.15 * height
+    short_reply = (menus and left_aligned and len(above_text.strip()) <= 4 and len(below.text.strip()) <= 6 and gap > 0.15 * height
                    and not above_text.strip()[-1:] in "，,、")
     return (_name_like(above_text) and (left_aligned or centred) and (above_width < 0.6 * below_width or short_reply)
             and gap > -0.5 * height)
@@ -667,7 +684,10 @@ def _same_block(a: tuple, b: tuple) -> bool:
                  and gap > 0.12 * height and not text.endswith(("，", "、", ",")))
     # Comic lettering is all capitals with loose leading.
     centred_rows = abs((upper[0] + upper[2] / 2) - (lower[0] + lower[2] / 2)) < 0.5 * height
-    lettering = text.isupper() and lower[5].isupper() and gap <= 0.5 * height and centred_rows and not text.endswith(_ENDS)
+    flush_rows = abs(upper[0] - lower[0]) < 0.5 * height
+    stats = re.search(r"\d\s*[A-Z%]{0,3}$|/", text + " " + lower[5]) is not None
+    lettering = (text.isupper() and lower[5].isupper() and gap <= 0.5 * height and (centred_rows or flush_rows)
+                 and not text.endswith(_ENDS) and not stats)
     wraps = not cjk_title and (gap <= 0.25 * height or mid_phrase or lower[5][:1].islower() or lettering
                                or (_cjk(text) and len(text.replace(" ", "")) >= 8 and not text.endswith(_ENDS)
                                    and gap <= 0.35 * height))

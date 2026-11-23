@@ -79,7 +79,7 @@ ROLES = {
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|じいちゃん|ばあちゃん|じっちゃん|ばっちゃん|じいじ|ばあば|爺ちゃん|"
                                              r"婆ちゃん|祖母|祖父|奶奶|爷爷|爺爺|外婆|外公|阿嫲|嫲嫲|阿爺|婆婆|公公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니(?!님)|아버지(?!님)|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|어머님|아버님|장모님|장인어른|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
                                    r"(?:^|(?<=喂，)|(?<=喂,)|(?<=喂 ))(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
@@ -364,9 +364,13 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
         gender = "female" if FEMALE_TITLES.search(younger.group(0)) else "male" if MALE_TITLES.search(younger.group(0)) else ""
         return {**facts, f"{listener} gender": gender} if martial and gender else facts
     # A doctor called 선생님/先生, or お母さん said to a patient's or pupil's mother, is not a teacher or a parent.
-    clinic = re.search(r"수술|병원|진료|환자|약을|처방|手術|病院|診察|お薬|患者|手术|医院|病人|お子さん|息子さん|娘さん|お嬢さん", line)
+    # A parent to the doctor or teacher about their child, or a doctor to a patient: no teacher cue.
+    clinic = re.search(r"수술|진료|환자|처방|퇴원|의사|우리 ?아이|手術|診察|患者|うちの子|手术|医生|病人|我家孩子|我的孩子", line)
+    # 어머님/お母さん said to someone else's parent ("お子さんは…", "처음 뵙겠습니다"): no parent cue.
+    others = re.search(r"お子さん|息子さん|娘さん|お嬢さん|아드님|따님|처음 ?뵙|您的孩子|你家孩子", line) or (
+        re.search("어머님|아버님", line) and re.search(r"수술|진료|환자|퇴원|검사|치료|입원", line))
     for role, cue in ROLES.items():
-        if clinic and role.startswith(("teacher", "parent")):
+        if clinic and role.startswith("teacher") or others and role.startswith("parent"):
             continue
         title = cue.search(line)
         # Only the speaker being that role already: "我也是第一次当妈妈", not "你要当爷爷了" or "我要当爸爸了".

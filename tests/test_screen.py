@@ -669,3 +669,24 @@ def test_round_22_caps_menus_lettering_and_name_tabs_over_replies():
     W, H = 1280, 720
     tab = [px("小林", 100, 480, 80, 36, W, H), px("好吧", 100, 530, 80, 40, W, H)]
     assert assemble(tab, width=W, height=H, menus=True) == "小林\n好吧"
+
+
+def test_round_23_stat_columns_caps_name_tabs_and_area_menus():
+    from screen_translator.text import assemble
+    from screen_translator.vi_numbers import spoken_numbers
+
+    W, H = 1920, 1080
+    shop = [px("POTION", 200, 400, 140, 36, W, H), px("8 G", 200, 446, 60, 36, W, H), px("ETHER", 200, 492, 120, 36, W, H)]
+    assert "POTION" in [b.text for b in group_blocks(shop, W, H)]
+    tab = [px("KNIGHT", 200, 800, 140, 36, W, H), px("WE MUST HOLD THE GATE!", 200, 846, 440, 36, W, H)]
+    assert [b.text for b in group_blocks(tab, W, H)] == ["KNIGHT\nWE MUST HOLD THE GATE!"]
+    past = [px("DAD", 920, 300, 80, 40, W, H), px("BROKE THE VASE AGAIN.", 820, 350, 280, 40, W, H)]
+    assert [b.text for b in group_blocks(past, W, H)] == ["DAD BROKE THE VASE AGAIN."]
+    W, H = 1280, 720
+    menu = [px("こうげき", 100, 480, 140, 36, W, H), px("まほう", 100, 526, 120, 36, W, H),
+            px("アイテム", 100, 572, 140, 36, W, H), px("にげる", 100, 618, 120, 36, W, H)]
+    assert assemble(menu, width=W, height=H, menus=True) == "こうげき\nまほう\nアイテム\nにげる"
+    title = [px("はじめから", 560, 400, 200, 36, W, H), px("つづきから", 560, 460, 200, 36, W, H),
+             px("セーブ", 560, 520, 120, 36, W, H), px("ロード", 560, 580, 120, 36, W, H)]
+    assert assemble(title, width=W, height=H, menus=True).split("\n") == ["はじめから", "つづきから", "セーブ", "ロード"]
+    assert spoken_numbers("Ăn 3 lần/ngày, huyết áp 120/80.") == "Ăn ba lần mỗi ngày, huyết áp một trăm hai mươi trên tám mươi."
