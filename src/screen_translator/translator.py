@@ -322,6 +322,10 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
         return f"{known}: {labelled.group(2)}" if known else labelled.group(2)
     if name and name in source.lstrip()[:len(name) + 2] and not labelled:
         return f"{shown}: {translation.strip()}" if shown else translation.strip()
+    if labelled and not name and not re.search("[:：]", source) and len(labelled.group(1).split()) <= 2:
+        # "哥你今天怎么这么早" answered "Anh: Hôm nay…": the line calls its listener, it does not name its speaker.
+        rest = labelled.group(2).strip()
+        return f"{labelled.group(1).strip()}, {rest[:1].lower()}{rest[1:]}"
     return translation
 
 

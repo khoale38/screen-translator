@@ -64,22 +64,23 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
         # "爸，" read as a box of its own beside "我回来了。" is a call, not a stray glyph.
         beside = letters == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) and any(
             other is not line and sum(ch.isalpha() for ch in other.text) >= 2
-            and (_same_row(line, other) or _tab_over(line, other) and _ONE_CHARACTER_NAME.fullmatch(text))
-            for other in lines)
+            and (_same_row(line, other) or _stacked(line, other)) for other in lines)
         if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
 
 
 # A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
+_ONE_SYLLABLE = re.compile("[\u3400-\u9fff\uac00-\ud7a3][，,。.！!？?、…~]?")
 _ONE_CHARACTER_NAME = re.compile("(?![嗯好啊哦是对喂嘿哈呃唉呀嘛吧呢哎噢欸行])[\u3400-\u9fff]")
 
 
-def _tab_over(tab: OcrLine, line: OcrLine) -> bool:
-    """A one-character name tab ("姫", "爹") set right above the line it labels."""
-    drop = line.box[1] - (tab.box[1] + tab.box[3])
-    height = max(tab.box[3], line.box[3])
-    return -0.3 * height <= drop <= 1.2 * height and abs(tab.box[0] - line.box[0]) < 2 * height
+def _stacked(short: OcrLine, line: OcrLine) -> bool:
+    """A one-character row right above or below another: a name tab ("姫"), a call ("哥！") or a reply ("嗯。")."""
+    height = max(short.box[3], line.box[3])
+    gap = max(line.box[1] - (short.box[1] + short.box[3]), short.box[1] - (line.box[1] + line.box[3]))
+    centre = abs((short.box[0] + short.box[2] / 2) - (line.box[0] + line.box[2] / 2))
+    return -0.3 * height <= gap <= 1.2 * height and (abs(short.box[0] - line.box[0]) < 2 * height or centre < 2 * height)
 
 
 def _same_row(a: OcrLine, b: OcrLine) -> bool:
@@ -126,6 +127,7 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
     # Text far apart on one baseline is separate, such as a choice menu beside the dialogue.
     rows = [segment for row in rows for segment in _split_wide_gaps(row)]
 
+    frame_w, frame_h = width, height
     paragraphs: list[str] = []
     spans: list[list[float]] = []
     previous: tuple[str, OcrLine, float] | None = None
@@ -138,6 +140,17 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         same_baseline = previous is not None and abs(
             (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
+        lone = previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip())
+        if lone and not same_baseline:
+            # "哥" centred over "等等我！" calls the listener; only a role set flush left over its line names the speaker.
+            flush = abs(previous[1].box[0] - row[0].box[0]) * frame_w < row[0].box[3] * frame_h
+            if not (flush and _ONE_CHARACTER_NAME.fullmatch(previous[0].strip())):
+                ends = previous[0].strip()[-1:] in "，,。.！!？?、…~"
+                comma = "" if ends else ", " if re.search("[\uac00-\ud7a3]", previous[0]) else "，"
+                paragraphs[-1] = paragraphs[-1] + comma + row_text if not ends else _join(paragraphs[-1], row_text)
+                spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
+                previous = (paragraphs[-1], row[0], width)
+                continue
         if previous is not None and not same_baseline and not _starts_new_paragraph(*previous, row[0], width):
             paragraphs[-1] = _join(paragraphs[-1], row_text)
             spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]

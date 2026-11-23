@@ -513,6 +513,10 @@ def test_round_13_one_syllable_lines_are_not_name_tabs():
     from screen_translator.text import assemble
 
     rows = [px("응", 100, 560, 30, 30, 1280, 720), px("그래, 알았어. 내일 보자.", 100, 600, 600, 32, 1280, 720)]
-    assert assemble(rows, width=1280, height=720) == "그래, 알았어. 내일 보자."
+    assert assemble(rows, width=1280, height=720) == "응, 그래, 알았어. 내일 보자."
+    rows = [px("哥", 620, 560, 30, 30, 1280, 720), px("等等我！", 580, 600, 120, 32, 1280, 720)]
+    assert assemble(rows, width=1280, height=720) == "哥，等等我！"
+    rows = [px("等等我！", 580, 560, 120, 32, 1280, 720), px("嗯。", 610, 600, 45, 30, 1280, 720)]
+    assert assemble(rows, width=1280, height=720) == "等等我！嗯。"
     rows = [px("姫", 100, 560, 30, 30, 1280, 720), px("お待ちください！", 100, 600, 600, 32, 1280, 720)]
     assert assemble(rows, width=1280, height=720).split("\n")[0] == "姫"

@@ -149,6 +149,11 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
                      r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
 
 
+def _without_hanzi(translation: str) -> str:
+    """Hanzi still left after asking again: drawn on screen they mean nothing to a Vietnamese reader."""
+    return re.sub(r"\s{2,}", " ", re.sub(r"[\u3400-\u9fff]+", " ", translation)).strip()
+
+
 def _body(translation: str) -> str:
     """A translation without its speaker label, to tell a copied line from a new one."""
     return re.sub(r"^[^:\n]{1,24}:\s*", "", translation.strip())
@@ -156,8 +161,10 @@ def _body(translation: str) -> str:
 
 def _punctuated(text: str) -> str:
     """Recognized speech without spaces or commas, with a comma after a call it opens or ends with ("네, 마마.")."""
-    text = re.sub(r"^(\W*(?:할머니|할아버지|엄마|아빠|오빠|언니|누나|형|선배님|선배|선생님|사장님|부장님|팀장님))"
-                  r"(?=(?:저|나|우리|빨리|왜|어디|지금|이거|잠깐)[가-힣])", r"\1, ", text)
+    # Not "할아버지어디가셨어" or "형지금없어요": an honorific verb or "isn't here" means the title is talked about.
+    if not re.search(r"셨|시[어었고는]|계셔|계세|께서|없어|안\s*계", text):
+        text = re.sub(r"^(\W*(?:할머니|할아버지|엄마|아빠|오빠|언니|누나|형|선배님|선배|선생님|사장님|부장님|팀장님))"
+                      r"(?=(?:저|나|우리|빨리|왜|어디|지금|이거|잠깐|같이)[가-힣])", r"\1, ", text)
     text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])(?!세요)", r"\1, ", text)
     text = re.sub(r"(?<=[가-힣])((?:마마|자기야|여보)\W*)$", r", \1", text)
     return re.sub(r"^(\W*[爹娘爸妈])(?=女儿|儿子|孩儿|我|您|你)", r"\1，", text)
@@ -711,7 +718,9 @@ class Pipeline:
                     r"[^:：\n]{1,8}[:：]", source):
                 # A status row ("Tên: 이도윤") whose value is a name: spell the value, keep the translated key.
                 translation = f"{row.group(1)}: {self._readable(source, row.group(2))}"
-            if self._leaks(translation) or (copied and len(source) < 40):
+            # HY-MT sometimes translates the screen instruction itself instead of the row.
+            echoed = re.match(r"\s*(?:Bối cảnh|Background)\b", translation) or "giao diện của trò chơi" in translation
+            if self._leaks(translation) or (copied and len(source) < 40) or echoed:
                 # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
                 retry.append(source)
                 left.discard(source)
@@ -790,6 +799,8 @@ class Pipeline:
         if not retried or is_name_tab(text) or speaker_of(text) and text.lstrip()[:1] in "【〔":
             translation = self._labelled(text, translation, translator)
         translation = self._capitalised(self._readable(text, translation, names_only=retried and not is_name_tab(text)))
+        if retried and self._leaks(translation):
+            translation = _without_hanzi(translation)
         self._remember(text, translation)
         self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
         self.relationships.heard(text)
@@ -902,6 +913,10 @@ class Pipeline:
 
         if self._dubber is None:
             self._dubber = self.dubber_factory(self)
+        if self._leaks(translation):
+            # Kana and hangul read out as their sounds ("Tteokbokki"); hanzi would come out as noise or silence.
+            translation = re.sub(r"[\u3040-\u30ff\uac00-\ud7a3]+", lambda m: romanized(m.group(0)) or "", translation)
+            translation = re.sub(r"[\u3400-\u9fff]+", "", translation).strip()
         self._dubber.say(Line(translation, self.store.settings.target_lang, heard.get("emotion", ""),
                               heard.get("pitch", 0.0), heard.get("seconds", 0.0), heard.get("at", 0.0),
                               heard.get("paused", True)))
@@ -936,12 +951,15 @@ class Pipeline:
         """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
         if self.store.settings.target_lang != "vi":
             return translation
-        translation = re.sub("ㅋ{2,}", "haha", re.sub("[ㅠㅜ]{2,}", "huhu", translation)).replace("ㅇㅋ", "ok")
+        translation = re.sub(r"ㅋ{2,}\s*", "haha ", re.sub(r"[ㅠㅜ]{2,}\s*", "huhu ", translation))
+        translation = re.sub(r"(?<![가-힣])ㅇㅋ", "ok", translation).replace("ㅇㅇ", "ừ").replace("ㄴㄴ", "không").strip()
         if "\n" in translation:
             return "\n".join(self._capitalised(line) for line in translation.split("\n"))
         label, colon, body = translation.partition(": ")
         if colon and len(label) <= 24:
-            return f"{self._capitalised(label)}: {self._capitalised(body)}"
+            # A stat key ("hp", "mp") stays as written.
+            head = label if len(label) <= 3 and label.isascii() else self._capitalised(label)
+            return f"{head}: {self._capitalised(body)}"
         # Not a brand that starts in lower case (iPhone, eBay) or an item count ("x3").
         if not translation[:1].islower() or re.match(r"[a-z]+[A-Z]|x\d", translation):
             return translation
@@ -949,12 +967,14 @@ class Pipeline:
 
     def _checked(self, translator: Translator, source: str, translation: str, history: list) -> str:
         """A subtitle answered in the source's script, or with an earlier line's translation, asked again alone."""
-        copied = any(_body(translation) == _body(turn.translation) for turn in history if turn.source != source)
+        # "Vâng." twice from two people is no copy.
+        copied = len(_body(translation)) >= 12 and any(
+            _body(translation) == _body(turn.translation) for turn in history if turn.source != source)
         if self._leaks(translation) or copied:
             # Asked again without earlier lines to copy from, but with who is talking to whom.
             again = self._labelled(source, self._plainly(translator, source, self.relationships.address(source)),
                                    translator)
-            translation = self._readable(source, again, names_only=True)
+            translation = _without_hanzi(self._readable(source, again, names_only=True))
         return self._capitalised(translation)
 
     def _japanese_kanji(self, name: str, source: str) -> bool:
@@ -1060,11 +1080,13 @@ class Pipeline:
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
         """Given a long note on a short or garbled line, a small model can repeat an earlier answer; ask again plainly."""
         earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
-        if translation not in earlier:
+        # HY-MT can answer a short or garbled line with the last few translations strung together.
+        strung = any(len(line) >= 8 and line in translation and len(translation) > 1.5 * len(line) for line in earlier)
+        if translation not in earlier and not strung:
             return translation
         again = self._plainly(translator, heard["text"])
         # Still the earlier line: better unsaid than said for the wrong person.
-        return "" if again in earlier else again
+        return "" if again in earlier or any(len(line) >= 8 and line in again for line in earlier) else again
 
     def _plainly(self, translator: Translator, text: str, address=None) -> str:
         """The line asked again on its own, with no earlier lines to copy from."""

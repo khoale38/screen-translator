@@ -419,7 +419,9 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
         palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后|爹|娘|爸|妈", match.group(0))
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
-        speaks_on = re.match(r"\s*(?:你|您|我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after)
+        # But "姐姐我请你", "爸爸我给你买了": an elder's title before 我 with 你 after is the elder speaking of themself.
+        speaks_on = re.match(r"\s*(?:你|您)", after) or (
+            re.match(r"\s*(?:我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after) and not re.search("你|您", after))
         if not hangul and opening and not closing and not palace and not speaks_on:
             continue
         # "엄마아빠다오셨어", "어머니아까전화하셨는데": a parent mentioned with an honorific verb, not called.

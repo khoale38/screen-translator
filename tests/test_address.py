@@ -524,3 +524,16 @@ def test_round_13_unpunctuated_chinese_calls_and_glued_korean_titles():
     assert said("奶奶我回来了") == ("cháu", "bà")
     assert said("妈妈说你回来了") is None
     assert _punctuated("할머니저왔어요") == "할머니, 저왔어요"
+
+
+def test_round_14_elders_speaking_of_themselves_and_honorific_mentions():
+    from screen_translator.pipeline import _punctuated
+    from screen_translator.translator import label_speaker
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("姐姐我请你吃饭") == ("chị", "em")
+    assert said("爸爸我给你买了书包") is None
+    assert said("奶奶我回来了") == ("cháu", "bà")
+    assert [_punctuated(t) for t in ("할아버지어디가셨어", "형지금없어요", "언니같이가")] == [
+        "할아버지어디가셨어", "형지금없어요", "언니, 같이가"]
+    assert label_speaker("哥你今天怎么这么早", "Anh: Hôm nay em về sớm thế à?") == "Anh, hôm nay em về sớm thế à?"
