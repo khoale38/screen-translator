@@ -43,3 +43,8 @@ def test_only_vietnamese_dubs_spell_numbers_out():
 
     assert "mười lăm" in unicodedata.normalize("NFC", prepare("Còn 15%.", "vi"))
     assert "15" in prepare("15% left.", "en")
+
+
+def test_decades_read_with_their_century():
+    assert spoken_numbers("Nhạc pop 2010s, cuối những năm 1980s.") == \
+        "Nhạc pop những năm hai nghìn không trăm mười, cuối những năm tám mươi."

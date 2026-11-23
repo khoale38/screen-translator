@@ -54,7 +54,8 @@ TO_ELDER = {
                          re.I),
     "": re.compile(_VOCATIVE.format(r"(?:senpai|sunbae(?:nim)?)") + r"|先輩|せんぱい|선배(?:님)?|学长|学姐", re.I),
 }
-SERVING = re.compile(r"^\W*welcome\b(?! back| home)|いらっしゃいませ|お客様|손님|어서 오세요|欢迎光临", re.I)
+SERVING = re.compile(r"^\W*welcome\b(?! back| home)|いらっしゃいませ|^\W*お客様|^\W*손님|어서 오세요|欢迎光临|주문|こちらへどうぞ",
+                     re.I)
 RELATIONS = ("parent and child", "grandparent and grandchild", "siblings or cousins", "couple", "teacher and student",
              "school senior and junior", "master and disciple", "ruler and subject", "friends", "rivals or enemies",
              "coworkers", "boss and employee", "staff and customer", "strangers")
@@ -76,7 +77,7 @@ ROLES = {
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
                                              r"おばあ|おじい|祖母|祖父|奶奶|爷爷|外婆|外公", re.I),
     "parent and child": re.compile(r"\b(mom|mum|dad|mother|father)\b|엄마|아빠|어머니|아버지|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|"
-                                   r"^(?:妈|爸|娘|爹)(?=[，,！!？?])|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
+                                   r"^(?:妈|爸|娘|爹)(?=[，,！!？?]|女儿|儿子|孩儿|我|您|你)|아버님|어머님|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
                      r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹)(?=[，,。！？!?])", re.I)
@@ -87,6 +88,8 @@ COUPLE = {
     "": re.compile(_VOCATIVE.format(r"(?:honey|babe|baby|sweetheart|darling|sweetie)") + r"|亲爱的|親愛的|ダーリン|여보|자기야",
                    re.I),
 }
+# Recognized Korean speech has no spaces: these open or close a line only as a call ("자기야오늘…", "네마마").
+_KOREAN_GLUED_CALL = re.compile(r"^\W*(마마|중전마마|자기야|여보)|(마마|자기야|여보)\W*$")
 # Words a speaker uses for themself that fix both sides in Vietnamese, and what the other side answers with.
 SELF_WORDS_CUES = [
     (re.compile("臣妾"), ("thần thiếp", "hoàng thượng"), ("trẫm", "ái phi")),
@@ -96,12 +99,19 @@ SELF_WORDS_CUES = [
     (re.compile("晚辈|晚輩"), ("vãn bối", "tiền bối"), ("", "")),
     (re.compile("在下"), ("tại hạ", ""), ("", "")),
     (re.compile("老夫"), ("lão phu", ""), ("", "")),
+    (re.compile("本宫|本宮"), ("bổn cung", ""), ("", "nương nương")),
+    (re.compile("哀家"), ("ai gia", ""), ("", "Thái hậu")),
 ]
+# "Baby, don't cry. Mommy's here.": a parent comforting a child, not a lover.
+# A scanlator's gloss ("T/N: Hyung = older brother") explains words; nobody says it to anyone.
+_TRANSLATOR_NOTE = re.compile(r"^\s*(?:T/?N|TL ?note|TN|Note|N/A|注|註|※|작가의\s*말|역주)\s*[:：]", re.I)
+_PARENT_SELF = re.compile(r"\b(mommy|mummy|daddy|mom|mum|dad|your (?:mother|father|mom|dad))\b|엄마가|아빠가|妈妈|爸爸",
+                          re.I)
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|姫様|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother|aunt|auntie|"
-                           r"aunty|noona|unnie)\b|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
+                           r"aunty|noona|unnie)\b|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
                            r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa)\b|爹|父亲|父上|兄上|叔父|伯父|"
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa)\b|아버님|爹|父亲|父上|兄上|叔父|伯父|"
                          r"おじさん|叔叔|伯伯|舅舅|삼촌|사형|사제|师兄|師兄|师弟|師弟|왕자|할아버지|아빠|아버지|"
                          r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
@@ -271,7 +281,16 @@ class Address:
             terms.update({word: self.you for lang in langs for word in YOU_WORDS[lang] if present(word)})
         title = called_title(text) if text else ""
         if title:
-            terms[title] = self.you or ("tiền bối" if TO_ELDER[""].search(title) else "")
+            terms[title] = self.you or ({"学姐": "chị", "学长": "anh"}.get(title)
+                                        or ("tiền bối" if TO_ELDER[""].search(title) else ""))
+        # The word that set the pronouns ("晚辈" → vãn bối, "前辈" → tiền bối), so HY-MT puts them where they belong.
+        for cue, (me, you), _reply in SELF_WORDS_CUES:
+            found = cue.search(text) if text else None
+            if found and me == self.me:
+                terms[found.group(0)] = me
+        for word in ("前辈", "前輩", "姑娘", "皇上", "娘娘", "太后"):
+            if text and word in text and self.you and word not in terms:
+                terms[word] = self.you
         return {word: term for word, term in terms.items() if term}
 
 
@@ -300,8 +319,9 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
     for cue, words, reply in SELF_WORDS_CUES:
         if cue.search(line):
             # "娘娘，奴婢该死": the self word fixes "I", and a title in the same line still fixes "you".
-            other = guess_facts(cue.sub("", line), speaker, listener) if not words[1] else None
-            you = words[1] or (vietnamese(other, speaker, listener)[1] if other else "")
+            # "臣妾参见太后": a title called in the line outranks the self word's usual listener.
+            other = guess_facts(cue.sub("", line), speaker, listener)
+            you = (vietnamese(other, speaker, listener)[1] if other else "") or words[1]
             return {"relation": "set words", "words_by": {speaker: (words[0], you)}, "reply_to": {speaker: reply},
                     "guess": True}
     younger = YOUNGER.search(line)
@@ -315,7 +335,7 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
             facts = {"relation": role, "senior": listener, "older": listener, "guess": True}
             title = cue.search(line).group(0)
             if role.startswith("ruler"):
-                facts["royal"] = ("Thái hậu" if "太后" in title else "nương nương" if "娘娘" in title
+                facts["royal"] = ("Thái hậu" if "太后" in title else "nương nương" if re.search("娘娘|마마", title)
                                   else "điện hạ" if PRINCELY.search(title) else "bệ hạ")
             gender = "female" if FEMALE_TITLES.search(title) else "male" if MALE_TITLES.search(title) else ""
             return {**facts, f"{listener} gender": gender} if gender else facts
@@ -338,7 +358,10 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
                     "guess": True, "martial": martial}
     for gender, cue in COUPLE.items():
         if calls_by(cue, line):
-            facts = {"relation": "couple", "guess": True}
+            if _PARENT_SELF.search(line):
+                return None
+            spouse = bool(gender) or bool(re.search("여보|자기야|亲爱的|親愛的|ダーリン", line))
+            facts = {"relation": "couple", "guess": True, "spouse": spouse}
             return {**facts, f"{listener} gender": gender} if gender else facts
     if ROUGH.search(line):
         return {"relation": "friends", "rough": True, "guess": True}
@@ -352,7 +375,10 @@ _HONORED = re.compile(r"셨|시[어었고는]|계셔|계세|께서")
 
 def calls_by(cue: re.Pattern, line: str) -> bool:
     """Whether a title in the line calls the listener ("Mom, I'm home", "Your Highness!") rather than names someone."""
+    glued = _KOREAN_GLUED_CALL.search(line)
     for match in cue.finditer(line):
+        if glued and match.start() == glued.start(glued.lastindex):
+            return True
         before, after = line[:match.start()], line[match.end():]
         suffix = re.match(r"(?:さん|ちゃん|様|さま|くん|君)", after)
         if suffix:
@@ -368,10 +394,10 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         if re.search("(?:を|に|が)$", before):
             continue
         hangul = re.search("[\uac00-\ud7a3]", match.group(0))
-        opening = not before.strip(" \"'「『(-—…")
+        opening = not re.sub("(?:启禀|禀告|参见|拜见|叩见)$", "", before).strip(" \"'「『(-—…")
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
         # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
-        palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后", match.group(0))
+        palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后|爹|娘|爸|妈", match.group(0))
         if not hangul and opening and not closing and not palace and not re.match(r"\s*(?:你|您)", after):
             continue
         # "엄마아빠다오셨어", "어머니아까전화하셨는데": a parent mentioned with an honorific verb, not called.
@@ -387,7 +413,7 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
 
 # Words before a title that make it a mention: "your mother", "like a mother", "手紙には", "우리 엄마".
 _MENTIONED = re.compile(r"(?:\b(?:your|my|his|her|our|their|the|a|an|like|this|that|told|said|says|with|to|for|ask|"
-                        r"tell|visit|help|see|call)\s+|の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|见|"
+                        r"tell|visit|help|see|call)\s+|の|には|って|と|우리\s*|내\s*|네\s*|告诉|跟|给|找|叫|让|问|对|和|的|(?<![参拜叩])见|"
                         r"护住|保护|救|帮|跟着)$", re.I)
 # Titles that only ever come with "your", so "Your Majesty" calls the ruler where "your mother" only mentions one.
 _HONORIFIC = re.compile(r"(?:majesty|highness|grace|excellency|lordship|ladyship)", re.I)
@@ -531,6 +557,8 @@ class Relationships:
 
     def address(self, text: str, speaker_gender: str = "") -> Address | None:
         body = body_of(text)
+        if _TRANSLATOR_NOTE.match(text) or " = " in text:
+            return None
         if self.settings().target_lang not in SUPPORTED:
             return None
         if GROUP.search(body) and not _calls_a_title(body):
@@ -541,7 +569,8 @@ class Relationships:
         speaker = speaker_of(text)
         if not speaker:
             facts = guess_facts(text, "the speaker", "the listener")
-            if facts and speaker_gender:
+            # Parents say "sweetheart" and "baby" too: only words spouses alone use take the voice's gender.
+            if facts and speaker_gender and (facts.get("relation") != "couple" or facts.get("spouse")):
                 facts = {"the speaker gender": speaker_gender, **facts}
             return _address("the speaker", "the listener", facts, True)
         with self._lock:

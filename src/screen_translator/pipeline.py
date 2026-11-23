@@ -689,6 +689,7 @@ class Pipeline:
                 translation = self._labelled(source, translation, translator)
             # A line answered with an earlier line's translation was copied from the history.
             copied = any(translation == turn.translation for turn in history if turn.source != source)
+            translation = self._capitalised(translation)
             if self._leaks(translation) or (copied and len(source) < 40):
                 # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
                 retry.append(source)
@@ -767,7 +768,7 @@ class Pipeline:
         translation = translator.translate(messages, partial)
         if not retried or is_name_tab(text) or speaker_of(text) and text.lstrip()[:1] in "【〔":
             translation = self._labelled(text, translation, translator)
-        translation = self._readable(text, translation, names_only=retried and not is_name_tab(text))
+        translation = self._capitalised(self._readable(text, translation, names_only=retried and not is_name_tab(text)))
         self._remember(text, translation)
         self.context.add(text, translation, note=address.note() if address and not address.guessed else "")
         self.relationships.heard(text)
@@ -910,6 +911,12 @@ class Pipeline:
             translation = without_echo(source, translation)
         return label_speaker(source, translation, self._names, raw_names=not latin_target)
 
+    def _capitalised(self, translation: str) -> str:
+        """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
+        if self.store.settings.target_lang != "vi" or not translation[:1].islower():
+            return translation
+        return translation[0].upper() + translation[1:]
+
     def _japanese_kanji(self, name: str, source: str) -> bool:
         if not re.fullmatch("[\u4e00-\u9fff々]+", name):
             return False
@@ -928,7 +935,9 @@ class Pipeline:
 
         def spelled(run: str) -> str:
             known = self._names.get(run)
-            return known or (self._fixed_name(run, source) if len(run) <= 4 and not names_only else None) or run
+            # A retried row's hanzi might be a word, not a name; kana and hangul are spelled out either way.
+            spell = len(run) <= 4 and not (names_only and re.search("[\u3400-\u9fff]", run))
+            return known or (self._fixed_name(run, source) if spell else None) or run
 
         return re.sub(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]+", lambda m: spelled(m.group(0)), translation)
 
@@ -994,6 +1003,10 @@ class Pipeline:
         translation = translator.translate(messages, partial, urgent=True)
         if heard["final"]:
             translation = self._unrepeated(translator, heard, translation)
+            if self._leaks(translation):
+                translation = self._readable(heard["text"], self._plainly(translator, heard["text"]))
+                # Whatever is still in the source's script would be read out as nothing, or as noise.
+                translation = re.sub(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]+", "", translation).strip()
         return unlabelled(heard["text"], self._labelled(heard["text"], translation, translator))
 
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
@@ -1001,9 +1014,14 @@ class Pipeline:
         earlier = {turn.translation for turn in self.context.turns() if _bare(turn.source) != _bare(heard["text"])}
         if translation not in earlier:
             return translation
+        again = self._plainly(translator, heard["text"])
+        # Still the earlier line: better unsaid than said for the wrong person.
+        return "" if again in earlier else again
+
+    def _plainly(self, translator: Translator, text: str) -> str:
+        """The line asked again on its own: no earlier lines to copy from and no note to trip over."""
         settings = self.store.settings
-        plain = build_messages(heard["text"], self.context.turns(), settings.source_lang, settings.target_lang,
-                               settings.glossary, settings.notes)
+        plain = build_messages(text, [], settings.source_lang, settings.target_lang, settings.glossary, settings.notes)
         return translator.translate(plain, urgent=True)
 
 

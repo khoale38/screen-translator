@@ -454,3 +454,22 @@ def test_round_10_hy_terms_set_words_guests_and_period_titles():
         time.sleep(0.1)
     assert notes[1:] == [("trẫm", "ái phi"), ("thần thiếp", "hoàng thượng"), ("trẫm", "ái phi")]
     rel.close()
+
+
+def test_round_11_parent_endearments_notes_glued_asr_calls_and_palace_words():
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
+    assert rel.address("Baby, don't cry. Mommy's here.", "female") is None
+    assert rel.address("Listen to your mother, sweetheart.", "male") is None
+    note = rel.address("여보, 오늘 일찍 와요?", "female")
+    assert (note.me, note.you) == ("em", "anh")
+    assert rel.address("T/N: Hyung = older brother, Noona = older sister") is None
+    rel.close()
+    assert said("엄마손님왔어.") is None
+    assert said("爹女儿回来了。") == ("con", "bố")
+    assert said("네마마.") == ("thần", "nương nương")
+    assert said("臣妾参见太后。") == ("thần thiếp", "Thái hậu")
+    assert said("本宫累了，你退下吧。") == ("bổn cung", "")
+    assert Address("the speaker", "the listener", "vãn bối", "tiền bối").terms("zh", "晚辈林风,见过前辈。") == {
+        "晚辈": "vãn bối", "前辈": "tiền bối"}
