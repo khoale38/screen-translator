@@ -491,3 +491,28 @@ def test_round_12_brand_names_stray_think_tags_and_glued_speech():
 
     assert clean_output("Kỹ thuật nhẹ\n</think>\n\nKỹ thuật nhẹ") == "Kỹ thuật nhẹ"
     assert [_punctuated(t) for t in ("네마마.", "爹女儿回来了。")] == ["네, 마마.", "爹，女儿回来了。"]
+
+
+def test_round_13_capitals_jamo_and_ocr_degree_signs():
+    import pathlib
+    import tempfile
+
+    from screen_translator.config import SettingsStore
+    from screen_translator.pipeline import Pipeline
+    from screen_translator.text import normalize
+
+    store = SettingsStore(pathlib.Path(tempfile.mkdtemp()) / "settings.json")
+    store.update({"target_lang": "vi"})
+    pipeline = Pipeline(store, lambda e: None)
+    assert [pipeline._capitalised(t) for t in ("x3 Bình máu", "sinh nhật: 12/5", "iPhone mới", "ㅋㅋㅋ vui quá")] == [
+        "x3 Bình máu", "Sinh nhật: 12/5", "iPhone mới", "Haha vui quá"]
+    assert normalize("ハル°") == "ハル。" and normalize("180°C") == "180°C"
+
+
+def test_round_13_one_syllable_lines_are_not_name_tabs():
+    from screen_translator.text import assemble
+
+    rows = [px("응", 100, 560, 30, 30, 1280, 720), px("그래, 알았어. 내일 보자.", 100, 600, 600, 32, 1280, 720)]
+    assert assemble(rows, width=1280, height=720) == "그래, 알았어. 내일 보자."
+    rows = [px("姫", 100, 560, 30, 30, 1280, 720), px("お待ちください！", 100, 600, 600, 32, 1280, 720)]
+    assert assemble(rows, width=1280, height=720).split("\n")[0] == "姫"

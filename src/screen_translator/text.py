@@ -26,6 +26,8 @@ def normalize(text: str) -> str:
     text = "".join(part if i % 2 else unicodedata.normalize("NFKC", part) for i, part in enumerate(parts))
     # RapidOCR reads katakana ハ, ロ, エ, カ, タ as look-alike kanji inside a katakana word or a short katakana name.
     text = _KANA_LOOKALIKE.sub(lambda m: _KANA_FIX[m.group(0)], text)
+    # OCR reads a vertical "。" as a degree sign after Japanese and Chinese text ("から°").
+    text = re.sub("(?<=[\u3040-\u30ff\u4e00-\u9fff])°(?![CF])", "。", text)
     return _BREAKS.sub("\n", _SPACES.sub(" ", text)).strip()
 
 
@@ -62,10 +64,15 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
         # "爸，" read as a box of its own beside "我回来了。" is a call, not a stray glyph.
         beside = letters == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) and any(
             other is not line and sum(ch.isalpha() for ch in other.text) >= 2
-            and (_same_row(line, other) or _tab_over(line, other)) for other in lines)
+            and (_same_row(line, other) or _tab_over(line, other) and _ONE_CHARACTER_NAME.fullmatch(text))
+            for other in lines)
         if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
             kept.append(OcrLine(text, line.confidence, line.box))
     return kept
+
+
+# A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
+_ONE_CHARACTER_NAME = re.compile("(?![嗯好啊哦是对喂嘿哈呃唉呀嘛吧呢哎噢欸行])[\u3400-\u9fff]")
 
 
 def _tab_over(tab: OcrLine, line: OcrLine) -> bool:

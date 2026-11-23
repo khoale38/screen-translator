@@ -48,9 +48,9 @@ TO_ELDER = {
     "male": re.compile(_VOCATIVE.format(r"(?:big bro|(?:big )?brother|hyung|oppa|onii-?(?:chan|san)|nii-?san|오빠|"
                                         r"사형|형(?:님)?)")
                        + _KOREAN_OPENING.format("오빠|사형") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|大師兄|"
-                       r"^哥(?=[，,！!？?])|哥哥|师兄|師兄|皇兄|兄上", re.I),
+                       r"^哥(?=[，,！!？?]|你|我)|哥哥|师兄|師兄|皇兄|兄上", re.I),
     "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|noona|unnie|onee-?(?:chan|san)|nee-?san|언니|누나|사저)")
-                         + _KOREAN_OPENING.format("언니|누나|사저") + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|師姐|^姐(?=[，,！!？?])",
+                         + _KOREAN_OPENING.format("언니|누나|사저") + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|師姐|^姐(?=[，,！!？?]|你|我)",
                          re.I),
     "": re.compile(_VOCATIVE.format(r"(?:senpai|sunbae(?:nim)?)") + r"|先輩|せんぱい|선배(?:님)?|学长|学姐", re.I),
 }
@@ -86,11 +86,11 @@ YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|br
 COUPLE = {
     "male": re.compile(r"老公|夫君|相公|旦那様?(?=[、，,！!？?])", re.I),
     "female": re.compile(r"老婆|娘子|마누라|\bwifey\b", re.I),
-    "": re.compile(_VOCATIVE.format(r"(?:honey|babe|baby|sweetheart|darling|sweetie)") + r"|亲爱的|親愛的|ダーリン|여보|자기야",
+    "": re.compile(_VOCATIVE.format(r"(?:honey|babe|baby|sweetheart|darling|sweetie)") + r"|亲爱的|親愛的|ダーリン|여보(?!세요)|자기야",
                    re.I),
 }
 # Recognized Korean speech has no spaces: these open or close a line only as a call ("자기야오늘…", "네마마").
-_KOREAN_GLUED_CALL = re.compile(r"^\W*(마마|중전마마|자기야|여보)|(마마|자기야|여보)\W*$")
+_KOREAN_GLUED_CALL = re.compile(r"^\W*(마마|중전마마|자기야|여보(?!세요))|(마마|자기야|여보)\W*$")
 # Words a speaker uses for themself that fix both sides in Vietnamese, and what the other side answers with.
 SELF_WORDS_CUES = [
     (re.compile("臣妾"), ("thần thiếp", "hoàng thượng"), ("trẫm", "ái phi")),
@@ -297,12 +297,12 @@ class Address:
         own = {"前辈": "tiền bối", "前輩": "tiền bối", "姑娘": "cô nương", "皇上": "hoàng thượng", "娘娘": "nương nương",
                "太后": "Thái hậu", "参见": "bái kiến", "拜见": "bái kiến", "叩见": "bái kiến"}
         for word, term in own.items():
-            if text and word in text and word not in terms:
+            if text and word in body_of(text) and word not in terms:
                 terms[word] = term
-        # "学长,这道题能教教我吗?": with a title and no "you", HY puts the self word on the subject ("em … em").
+        # "学长,这道题能教教我吗?": "me" as the object of a request, with no "you", HY moves onto the subject ("em … em").
         if title and not any(present(word) for lang in langs for word in YOU_WORDS[lang]):
             terms = {word: term for word, term in terms.items()
-                     if not any(word == w for lang in langs for w in SELF_WORDS[lang])}
+                     if not re.search(f"(?:教|帮|给|告诉|陪|带){re.escape(word)}", text)}
         return {word: term for word, term in terms.items() if term}
 
 
@@ -418,7 +418,9 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
         closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
         # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
         palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后|爹|娘|爸|妈", match.group(0))
-        if not hangul and opening and not closing and not palace and not re.match(r"\s*(?:你|您)", after):
+        # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
+        speaks_on = re.match(r"\s*(?:你|您|我|弟子|徒儿|女儿|儿子|孩儿|儿臣|臣妾|奴婢)", after)
+        if not hangul and opening and not closing and not palace and not speaks_on:
             continue
         # "엄마아빠다오셨어", "어머니아까전화하셨는데": a parent mentioned with an honorific verb, not called.
         if hangul and not closing and (_PARENT_WORD.match(after) or _HONORED.search(after)):
@@ -620,7 +622,11 @@ class Relationships:
         elif listener:
             # A clear form of address in this very line ("Sis", "big brother", 오빠, 大哥) outranks what was stored.
             called = guess_facts(text, speaker, listener)
-            if called and (called.get("older") or called.get("senior")) and not facts.get("words_by"):
+            if called and called.get("words_by"):
+                # "儿臣…", "臣妾…": the speaker's own word for themself in this line holds whatever the judge said.
+                facts = {**facts, "words_by": {**facts.get("words_by", {}), **called["words_by"]},
+                         "reply_to": {**facts.get("reply_to", {}), **called["reply_to"]}}
+            elif called and (called.get("older") or called.get("senior")) and not facts.get("words_by"):
                 facts = {**facts, **{key: value for key, value in called.items() if key != "guess"}}
         return _address(speaker, listener, facts, bool(facts.get("guess"))) if facts else None
 

@@ -495,3 +495,32 @@ def test_round_12_elder_endearments_palace_terms_and_modern_titles():
     assert said("师傅，去火车站。") is None
     assert said("손님 오셨습니다.") is None
     assert said("Mommy, look!") == ("con", "mẹ")
+
+
+def test_round_13_hy_self_words_phone_hello_and_palace_words_after_the_judge():
+    import json, time
+
+    from screen_translator.pipeline import _punctuated
+
+    assert Address("the speaker", "the listener", "cháu", "bà").terms("en", "Grandma, I made cookies!") == {
+        "I": "cháu", "Grandma": "bà"}
+    assert guess_facts("여보세요? 누구세요?", "A", "B") is None
+    assert _punctuated("여보세요누구세요") == "여보세요누구세요"
+    settings = types.SimpleNamespace(target_lang="vi", notes="")
+    judge = json.dumps({"relation": "parent and child", "senior": "太后", "older": "太后"})
+    rel = Relationships(lambda: Judge(judge), lambda: settings, lambda e: None)
+    rel.heard("太后\n皇儿，你来了。")
+    time.sleep(0.3)
+    note = rel.address("皇上\n儿臣给母后请安。")
+    assert note.me == "nhi thần"
+    rel.close()
+
+
+def test_round_13_unpunctuated_chinese_calls_and_glued_korean_titles():
+    from screen_translator.pipeline import _punctuated
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("哥你又输了") == ("em", "anh")
+    assert said("奶奶我回来了") == ("cháu", "bà")
+    assert said("妈妈说你回来了") is None
+    assert _punctuated("할머니저왔어요") == "할머니, 저왔어요"

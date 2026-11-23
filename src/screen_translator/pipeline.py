@@ -149,9 +149,16 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
                      r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
 
 
+def _body(translation: str) -> str:
+    """A translation without its speaker label, to tell a copied line from a new one."""
+    return re.sub(r"^[^:\n]{1,24}:\s*", "", translation.strip())
+
+
 def _punctuated(text: str) -> str:
     """Recognized speech without spaces or commas, with a comma after a call it opens or ends with ("네, 마마.")."""
-    text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])", r"\1, ", text)
+    text = re.sub(r"^(\W*(?:할머니|할아버지|엄마|아빠|오빠|언니|누나|형|선배님|선배|선생님|사장님|부장님|팀장님))"
+                  r"(?=(?:저|나|우리|빨리|왜|어디|지금|이거|잠깐)[가-힣])", r"\1, ", text)
+    text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])(?!세요)", r"\1, ", text)
     text = re.sub(r"(?<=[가-힣])((?:마마|자기야|여보)\W*)$", r", \1", text)
     return re.sub(r"^(\W*[爹娘爸妈])(?=女儿|儿子|孩儿|我|您|你)", r"\1，", text)
 
@@ -929,19 +936,24 @@ class Pipeline:
         """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
         if self.store.settings.target_lang != "vi":
             return translation
+        translation = re.sub("ㅋ{2,}", "haha", re.sub("[ㅠㅜ]{2,}", "huhu", translation)).replace("ㅇㅋ", "ok")
+        if "\n" in translation:
+            return "\n".join(self._capitalised(line) for line in translation.split("\n"))
         label, colon, body = translation.partition(": ")
-        if colon and len(label) <= 24 and "\n" not in label:
-            return f"{label}: {self._capitalised(body)}"
-        # Not a brand that starts in lower case: iPhone, eBay, eSports.
-        if not translation[:1].islower() or re.match(r"[a-z]+[A-Z]", translation):
+        if colon and len(label) <= 24:
+            return f"{self._capitalised(label)}: {self._capitalised(body)}"
+        # Not a brand that starts in lower case (iPhone, eBay) or an item count ("x3").
+        if not translation[:1].islower() or re.match(r"[a-z]+[A-Z]|x\d", translation):
             return translation
         return translation[0].upper() + translation[1:]
 
     def _checked(self, translator: Translator, source: str, translation: str, history: list) -> str:
         """A subtitle answered in the source's script, or with an earlier line's translation, asked again alone."""
-        copied = any(translation == turn.translation for turn in history if turn.source != source)
+        copied = any(_body(translation) == _body(turn.translation) for turn in history if turn.source != source)
         if self._leaks(translation) or copied:
-            again = self._labelled(source, self._plainly(translator, source), translator)
+            # Asked again without earlier lines to copy from, but with who is talking to whom.
+            again = self._labelled(source, self._plainly(translator, source, self.relationships.address(source)),
+                                   translator)
             translation = self._readable(source, again, names_only=True)
         return self._capitalised(translation)
 
@@ -1040,8 +1052,9 @@ class Pipeline:
             translation = self._unrepeated(translator, heard, translation)
             if self._leaks(translation):
                 translation = self._readable(heard["text"], self._plainly(translator, heard["text"]))
-                # Whatever is still in the source's script would be read out as nothing, or as noise.
-                translation = re.sub(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]+", "", translation).strip()
+                # Hangul and kana left in are spelled out ("떡볶이" is tteokbokki); hanzi would be read as nothing.
+                translation = re.sub(r"[\u3040-\u30ff\uac00-\ud7a3]+", lambda m: romanized(m.group(0)) or "", translation)
+                translation = re.sub(r"[\u3400-\u9fff]+", "", translation).strip()
         return unlabelled(heard["text"], self._labelled(heard["text"], translation, translator))
 
     def _unrepeated(self, translator: Translator, heard: dict, translation: str) -> str:
@@ -1053,10 +1066,11 @@ class Pipeline:
         # Still the earlier line: better unsaid than said for the wrong person.
         return "" if again in earlier else again
 
-    def _plainly(self, translator: Translator, text: str) -> str:
-        """The line asked again on its own: no earlier lines to copy from and no note to trip over."""
+    def _plainly(self, translator: Translator, text: str, address=None) -> str:
+        """The line asked again on its own, with no earlier lines to copy from."""
         settings = self.store.settings
-        plain = build_messages(text, [], settings.source_lang, settings.target_lang, settings.glossary, settings.notes)
+        plain = build_messages(text, [], settings.source_lang, settings.target_lang, settings.glossary, settings.notes,
+                               address=address)
         return translator.translate(plain, urgent=True)
 
 
