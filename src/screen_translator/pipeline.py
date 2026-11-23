@@ -149,12 +149,22 @@ _ROMAJI = re.compile(r"(?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|
                      r"(?: (?:(?:[kgsztdnhbpmrwy]|sh|ch|ts|j|f|ky|gy|ny|hy|my|ry|by|py|kk|tt|ss|pp)?[aiueo]|n)+)?")
 
 
+_LOOP = re.compile(r"\b(\w+)(?:[\s,]+\1\b){5,}")
+
+
+def _collapsed(translation: str) -> str:
+    """A small model stuck on one word ("ba ba ba …"), cut to one; five in a row may be meant ("No, no, no, no, no!")."""
+    return _LOOP.sub(r"\1", translation)
+
+
 def _without_hanzi(translation: str) -> str:
     """Hanzi still left after asking again: a name is read in Hán-Việt, anything else means nothing to a reader."""
     def read(run: str) -> str:
-        return (han_viet(run) if 2 <= len(run) <= 3 and run[0] in _COMMON_SURNAMES else None) or " "
+        name = han_viet(run) if 2 <= len(run) <= 3 and run[0] in _COMMON_SURNAMES else None
+        return f" {name} " if name else " "
 
-    return re.sub(r"\s{2,}", " ", re.sub(r"[\u3400-\u9fff]+", lambda m: read(m.group(0)), translation)).strip()
+    text = re.sub(r"[\u3400-\u9fff]+", lambda m: read(m.group(0)), translation)
+    return re.sub(r"\s{2,}", " ", re.sub(r"\s+([,.!?])", r"\1", text)).strip()
 
 
 _COMMON_SURNAMES = set("王李张張刘劉陈陳杨楊黄黃赵趙吴吳周徐孙孫马馬朱胡郭何高林罗羅郑鄭梁谢謝宋唐许許韩韓冯馮邓鄧曹彭曾萧蕭田董袁潘蒋蔣"
@@ -355,7 +365,7 @@ class Pipeline:
                     if changed(thumbs.get(area), thumb):
                         lines = ocr.recognize(frame, settings.source_lang)
                         self._report_devices(ocr)
-                        texts[area] = assemble(lines, width=frame.width, height=frame.height)
+                        texts[area] = assemble(lines, width=frame.width, height=frame.height, menus=True)
                         heights[area] = median(char_size(l, frame.width, frame.height) for l in lines) if lines else 0.0
                         self.emit({"type": "ocr", "area": area, "text": texts[area],
                                    "ms": round((time.monotonic() - read_at) * 1000)})
@@ -728,7 +738,7 @@ class Pipeline:
                 translation = f"{row.group(1)}: {self._readable(source, row.group(2))}"
             # HY-MT sometimes translates the screen instruction itself instead of the row.
             echoed = re.match(r"\s*(?:Bối cảnh|Background)\b", translation) or "giao diện của trò chơi" in translation
-            if self._leaks(translation) or (copied and len(source) < 40) or echoed:
+            if self._leaks(translation) or (copied and len(source) < 40) or echoed or _LOOP.search(translation):
                 # A small model slipping into the source's script mid-sentence ("Sư huynh đã替你 chắn"): ask again alone.
                 retry.append(source)
                 left.discard(source)
@@ -961,8 +971,9 @@ class Pipeline:
         """A line that opens with a called title copied from a term ("tiền bối, em…") still starts a sentence."""
         if self.store.settings.target_lang != "vi":
             return translation
-        translation = re.sub(r"ㅋ{2,}\s*", "haha ", re.sub(r"[ㅠㅜ]{2,}\s*", "huhu ", translation))
-        translation = re.sub(r"ㅎ{2,}\s*", "hehe ", translation)
+        translation = re.sub(r"\s*ㅋ{2,}\s*", " haha ", re.sub(r"\s*[ㅠㅜ]{2,}\s*", " huhu ", translation))
+        translation = re.sub(r"\s*ㅎ{2,}\s*", " hehe ", translation)
+        translation = _collapsed(re.sub(r" {2,}", " ", translation))
         translation = re.sub(r"(?<![가-힣ㄱ-ㅎ])[ㄱ-ㅎ](?![가-힣ㄱ-ㅎ])", "", translation)
         translation = re.sub(r"(?<![가-힣])ㅇㅋ", "ok", translation).replace("ㅇㅇ", "ừ").replace("ㄴㄴ", "không").strip()
         if "\n" in translation:
@@ -982,7 +993,7 @@ class Pipeline:
         # "Vâng." twice from two people is no copy.
         copied = len(_body(translation)) >= 12 and any(
             _body(translation) == _body(turn.translation) for turn in history if turn.source != source)
-        if self._leaks(translation) or copied:
+        if self._leaks(translation) or copied or _LOOP.search(translation):
             # Asked again without earlier lines to copy from, but with who is talking to whom.
             again = self._labelled(source, self._plainly(translator, source, self.relationships.address(source)),
                                    translator)
@@ -1082,8 +1093,8 @@ class Pipeline:
         translation = translator.translate(messages, partial, urgent=True)
         if heard["final"]:
             translation = self._unrepeated(translator, heard, translation)
-            if self._leaks(translation):
-                translation = self._readable(heard["text"], self._plainly(translator, heard["text"]))
+            if self._leaks(translation) or _LOOP.search(translation):
+                translation = _collapsed(self._readable(heard["text"], self._plainly(translator, heard["text"])))
                 # Hangul and kana left in are spelled out ("떡볶이" is tteokbokki); hanzi would be read as nothing.
                 translation = re.sub(r"[\u3040-\u30ff\uac00-\ud7a3]+", lambda m: romanized(m.group(0)) or "", translation)
                 translation = re.sub(r"[\u3400-\u9fff]+", "", translation).strip()

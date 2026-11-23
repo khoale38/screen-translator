@@ -546,4 +546,16 @@ def test_round_15_polite_calls_and_hanzi_names_after_a_leak():
     said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
     assert said("师父我替您报仇了") == ("đệ tử", "sư phụ")
     assert said("姐姐我好想你啊") is None
-    assert _without_hanzi("Anh,李明 đang tìm anh đấy.") == "Anh,Lý Minh đang tìm anh đấy."
+    assert _without_hanzi("Anh,李明 đang tìm anh đấy.") == "Anh, Lý Minh đang tìm anh đấy."
+
+
+def test_round_16_promise_is_not_a_swear_and_colloquial_or_cantonese_titles_count():
+    from screen_translator.translator import label_speaker
+
+    said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
+    assert said("やくそくだよ、ぜったいね！") is None
+    assert said("じいちゃん、ただいま！") == ("cháu", "ông")
+    assert said("阿嫲，我返嚟喇。") == ("cháu", "bà")
+    assert said("媽，我回來了。") == ("con", "mẹ")
+    assert said("妈 我回来了") == ("con", "mẹ")
+    assert label_speaker("李明\n走吧。", "Lý Minh: “Đi thôi.”", {"李明": "Lý Minh"}) == "Lý Minh: Đi thôi."

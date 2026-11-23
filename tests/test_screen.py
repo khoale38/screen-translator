@@ -531,7 +531,10 @@ def test_round_15_loops_markdown_jamo_and_katakana_name_ends():
     from screen_translator.text import normalize
     from screen_translator.translator import clean_output
 
-    assert clean_output("Ông ấy nhờ anh ba ba ba ba ba ba") == "Ông ấy nhờ anh ba"
+    from screen_translator.pipeline import _collapsed
+
+    assert _collapsed("Ông ấy nhờ anh ba ba ba ba ba ba ba") == "Ông ấy nhờ anh ba"
+    assert _collapsed("Không, không, không, không, không!") == "Không, không, không, không, không!"
     assert clean_output("**Trận chiến Lượt thứ 3!**") == "Trận chiến Lượt thứ 3!"
     assert normalize("【ミ力】行くよ") == "【ミカ】行くよ" and normalize("体力") == "体力"
     store = SettingsStore(pathlib.Path(tempfile.mkdtemp()) / "settings.json")
@@ -547,3 +550,20 @@ def test_round_15_centred_one_character_calls_and_orphan_rows():
     rows = [px("李明", 100, 500, 80, 40, 1280, 720), px("天色已晚，我们就在这破庙里歇一晚", 100, 550, 700, 40, 1280, 720),
             px("吧。", 100, 595, 60, 40, 1280, 720), px("按空格键继续", 1000, 680, 200, 30, 1280, 720)]
     assert assemble(rows, width=1280, height=720).split("\n")[-1] == "按空格键继续"
+
+
+def test_round_16_area_furigana_buttons_and_choice_menus():
+    from screen_translator.text import assemble
+
+    W, H = 1280, 720
+    furigana = [px("あした", 100, 500, 60, 18, W, H), px("えき", 190, 500, 40, 18, W, H),
+                px("明日、駅の前で待ってるから。", 100, 520, 560, 36, W, H)]
+    assert assemble(furigana, width=W, height=H, menus=True) == "明日、駅の前で待ってるから。"
+    buttons = [px("白露", 100, 500, 80, 40, W, H), px("自动 跳过 记录", 900, 500, 300, 30, W, H),
+               px("师兄，这次的任务就交给我吧！", 100, 550, 600, 40, W, H)]
+    assert assemble(buttons, width=W, height=H, menus=True) == "白露\n师兄，这次的任务就交给我吧！"
+    choices = [px("你真的要离开这个村子吗？", 400, 500, 480, 40, W, H), px("是", 400, 550, 40, 40, W, H),
+               px("否", 400, 600, 40, 40, W, H)]
+    assert assemble(choices, width=W, height=H, menus=True) == "你真的要离开这个村子吗？\n是\n否"
+    call = [px("师父", 600, 560, 60, 30, W, H), px("弟子知错了。", 560, 600, 160, 32, W, H)]
+    assert assemble(call, width=W, height=H, menus=True) == "师父，弟子知错了。"

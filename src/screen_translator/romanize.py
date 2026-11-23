@@ -100,7 +100,11 @@ ROLES_VI = {
     "太后": "Thái hậu", "皇上": "Hoàng thượng", "皇帝": "Hoàng đế", "王爷": "Vương gia", "宫女": "Cung nữ",
     "服务员": "Phục vụ", "师姐": "Sư tỷ", "师兄": "Sư huynh", "师妹": "Sư muội", "师弟": "Sư đệ", "師姐": "Sư tỷ",
     "師兄": "Sư huynh", "丫鬟": "Nha hoàn", "侍女": "Thị nữ", "公主": "Công chúa", "皇后": "Hoàng hậu", "将军": "Tướng quân",
-    "전하": "Điện hạ", "중전": "Trung điện", "중전마마": "Trung điện nương nương", "대비": "Đại phi", "세자": "Thế tử",
+    "의사": "Bác sĩ", "경찰": "Cảnh sát", "간호사": "Y tá", "선생": "Thầy", "학생": "Học sinh", "손님": "Khách",
+    "직원": "Nhân viên", "주인": "Chủ", "기자": "Phóng viên", "형사": "Thanh tra", "군인": "Quân nhân", "병사": "Binh sĩ",
+    "마법사": "Pháp sư", "용사": "Dũng sĩ", "마왕": "Ma vương", "왕자": "Hoàng tử", "공주": "Công chúa", "촌장": "Trưởng làng",
+    "노인": "Ông lão", "할멈": "Bà lão", "아이": "Đứa trẻ", "소녀": "Cô gái", "소년": "Cậu bé", "남자": "Người đàn ông",
+    "여자": "Người phụ nữ", "전하": "Điện hạ", "중전": "Trung điện", "중전마마": "Trung điện nương nương", "대비": "Đại phi", "세자": "Thế tử",
     "상궁": "Thượng cung", "내관": "Nội quan", "왕": "Vua", "姫": "Công chúa", "王": "Vua", "兄": "Anh", "爹": "Bố",
     "娘": "Mẹ", "Mom": "Mẹ", "Mum": "Mẹ", "Mother": "Mẹ", "Dad": "Bố", "Father": "Bố", "Grandma": "Bà", "Grandpa": "Ông",
     "大人": "Đại nhân", "掌柜": "Chưởng quỹ", "长老": "Trưởng lão", "宗主": "Tông chủ",
@@ -109,6 +113,10 @@ ROLES_VI = {
 
 # Hán-Việt readings of common characters in Chinese names: 林风 is Lâm Phong, as Vietnamese viewers know them.
 _HAN_VIET = """
+血Huyết 默Mặc 魔Ma 尊Tôn 邪Tà 鬼Quỷ 妖Yêu 圣聖Thánh 神Thần 仙Tiên 佛Phật 帝Đế 皇Hoàng 后Hậu 宗Tông 门門Môn 派Phái 阁閣Các
+楼樓Lâu 殿Điện 宫宮Cung 堂Đường 院Viện 山Sơn 峰Phong 谷Cốc 洞Động 海Hải 江Giang 河Hà 湖Hồ 城Thành 国國Quốc 州Châu
+啸嘯Khiếu 傲Ngạo 狂Cuồng 绝絕Tuyệt 无無Vô 天Thiên 地Địa 玄Huyền 黄黃Hoàng 宇Vũ 宙Trụ 洪Hồng 荒Hoang 日Nhật 星Tinh 辰Thần
+晨Thần 曦Hy 昊Hạo 苍蒼Thương 穹Khung 霸Bá 战戰Chiến 刀Đao 枪槍Thương 弓Cung 箭Tiễn 盾Thuẫn 甲Giáp 锋鋒Phong 刃Nhận
 无無Vô 儿兒Nhi 妃Phi 妾Thiếp 忌Kỵ 逍Tiêu 凯凱Khải 瑟Sắt 婉Uyển 灵Linh 容Dung 莫Mạc 霸Bá 武Vũ 侠俠Hiệp 剑劍Kiếm
 宝Bảo 钗釵Thoa 黛Đại 玉Ngọc 湘Tương 云Vân 熙Hy 嬛Hoàn 甄Chân 华華Hoa 皇Hoàng 贵貴Quý 淑Thục 德Đức 贤賢Hiền 惠Huệ
 静Tĩnh 怜憐Liên 香Hương 兮Hề 曼Mạn 菁Tinh 蕊Nhụy 瑛Anh 璎瓔Anh 珞Lạc 弘Hoằng 历歷Lịch 胤Dận 禛Chân 祯禎Trinh 康Khang

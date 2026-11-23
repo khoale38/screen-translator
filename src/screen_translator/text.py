@@ -71,11 +71,20 @@ def clean_lines(lines: list[OcrLine], min_confidence: float = 0.3, lone_cjk: boo
             and (_same_row(line, other) or _stacked(line, other)) for other in lines)
         if line.confidence >= min_confidence and (letters >= 2 or lone or beside):
             kept.append(OcrLine(text, line.confidence, line.box))
+    # A second one-character choice ("否") stacked under the first ("是") belongs as much as the first does.
+    for line in lines:
+        text = line.text.strip()
+        if line.confidence >= min_confidence and len(text) == 1 and re.search("[\u3400-\u9fff\uac00-\ud7a3]", text) \
+                and all(k.box != line.box for k in kept) and any(len(k.text) == 1 and _stacked(line, k) for k in kept):
+            kept.append(OcrLine(text, line.confidence, line.box))
     return kept
 
 
 # A one-character name tab is a hanzi or kanji role (姫, 爹, 王); 응, 네, 嗯, 好 open a subtitle instead.
-_ONE_SYLLABLE = re.compile("[\u3400-\u9fff\uac00-\ud7a3][，,。.！!？?、…~]?")
+_ONE_SYLLABLE = re.compile("(?:[\u3400-\u9fff\uac00-\ud7a3]|师父|师兄|师姐|妈妈|爸爸|哥哥|姐姐|奶奶|爷爷|老师|陛下|殿下|娘娘)"
+                           "[，,。.！!？?、…~]?")
+_CONTROLS = re.compile(r"(?:(?:AUTO|SKIP|LOG|MENU|SAVE|LOAD|Q\.?SAVE|Q\.?LOAD|HIDE|CONFIG|オート|スキップ|ログ|メニュー|"
+                       r"セーブ|ロード|自动|跳过|记录|回顾|菜单|隐藏|存档|读档|자동|스킵|로그|메뉴)\s*)+", re.I)
 _ONE_CHARACTER_NAME = re.compile("(?![嗯好啊哦是对喂嘿哈呃唉呀嘛吧呢哎噢欸行])[\u3400-\u9fff]")
 
 
@@ -104,7 +113,7 @@ def char_size(line: OcrLine, width: int = 1, height: int = 1) -> float:
 
 
 def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, height: int = 1,
-             lone_cjk: bool = False, vertical: bool | None = None) -> str:
+             lone_cjk: bool = False, vertical: bool | None = None, menus: bool = False) -> str:
     kept = clean_lines(lines, min_confidence, lone_cjk)
     if not kept:
         return ""
@@ -117,7 +126,11 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         return text
 
     kept = [line for i, line in enumerate(kept)
-            if _ruby_row_base([(l.box[0], l.box[1], l.box[2], l.box[3], "h", l.text) for l in kept], i) is None]
+            if _ruby_row_base([(l.box[0] * width, l.box[1] * height, l.box[2] * width, l.box[3] * height, "h", l.text)
+                               for l in kept], i) is None]
+    # Visual-novel and gacha buttons on the name row ("AUTO SKIP LOG") are not part of anyone's line.
+    if menus:
+        kept = [line for line in kept if not _CONTROLS.fullmatch(line.text.strip())]
     kept.sort(key=lambda line: line.box[1] + line.box[3] / 2)
     rows: list[list[OcrLine]] = []
     for line in kept:
@@ -145,7 +158,7 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
             (row[0].box[1] + row[0].box[3] / 2) - (previous[1].box[1] + previous[1].box[3] / 2)) < row[0].box[3] / 2
         left, right, bottom = ordered[0].box[0], ordered[-1].box[0] + ordered[-1].box[2], row[0].box[1] + row[0].box[3]
         lone = (previous is not None and _ONE_SYLLABLE.fullmatch(previous[0].strip())
-                and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0]))
+                and paragraphs[-1] == previous[0] and _stacked(previous[1], row[0]) and len(row_text.strip()) > 2)
         if lone and not same_baseline:
             # "哥" centred over "等等我！" calls the listener; only a role set flush left over its line names the speaker.
             left = abs(previous[1].box[0] - row[0].box[0])
@@ -158,7 +171,9 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
                 spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
                 previous = (paragraphs[-1], row[0], width)
                 continue
-        if previous is not None and not same_baseline and not _starts_new_paragraph(*previous, row[0], width):
+        menu = menus and previous is not None and not same_baseline and _choice_rows(previous, row[0], row_text,
+                                                                                    frame_w, frame_h)
+        if previous is not None and not same_baseline and not menu and not _starts_new_paragraph(*previous, row[0], width):
             paragraphs[-1] = _join(paragraphs[-1], row_text)
             spans[-1] = [min(spans[-1][0], left), max(spans[-1][1], right), bottom, spans[-1][3]]
         else:
@@ -172,6 +187,15 @@ def assemble(lines: list[OcrLine], min_confidence: float = 0.3, width: int = 1, 
         if apart and _name_like(paragraphs[1]):
             paragraphs.append(paragraphs.pop(0))
     return "\n".join(paragraphs)
+
+
+def _choice_rows(previous: tuple, below: OcrLine, below_text: str, frame_w: float, frame_h: float) -> bool:
+    """A question with short choices stacked under it ("是" / "否"), or short rows left-aligned like a menu."""
+    above_text, above = previous[0].strip(), previous[1]
+    short = lambda text: len(text.replace(" ", "")) <= 8
+    if abs(above.box[0] - below.box[0]) * frame_w >= 1.5 * max(above.box[3], below.box[3]) * frame_h:
+        return False
+    return short(below_text) and (above_text[-1:] in "?？" or short(above_text))
 
 
 def _split_wide_gaps(row: list[OcrLine]) -> list[list[OcrLine]]:
@@ -330,7 +354,10 @@ def _ruby_row_base(pixels: list[tuple], i: int) -> int | None:
         flush = abs(a[0] - b[0]) < 0.5 * b[3]
         # So does a cutscene name centred over its subtitle line, which is not much smaller than the line.
         centred = abs((a[0] + a[2] / 2) - (b[0] + b[2] / 2)) < b[3] and a[3] >= 0.55 * b[3]
-        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and not (flush or centred):
+        # A hiragana reading over the kanji that open a line ("あした" over "明日") is flush with it too.
+        hiragana = re.fullmatch("[ぁ-ゖー]+", a[5])
+        if -0.3 * a[3] <= gap <= 0.4 * b[3] and inside and kanji and len(a[5]) <= 3 * kanji and (
+                hiragana or not (flush or centred)):
             return j
     return None
 

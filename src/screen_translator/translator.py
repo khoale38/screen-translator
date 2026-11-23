@@ -233,8 +233,7 @@ def clean_output(raw: str) -> str:
     introduces = first.rstrip().endswith((":", "：")) and len(first.split()) >= 4
     if rest.strip() and (introduces or _PREAMBLE.match(first)):
         text = rest.strip()
-    # A small model stuck on one word ("ba ba ba …") and markdown bold from HY-MT.
-    text = re.sub(r"\b(\w+)(?:[\s,]+\1\b){3,}", r"\1", text).replace("**", "")
+    text = text.replace("**", "")
     pairs = {'"': '"', "'": "'", "“": "”", "‘": "’"}
     if len(text) >= 2 and pairs.get(text[0]) == text[-1]:
         text = text[1:-1].strip()
@@ -319,6 +318,10 @@ def label_speaker(source: str, translation: str, names: dict[str, str] | None = 
             label = known or readable(head)
             return f"{label}: {' '.join(body.split())}" if label else " ".join(body.split())
     labelled = _LABEL.match(translation.strip())
+    if labelled and re.fullmatch(r"\s*[“\"「『].*[”\"」』]\s*", labelled.group(2), re.S):
+        # "Lý Minh: “Đi thôi.”": the quotes only marked the line as speech.
+        translation = f"{labelled.group(1)}: {labelled.group(2).strip()[1:-1].strip()}"
+        labelled = _LABEL.match(translation.strip())
     # One spelling per character on every line: the known one replaces whatever the model wrote this time.
     if labelled and name and (known or not readable(labelled.group(1).strip())):
         return f"{known}: {labelled.group(2)}" if known else labelled.group(2)

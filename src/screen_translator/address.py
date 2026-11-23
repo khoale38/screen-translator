@@ -38,7 +38,7 @@ YOU_WORDS = {"en": ("you", "you're", "you'll", "you've", "your", "yourself"),
 # Cues clear enough to guess from at once, before the model has read the conversation.
 # お前 and "hell" are left out: teachers, parents and couples say them all the time.
 ROUGH = re.compile(r"\b(damn|shit|fuck\w*|bitch|fool|punk|ass(hole)?|dumbass|motherf\w*)\b|"
-                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|くそ|クソ|새끼|씨발|개새|他妈|妈的|滚", re.I)
+                   r"てめぇ|テメェ|貴様|ぶっ殺|うるせ|やがる|ふざけん|くそ(?![くこ])|クソ|새끼|씨발|개새|他妈|妈的|滚", re.I)
 # English and Korean titles count only when they call the listener ("Brother, wait!", "오빠, 그 말..."), not when
 # they mention someone ("오빠 편만 들어요"); Japanese and Chinese often use the title for "you" inside the sentence.
 _VOCATIVE = r"(?:^\W*{0}(?![\w가-힣])|(?:[,!?.]\s*){0}(?=\s*(?:[,!?.~…]|$))|{0}(?=\s*[,!?~…]))"
@@ -48,9 +48,9 @@ TO_ELDER = {
     "male": re.compile(_VOCATIVE.format(r"(?:big bro|(?:big )?brother|hyung|oppa|onii-?(?:chan|san)|nii-?san|오빠|"
                                         r"사형|형(?:님)?)")
                        + _KOREAN_OPENING.format("오빠|사형") + r"|兄さん|兄ちゃん|お兄|兄貴|大哥|二哥|大师兄|大師兄|"
-                       r"^哥(?=[，,！!？?]|你|我)|哥哥|师兄|師兄|皇兄|兄上", re.I),
+                       r"^哥(?= |[，,！!？?]|你|我)|哥哥|大佬|师兄|師兄|皇兄|兄上", re.I),
     "female": re.compile(_VOCATIVE.format(r"(?:(?:big )?sis(?:ter)?|noona|unnie|onee-?(?:chan|san)|nee-?san|언니|누나|사저)")
-                         + _KOREAN_OPENING.format("언니|누나|사저") + r"|姉さん|姉ちゃん|お姉|姐姐|师姐|師姐|^姐(?=[，,！!？?]|你|我)",
+                         + _KOREAN_OPENING.format("언니|누나|사저") + r"|姉さん|姉ちゃん|お姉|姐姐|家姐|师姐|師姐|^姐(?= |[，,！!？?]|你|我)",
                          re.I),
     "": re.compile(_VOCATIVE.format(r"(?:senpai|sunbae(?:nim)?)") + r"|先輩|せんぱい|선배(?:님)?|学长|学姐", re.I),
 }
@@ -76,9 +76,10 @@ ROLES = {
     "aunt or uncle and niece or nephew": re.compile(r"\b(uncle|aunt|auntie|aunty|ahjussi|ahjumma)\b|叔父|伯父|叔母|伯母|"
                                                     r"おじさん|おばさん|叔叔|阿姨|伯伯|舅舅|姑姑|삼촌|이모|고모|아저씨|아줌마", re.I),
     "grandparent and grandchild": re.compile(r"\b(grandma|grandpa|grandmother|grandfather|granny)\b|할머니|할아버지|"
-                                             r"おばあ|おじい|祖母|祖父|奶奶|爷爷|外婆|外公", re.I),
-    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|"
-                                   r"^(?:妈|爸|娘|爹)(?=[，,！!？?]|女儿|儿子|孩儿|我|您|你)|아버님|어머님|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
+                                             r"おばあ|おじい|じいちゃん|ばあちゃん|じっちゃん|ばっちゃん|じいじ|ばあば|爺ちゃん|"
+                                             r"婆ちゃん|祖母|祖父|奶奶|爷爷|爺爺|外婆|外公|阿嫲|嫲嫲|阿爺|婆婆|公公", re.I),
+    "parent and child": re.compile(r"\b(mom|mum|dad|mother|father|mommy|mummy|daddy|mama|papa)\b|엄마|아빠|어머니|아버지|お母|お父|(?<![叔伯])[母父]さん|妈妈|爸爸|媽媽|媽咪|爹哋|老豆|阿媽|阿爸|"
+                                   r"^(?:妈|爸|媽|娘|爹)(?= |[，,！!？?]|女儿|儿子|孩儿|我|您|你)|아버님|어머님|父亲|母亲|爹爹|娘亲|父上|母上|母后|父皇|母妃", re.I),
 }
 YOUNGER = re.compile(_VOCATIVE.format(r"(?:(?:little|kid|baby) (?:sis(?:ter)?|bro(?:ther)?)|사제|사매)") + r"|동생아|"
                      r"(?:^|[，,。！？!?]\s*)小?(?:三弟|二弟|师弟|师妹|師弟|師妹|小妹)(?=[，,。！？!?])", re.I)
@@ -112,9 +113,9 @@ _PARENT_SELF = re.compile(r"\b(mommy|mummy|daddy|mom|mum|dad|your (?:mother|fath
 ROYAL_PARENTS = {"父皇": "phụ hoàng", "母后": "mẫu hậu", "母妃": "mẫu phi"}
 PRINCELY = re.compile(r"\b(prince|princess|highness)\b|殿下|王子|公主|姫様|왕자|공주|전하", re.I)
 FEMALE_TITLES = re.compile(r"\b(princess|queen|empress|lady|milady|grandma|grandmother|granny|mom|mum|mother|aunt|auntie|"
-                           r"aunty|noona|unnie|ahjumma|mommy|mummy|mama)\b|아줌마|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
+                           r"aunty|noona|unnie|ahjumma|mommy|mummy|mama)\b|ばあちゃん|阿嫲|嫲嫲|婆婆|媽|家姐|아줌마|어머님|娘|母亲|母上|姫様|叔母|伯母|おばさん|阿姨|姑姑|이모|고모|사저|사매|师姐|師姐|师妹|師妹|공주|"
                            r"할머니|엄마|어머니|아가씨|おばあ|お母|母さん|お嬢様|祖母|奶奶|外婆|妈|公主|母后|母妃|小姐", re.I)
-MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
+MALE_TITLES = re.compile(r"\b(prince|king|emperor|lord|milord|grandpa|grandfather|dad|father|uncle|hyung|oppa|ahjussi|daddy|papa)\b|じいちゃん|阿爺|公公|老豆|爹哋|大佬|아저씨|아버님|爹|父亲|父上|兄上|叔父|伯父|"
                          r"おじさん|叔叔|伯伯|舅舅|삼촌|사형|사제|师兄|師兄|师弟|師弟|왕자|할아버지|아빠|아버지|"
                          r"도련님|おじい|お父|父さん|お坊ちゃま|祖父|爷爷|外公|爸|王子|父皇|少爷", re.I)
 PAIR_LINES = 10
@@ -416,7 +417,9 @@ def calls_by(cue: re.Pattern, line: str) -> bool:
             continue
         hangul = re.search("[\uac00-\ud7a3]", match.group(0))
         opening = not re.sub("(?:启禀|禀告|参见|拜见|叩见|多谢|谢谢|谢|恭送|叩谢|恭迎)$", "", before).strip(" \"'「『(-—…")
-        closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。"
+        # A subtitle often sets a call apart with a space instead of a comma: "妈 我回来了", "师兄 小心".
+        spaced = re.match(r"[\u3400-\u9fff]", match.group(0)[-1:]) and re.match(r" +[\u3400-\u9fff]", after)
+        closing = not after.strip() or after.lstrip()[:1] in ",!?.、，！？~…。" or bool(spaced)
         # Palace speech opens with the title as "you": "母后恕罪", "陛下息怒".
         palace = re.fullmatch("母后|父皇|母妃|陛下|皇上|太后|爹|娘|爸|妈", match.group(0))
         # "哥你…", "师父弟子…", "奶奶我…": an unpunctuated subtitle still calls when "you" or "I" comes next.
