@@ -171,7 +171,7 @@ Answer questions about {a} and {b} with JSON only:
 
 def _looks_like_name(label: str) -> bool:
     """One to three words, each capitalised unless written in a script without capitals ("Big Smoke", "リュウ")."""
-    words = label.split()
+    words = re.sub(r"^\[[A-Za-z]+\]\s*", "", label).split()
     return 0 < len(words) <= 3 and len(label) <= 24 and all(word[0].isupper() or not word[0].isascii() for word in words)
 
 
@@ -529,7 +529,12 @@ def guess_facts(line: str, speaker: str, listener: str) -> dict | None:
                     "guess": True, "martial": martial}
     for gender, cue in COUPLE.items():
         if calls_by(cue, line):
-            if _PARENT_SELF.search(line):
+            parent = _PARENT_SELF.search(line)
+            if parent and not parent.group(0).lower().startswith("your"):
+                gender = "female" if FEMALE_TITLES.search(parent.group(0)) else "male"
+                return {"relation": "parent and child", "senior": speaker, "older": speaker,
+                        f"{speaker} gender": gender, "guess": True}
+            if parent:
                 return None
             spouse = bool(gender) or bool(re.search("여보|자기야|亲爱的|親愛的|ダーリン", line))
             facts = {"relation": "couple", "guess": True, "spouse": spouse}
@@ -550,6 +555,7 @@ _SELF_TITLE = re.compile(
     rf"(?:(?<=[，,。！!？?、])|(?<=は))\s*(?P<d>{_ELDER})(?:が(?:いる|ついて|守|.{{0,12}}?(?:あげる|やる))|に任せ)|"
     rf"(?<=[，,。！!？?])\s*(?P<e>{_ELDER})我?(?=给你|給你|在这|在這|在呢|会(?:保护|陪|帮|一直)|會(?:保護|陪|幫)|帮你|陪你|带你|替你|请你|保护)|"
     rf"(?P<f>{_ELDER})(?:가|이)\s?(?:(?!내가|제가)[가-힣\s]){{0,15}}?(?:줄게|할게)|(?P<g>{_ELDER})만\s?믿|"
+    r"^\W*(?P<j>お母さん|お父さん|ママ|パパ|先生|お姉ちゃん|お兄ちゃん|おばあちゃん|おじいちゃん)は(?!.*(?:って(?:言|[。、！!]|$)|そうだ|らしい))(?=.*(?:よ|わ|ぞ|からね)\W*$)|"
     r"我(?:是你|这个当|這個當)(?P<h>妈|爸|媽|姐|哥|爷爷|奶奶|老师|师父)|\byour old (?P<i>grandpa|grandma|granny)\b", re.I)
 
 

@@ -285,7 +285,8 @@ def test_film_subtitle_first_lines_and_bracketed_names():
 
 
 def test_a_parent_speaking_of_themself_and_titles_after_verbs_are_not_calls():
-    assert guess_facts("お母さんはね、ずっと心配してたのよ。", "the speaker", "the listener") is None
+    assert guess_facts("お母さんはね、ずっと心配してたのよ。", "the speaker", "the listener")["senior"] == "the speaker"
+    assert guess_facts("お母さんは仕事で遅くなるって。", "the speaker", "the listener") is None
     assert guess_facts("爸爸给你买了礼物，快打开看看。", "the speaker", "the listener") is None
     assert guess_facts("ごめんね、お母さん、すぐ行くから。", "the speaker", "the listener")["senior"] == "the listener"
     assert guess_facts("三弟，护住师父，我来对付他！", "萧远", "林风")["older"] == "萧远"
@@ -460,7 +461,7 @@ def test_round_11_parent_endearments_notes_glued_asr_calls_and_palace_words():
     said = lambda line: (lambda f: f and vietnamese(f, "A", "B"))(guess_facts(line, "A", "B"))
     settings = types.SimpleNamespace(target_lang="vi", notes="")
     rel = Relationships(lambda: Judge("{}"), lambda: settings, lambda e: None)
-    assert rel.address("Baby, don't cry. Mommy's here.", "female") is None
+    assert rel.address("Baby, don't cry. Mommy's here.", "female").me == "mẹ"
     assert rel.address("Listen to your mother, sweetheart.", "male") is None
     note = rel.address("여보, 오늘 일찍 와요?", "female")
     assert (note.me, note.you) == ("em", "anh")
@@ -595,7 +596,8 @@ def test_round_19_calls_beat_self_roles_and_parent_words_are_not_swears():
     assert said("作为妈妈，我必须这么做。") == ("mẹ", "con")
     assert said("Son, listen, this is important.") == ("", "con")
     assert said("Son, Kane and Kulusevski all scored.") is None
-    for line in ("亲爱的，妈妈回来了。", "你都当妈妈的人了", "妈妈的话你要听", "师傅，去火车站。"):
+    assert said("亲爱的，妈妈回来了。") == ("mẹ", "con")
+    for line in ("你都当妈妈的人了", "妈妈的话你要听", "师傅，去火车站。"):
         assert said(line) is None, line
     assert said("아들아밥은먹고다니니?") == ("", "con")
     assert said("师傅，弟子知错了。") == ("đệ tử", "sư phụ")
