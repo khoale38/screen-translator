@@ -51,6 +51,9 @@ expected to pass, and changing one means changing this file on purpose.
 
 ## Where the snapshot gave way
 
-The 165-screen snapshot recorded the behaviour of rc55. Four screens recorded what the rounds reported as a bug and
+The 165-screen snapshot recorded the behaviour of rc55. These screens recorded what the rounds reported as a bug and
 follow the cases instead: battle_feed_en (one block per toast), battle_hud_en (every party member treated the same),
-backlog_ja (the backlog title alone) and panel_headers_en/ja (panel headers are not name tabs).
+backlog_ja (the backlog title alone), panel_headers_en/ja (panel headers are not name tabs), caps_en, en_hyphen and
+en_scan_cut (a word broken at a line end is rejoined, a compound keeps its hyphen: IMPOSSIBLE, ex-fiancée,
+Twenty-five), shout_ja (a small lead-in joins its shout), vocative_en (Captain, …; WAIT, …), furigana (a lone kana
+reading is dropped) and edge_cases (two vertical bubbles stay apart).

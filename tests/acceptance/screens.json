@@ -76,7 +76,8 @@
 ]
 ],
 "expect": [
-"バックログ\nアキラ「姉ちゃん、俺の弁当どこ?」 [TAB]",
+"バックログ",
+"アキラ「姉ちゃん、俺の弁当どこ?」",
 "ナツミ「冷蔵庫の中よ。自分で探しなさい。」",
 "アキラ「ないってば!また食べたでしょ!」",
 "朝の台所に、気まずい沈黙が流れた。",
@@ -193,7 +194,9 @@
 "expect": [
 "LEVEL UP!",
 "CRITICAL",
-"Picked up: Iron Ore x5 Picked up: Wolf Pelt Picked up: Minor Healing Potion x2",
+"Picked up: Iron Ore x5",
+"Picked up: Wolf Pelt",
+"Picked up: Minor Healing Potion x2",
 "Dash",
 "Fireball",
 "Heal",
@@ -357,9 +360,9 @@
 ]
 ],
 "expect": [
-"Elena 812/950",
+"Elena",
 "Bram",
-"Sora 390/720",
+"Sora",
 "CRITICAL!",
 "MISS",
 "LEVEL UP!",
@@ -725,9 +728,9 @@
 ]
 ],
 "expect": [
-"THAT'S IMPOS- SIBLE! NOBODY COULD SURVIVE THAT FALL!",
+"THAT'S IMPOSSIBLE! NOBODY COULD SURVIVE THAT FALL!",
 "WAIT- WHERE DO YOU THINK YOU'RE GOING?",
-"SHE'S MY EX- WIFE, NOT MY ENEMY.",
+"SHE'S MY EX-WIFE, NOT MY ENEMY.",
 "I'M NOT AFRAID OF YOU, UNCLE!"
 ]
 },
@@ -3414,7 +3417,8 @@
 ]
 ],
 "expect": [
-"もう行くの?早いね。 ラん電車があるから。",
+"もう行くの?早いね。",
+"ラん電車があるから。",
 "本当にそうなんだ",
 "行くぞ",
 "待て逃げるつもりか",
@@ -3673,9 +3677,9 @@
 ],
 "expect": [
 "I WAS GOING TO TELL YOU...",
-"THAT'S IMPOS- SIBLE! NOBODY SURVIVES A FALL LIKE THAT!",
+"THAT'S IMPOSSIBLE! NOBODY SURVIVES A FALL LIKE THAT!",
 "...BUT YOU NEVER LISTEN!",
-"DON'T TOUCH THAT, IT'S EXTRA- ORDINARILY DANGEROUS!",
+"DON'T TOUCH THAT, IT'S EXTRAORDINARILY DANGEROUS!",
 "WAIT - WHERE'S THE DETONATOR?"
 ]
 },
@@ -3839,8 +3843,8 @@
 "Young Master, please wait! The carriage isn't ready yet!",
 "It's just- I can't go back there.",
 "Wait, you- Don't tell me you sold the sword?!",
-"She's my exfiancée. Nothing more.",
-"Twentyfive years I waited for this day!",
+"She's my ex-fiancée. Nothing more.",
+"Twenty-five years I waited for this day!",
 "No, no, no- Not again!"
 ]
 },
@@ -4148,7 +4152,6 @@
 ]
 ],
 "expect": [
-"と",
 "魔王の封印が解け始めている。急げ!",
 "勇者様、どうかご無事で。"
 ]
@@ -6932,10 +6935,12 @@
 ],
 "expect": [
 "Iron Kite Shield",
-"Main Quest\nFind the smuggler hiding near the docks. [TAB]",
+"Main Quest",
+"Find the smuggler hiding near the docks.",
 "Description",
 "A sturdy shield, dented from many battles.",
-"Side Quest\nBring three wolf pelts to the tanner. [TAB]",
+"Side Quest",
+"Bring three wolf pelts to the tanner.",
 "Effect",
 "Blocks most arrows fired from the front."
 ]
@@ -7021,7 +7026,8 @@
 "古い風車小屋に隠れた盗賊の頭を倒せ。",
 "報酬",
 "銀貨300枚と、村長からの感謝の手紙。",
-"チャット\n[パーティ]ユウ:回復お願いします! [TAB]",
+"チャット",
+"[パーティ]ユウ:回復お願いします!",
 "[ギルド]マスター:今夜は攻城戦です。"
 ]
 },
@@ -8560,14 +8566,10 @@
 ]
 ],
 "expect": [
-"ほんとに",
-"もう",
-"やめて!!",
-"ムリ!!",
-"いいかげんに",
-"それって",
-"しろ!!",
-"ウソでしょ!?"
+"ほんとにやめて!!",
+"もうムリ!!",
+"いいかげんにしろ!!",
+"それってウソでしょ!?"
 ]
 },
 {
@@ -12212,9 +12214,9 @@
 ],
 "expect": [
 "MOM, I'M HOME!",
-"WAIT\nDON'T GO!",
+"WAIT, DON'T GO!",
 "Grandpa, tell us a story!",
-"Captain the engines are dead."
+"Captain, the engines are dead."
 ]
 },
 {

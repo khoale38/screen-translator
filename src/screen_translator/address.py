@@ -210,14 +210,14 @@ def _bracketed_name(text: str) -> str | None:
 
 
 _HEADING = re.compile(
-    r"(?i:objectives?|warning|quests?|missions?|tips?|hint|notice|rewards?|goals?|tutorial|new|live|legend|"
+    r"(?i:objectives?|warning|(?:main |side |daily |active |current )?quests?|backlog|history|log|missions?|tips?|hint|notice|rewards?|goals?|tutorial|new|live|legend|"
     r"video|audio|graphics|display|controls|settings|options|inventory|map|status|chat|name|level|class|hd|4k|"
     r"meanwhile|later|today|tonight|tomorrow|yesterday|that night|the next day|(?:the )?next morning|(?:\w+ )?(?:years?|months?|days?|hours?) later)|"
     r"S\d+\s*E\d+|\d+\+|\d{1,2}:\d{2}|TV-\w+|KBS\d?|MBC|SBS|JTBC|tvN|CCTV\d*|NHK|HBO|BBC|CNN|TBS|그날\s?밤|다음\s?날|한편|"
     r"那天晚上|第二天|その夜|翌日|次の日|一方(?:その頃)?|その頃|[\d一二三四五六七八九十几幾数半]+(?:年|个月|個月|天|ヶ月|か月|日)[后後]|"
     r"\d+\s?(?:년|개월|일)\s?후|第[\d一二三四五六七八九十百]+[集话話回章]|제\s?\d+\s?[화회장]|"
     r"나|저|너|당신|私|俺|僕|我|你|응|어|음|헐|흥|네|예|嗯|哦|啊|呃|唉|哼|喂|噢|欸|诶|うん|ええ|はあ?|"
-    r".*(?:クエスト|퀘스트|任务|任務|目標|目标|報酬|报酬|奖励|獎勵|보상|채팅|聊天|초대|ボーナス|実績|업적|成就|"
+    r".*(?:クエスト|퀘스트|バックログ|チャット|历史记录|任务|任務|目標|目标|報酬|报酬|奖励|獎勵|보상|채팅|聊天|초대|ボーナス|実績|업적|成就|"
     r"設定|设置|설정|メニュー|메뉴|菜单|ステータス|状态|旁白|ナレーション|나레이션).*|이름|名前|姓名|레벨|レベル|等级|직업|職業|职业")
 _MENU_WORDS = {"fight", "attack", "run", "flee", "escape", "items", "item", "magic", "skills", "skill", "defend", "guard",
                "talk", "continue", "new game", "load game", "quit", "攻击", "逃跑", "たたかう", "にげる", "공격", "도망"}

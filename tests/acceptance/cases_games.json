@@ -3056,7 +3056,7 @@
   "kind": "group",
   "area": "games",
   "round": 21,
-  "why": "Area mode keeps short choices stacked over the question apart.",
+  "why": "Area mode keeps short choices stacked over the question apart. Area mode keeps full-width punctuation.",
   "frame": [
    1920,
    1080
@@ -3092,7 +3092,7 @@
    ]
   ],
   "mode": "area",
-  "expect": "戦う\n逃げる\n話しかける\nどうする?"
+  "expect": "戦う\n逃げる\n話しかける\nどうする？"
  },
  {
   "kind": "speaker",
