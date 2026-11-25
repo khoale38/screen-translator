@@ -180,7 +180,7 @@ def _bracketed_name(text: str) -> str | None:
         return None
     name, opener = match.group(1).strip(), text.strip()[0]
     if opener in "【〔":
-        return name
+        return None if _not_a_name(name) else name
     if re.search(r"[.…!?！？。、,]", name) or _STAGE_DIRECTION.fullmatch(name):
         return None
     if opener == "（" and re.fullmatch("[\u30a0-\u30ff\u4e00-\u9fff]{1,6}", name):
@@ -188,31 +188,72 @@ def _bracketed_name(text: str) -> str | None:
     return name if name.isupper() and name.isascii() else None
 
 
+_HEADING = re.compile(
+    r"(?i:objectives?|warning|quests?|missions?|tips?|hint|notice|rewards?|goals?|tutorial|new|live|legend|"
+    r"video|audio|graphics|display|controls|settings|options|inventory|map|status|chat|name|level|class|hd|4k|"
+    r"meanwhile|later|that night|the next day|(?:the )?next morning|(?:\w+ )?(?:years?|months?|days?|hours?) later)|"
+    r"S\d+\s*E\d+|\d+\+|\d{1,2}:\d{2}|TV-\w+|KBS\d?|MBC|SBS|JTBC|tvN|CCTV\d*|NHK|HBO|BBC|CNN|TBS|그날\s?밤|다음\s?날|한편|"
+    r"那天晚上|第二天|その夜|翌日|次の日|一方(?:その頃)?|その頃|[\d一二三四五六七八九十几幾数半]+(?:年|个月|個月|天|ヶ月|か月|日)[后後]|"
+    r"\d+\s?(?:년|개월|일)\s?후|第[\d一二三四五六七八九十百]+[集话話回章]|제\s?\d+\s?[화회장]|"
+    r"나|저|너|당신|私|俺|僕|我|你|응|어|음|헐|흥|네|예|嗯|哦|啊|呃|唉|哼|喂|噢|欸|诶|うん|ええ|はあ?|"
+    r".*(?:クエスト|퀘스트|任务|任務|目標|目标|報酬|报酬|奖励|獎勵|보상|채팅|聊天|초대|ボーナス|実績|업적|成就|"
+    r"設定|设置|설정|メニュー|메뉴|菜单|ステータス|状态|旁白|ナレーション|나레이션).*|이름|名前|姓名|레벨|レベル|等级|직업|職業|职业")
+_MENU_WORDS = {"fight", "attack", "run", "flee", "escape", "items", "item", "magic", "skills", "skill", "defend", "guard",
+               "talk", "continue", "new game", "load game", "quit", "攻击", "逃跑", "たたかう", "にげる", "공격", "도망"}
+# A family word over a narrative line is that sentence's subject ("DAD / NEVER CAME HOME", "妈妈 / 总是说…").
+_NARRATION = re.compile(r"^(?i:never|always|used to|once|was|were|had|came|went|left|died|said|told|would)\b|"
+                        r"^(?:总是|總是|总说|一直|从来|從來|从没|曾经|曾經|常常|经常|再也|生前)|"
+                        r"(?:었|았|였|셨|했|됐|갔|왔|졌|웠|렸|냈|켰|봤|줬)다[.。!…]*$")
+_SOUND_TAG = re.compile(r"^\s*[\[(（【][^\]\)）】\n]{1,40}[\]\)）】]\s*\n")
+_CALL_SIGN = re.compile(r"^([A-Z][A-Z0-9]*(?:[- ][A-Z0-9]+)*-\d{1,3})\s*:\s*(\S.*)$", re.S)
+_QUOTED_LINE = re.compile(r"^([゠-ヿ一-鿿A-Za-z・]{1,10})[「『](.+?)[」』]?$", re.S)
+def _korean_vocative(row: str) -> bool:
+    """지수야 / 민준아: a Korean given name with the calling ending (야 after a vowel, 아 after a consonant)."""
+    if not re.fullmatch("[가-힣]{3}", row) or row[-1] not in "아야":
+        return False
+    closed = (ord(row[1]) - 0xAC00) % 28 != 0
+    return closed == (row[-1] == "아")
+
+
+def _not_a_name(first: str) -> bool:
+    return bool(_HEADING.fullmatch(first) or first.lower() in _MENU_WORDS or re.search("[，、；？！。]|[你我您她他]", first)
+                or _korean_vocative(first))
+
+
 def speaker_of(text: str) -> str | None:
     """The name in "Name: line" or a short name on its own first line, if the text has one."""
-    text = text.strip()
-    match = _LABEL.match(text)
-    if match and _looks_like_name(match.group(1)):
+    text = _SOUND_TAG.sub("", text.strip()).strip()
+    match = _LABEL.match(text) or _CALL_SIGN.match(text)
+    if match and _looks_like_name(match.group(1)) and not _not_a_name(match.group(1).strip()):
         return match.group(1).strip()
     bracketed = _bracketed_name(text)
     if bracketed:
         return bracketed
+    quoted = _QUOTED_LINE.match(text)
+    if quoted and "\n" not in quoted.group(1) and not _not_a_name(quoted.group(1)):
+        return quoted.group(1)
     first, _, rest = text.partition("\n")
     first, rest = first.strip(), rest.strip()
     rows = [row.strip() for row in rest.split("\n")]
     # A menu ("攻击 / 技能 / 物品 / 逃跑") or a game's answers ("はい / いいえ") has no speaker.
     if first in CHOICE_WORDS or len(rows) >= 2 and all(len(row) <= 8 for row in [first, *rows]):
         return None
-    if not rest or first.endswith(_SENTENCE_END) or not _looks_like_name(first) or rest[:1].islower():
+    if not rest or first.endswith(_SENTENCE_END) or not _looks_like_name(first) or not re.search(r"[^\W\d_]", rest):
         return None
-    # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker.
     words = first.split()
+    # A film subtitle's first line ("Okay Mom", "Then Jake") starts a sentence rather than naming its speaker; a
+    # name over a lower-case chat message ("Jake / just got…") is the sender.
+    if rest[:1].islower() and (len(words) > 1 or "\n" in rest):
+        return None
     # A lone title over an all-caps line is a comic bubble calling someone ("MOM / I'M HOME!"), not a name tab.
     called = words[-1].lower().strip(",") in _VOCATIVE_TITLES and len(words) > 1
-    heading = re.fullmatch(r"(?i:objective|warning|quest|mission|tip|hint|notice|reward|goal|tutorial|new|live|meanwhile|later|"
-                           r"that night|the next day)|S\d+\s*E\d+|\d+\+|\d{1,2}:\d{2}|TV-\w+|KBS\d?|MBC|SBS|JTBC|tvN|CCTV\d*|NHK|HBO|BBC|CNN|TBS|그날 밤|다음 날|"
-                           r"那天晚上|第二天|その夜|翌日|次の日|나|저|私|俺|僕|我", first)
-    if heading:
+    if _not_a_name(first):
+        return None
+    # "Display Mode" or "Fast Travel Point" under a heading is a menu entry, not a line anyone says.
+    if len(rest.split()) >= 2 and "\n" not in rest and all(word[:1].isupper() for word in rest.split()) \
+            and not rest.isupper() and not rest.endswith(_SENTENCE_END):
+        return None
+    if (_elder_label(first) or first.lower() in _VOCATIVE_TITLES) and _NARRATION.search(rest):
         return None
     if words[0].lower().strip(",") in _DISCOURSE or called:
         return None
