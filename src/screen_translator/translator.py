@@ -254,7 +254,10 @@ def sentence_case(text: str) -> str:
         single = (len(word) == 1 and text[m.start() - 1:m.start()] not in "'’" and
                   (word != "A" or after_key or not re.match(r"\s+[A-Za-z]", text[m.end():])))
         bracketed = text[m.start() - 1:m.start()] == "[" and text[m.end():m.end() + 1] == "]"
-        return word if word in _ACRONYMS or single or bracketed else word.lower()
+        # Weapon codes and player tags (MP5, P2) and gamer tags (XxSNIPERxX) are names, not words.
+        coded = any(ch.isdigit() for ch in word) or not word.isupper()
+        button = after_key and word in _BUTTONS
+        return word if word in _ACRONYMS or single or bracketed or coded or button else word.lower()
 
     lowered = re.sub(r"[A-Za-z][A-Za-z0-9]*", lower, text)
     lowered = re.sub(r"\bi\b", "I", lowered)
@@ -262,7 +265,8 @@ def sentence_case(text: str) -> str:
 
 
 _ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "AI", "DNA", "CEO", "PC", "GPS", "VIP", "XP",
-             "ATK", "DEF", "RT", "LT", "RB", "LB", "L1", "L2", "L3", "R1", "R2", "R3", "ZL", "ZR", "UI"}
+             "ATK", "DEF", "RT", "LT", "RB", "LB", "L1", "L2", "L3", "R1", "R2", "R3", "ZL", "ZR", "UI", "SFX"}
+_BUTTONS = {"START", "SELECT", "SPACE", "ENTER", "SHIFT", "ESC", "TAB", "CTRL", "ALT", "OPTIONS", "MENU", "HOME", "BACK"}
 
 
 def is_name_tab(text: str) -> bool:
@@ -307,57 +311,131 @@ def model_label(translation: str) -> str:
     return head if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?", "。", "！", "？")) else ""
 
 
+_VI_VOWELS = "aàáảãạăằắẳẵặâầấẩẫậeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứửữựyỳýỷỹỵ"
+_VI_SYLLABLE = re.compile(rf"(?:ngh|ng|nh|ch|gh|gi|kh|ph|qu|th|tr|[bcdđghklmnprstvx])?[{_VI_VOWELS}]{{1,3}}(?:ch|ng|nh|[cmnpt])?",
+                          re.I)
+_VI_TITLES = {"mẹ", "má", "bố", "ba", "cha", "anh", "chị", "em", "ông", "bà", "cô", "chú", "bác", "dì", "cậu", "mợ", "thím",
+              "thầy", "sếp", "bộ", "trưởng", "giám", "tiền", "sư", "bệ", "chủ", "cụ", "ngài", "tiểu", "đại", "hoàng", "con",
+              "cháu", "phu", "nương"}
+_SELF_TABS = {"나", "저", "내", "私", "俺", "僕", "我", "わたし", "ぼく", "オレ", "あたし", "わたくし"}
+_CHANNEL_LABEL = re.compile(r"\s*[【\[][^】\]\n]{1,10}[】\]]\s*[^:：\n]{1,20}[:：]\s*\S")
+_CHANNEL = re.compile(r"\s*[【\[][^】\]\n]{1,10}[】\]]\s*")
+_TITLE_OPENING = re.compile(r"(?:엄마|아빠|어머니|아버지|형|누나|오빠|언니|선배|사장님|부장님|팀장님|할머니|할아버지|老板|老师|妈|爸|哥|姐|"
+                            r"爷爷|奶奶|师父|师傅|部长|部長|社長|課長|店長|先輩|母さん|父さん|兄さん|姉さん|お母さん|お父さん|陛下|殿下)")
+_YOU = re.compile(r"你|您|あなた|君|お前|貴様|너|당신|\byou\b", re.I)
+_END = re.compile(r"[.!?。！？…]")
+
+
+def _label(text: str) -> re.Match | None:
+    found = _LABEL.match(text.strip())
+    # "Đi đi, nhớ lấy: có người…" is a sentence with a colon, not a label.
+    return None if found and re.search(r"[,，、!?！？]", found.group(1)) else found
+
+
+def _sentences(text: str) -> int:
+    return len([part for part in re.split(r"[.!?。！？…]+", text) if part.strip()])
+
+
+def _after_call(rest: str, source: str) -> str:
+    """Lower-case an ordinary Vietnamese word after a call ("Hôm nay" → "hôm nay"), not a name ("Lý Minh", "Minsu")."""
+    words = rest.split()
+    if not words:
+        return rest
+    first = words[0].strip(".,!?…\"“”")
+    named = (len(words) > 1 and words[1][:1].isupper() or not _VI_SYLLABLE.fullmatch(first)
+             or first.isascii() and re.search(rf"\b{re.escape(first)}\b", source))
+    return rest if named else rest[:1].lower() + rest[1:]
+
+
+def _calls(source: str, label: str) -> bool:
+    """The source opens by calling the one the model labelled: "Tom, wait", "엄마 민수 왔어", "部長お疲れ様です"."""
+    text = source.strip()
+    if text[:1].isascii():
+        return bool(re.match(rf"{re.escape(label)}\s*[,，!]", text, re.I))
+    return bool(_TITLE_OPENING.match(text)) and label.split()[0].lower() in _VI_TITLES
+
+
+def _menu(tab: str, rest: str, head: str, body: str, names: dict[str, str]) -> bool:
+    """Two short unpunctuated rows ("Fight / Run away", "跟着她走 / 回家") are choices, not a name over a line."""
+    words = head.split()
+    return (not re.search(r"[.!?。！？…,，、:：\n]", rest.strip()) and len(rest.strip()) <= 12 and not _END.search(body)
+            and len(words) >= 2 and any(word[:1].islower() for word in words[1:]) and words[0].lower() not in _VI_TITLES
+            and tab not in names)
+
+
 def label_speaker(source: str, translation: str, names: dict[str, str] | None = None, raw_names: bool = True) -> str:
     """Models often answer a "Name\nline" source as two lines; subtitles read better as "Name: line".
 
     A source with a speaker whose name the model dropped gets the name back, so it is clear who speaks; `names`
     holds how each name is written in the target language, as kana or hangul means nothing to most viewers.
     """
+    names = names or {}
     name = speaker_of(source)
-    known = (names or {}).get(name) if name else None
+    known = names.get(name) if name else None
     # With raw_names off, a name in a script the viewer cannot read is left off rather than shown in hanzi.
     shown = known or (name if raw_names or not NOT_LATIN.search(name or "") else None)
     readable = lambda written: written if written and (raw_names or not NOT_LATIN.search(written)) else None
+    if _CHANNEL_LABEL.match(source) and _CHANNEL_LABEL.match(translation):
+        # "【Hội】Tiểu Thạch Đầu: …": the channel tag is not the speaker, and the sender is already there.
+        return translation.strip()
+    tab, _, rest = source.strip().partition("\n")
+    if tab.strip() in _SELF_TABS and rest.strip():
+        lines = [line for line in translation.strip().split("\n") if line.strip()]
+        if len(lines) > 1 and len(lines[0].split()) <= 2 and not re.search(r"[.!?,…]", lines[0]):
+            return " ".join(" ".join(lines[1:]).split())
+        found = _LABEL.match(translation.strip())
+        return found.group(2).strip() if found and len(found.group(1).split()) <= 2 else translation
     bracket = _BRACKETED.match(translation.strip())
     if name and bracket and translation.strip()[0] in "【〔":
         label = shown or readable(bracket.group(1).strip())
         return f"{label}: {bracket.group(2)}" if label else bracket.group(2)
-    label, _, rest = source.partition("\n")
-    if rest and name == label.strip():
-        head, _, body = translation.partition("\n")
+    if rest and name == tab.strip():
+        head, _, body = translation.strip().partition("\n")
         head = head.strip().rstrip(":：")
-        if body.strip() and 0 < len(head) <= 24 and not head.endswith((".", "!", "?")):
+        if body.strip() and _menu(tab.strip(), rest, head, body, names):
+            return translation
+        # "Mẹ.\nĂn cơm thôi.": the model ended the tab's own line with a period.
+        if re.fullmatch(r"[^.]+[.。]", head) and len(head.split()) <= 3 and _sentences(rest) == _sentences(body):
+            head = head[:-1].strip()
+        if body.strip() and 0 < len(head) <= 40 and not head.endswith((".", "!", "?")):
             label = known or readable(head)
-            return f"{label}: {' '.join(body.split())}" if label else " ".join(body.split())
-    labelled = _LABEL.match(translation.strip())
-    inner = _LABEL.match(labelled.group(2).strip()) if labelled else None
+            if not label:
+                return " ".join(body.split())
+            translation = f"{label}: {' '.join(body.split())}"
+            if not _label(translation):
+                return translation
+    labelled = _label(translation)
+    inner = _label(labelled.group(2)) if labelled else None
     # "Hệ thống: Nhiệm vụ: …" keeps its heading; only a called listener becomes a call ("…: Quỷ Vương, …").
     body = body_of(source)
-    calls = called_title(body) or re.match(r"[^，,:：\s]{1,6}[，,]", body)
-    if inner and len(inner.group(1).split()) <= 3 and calls and not re.search("[:：]", body):
+    colon = re.match(r"[^，,、:：\s]{1,6}[:：](.*)", body, re.S)
+    calls = (called_title(body) or re.match(r"[^，,:：\s]{1,6}[，,、]", body)) and not re.search("[:：]", body) \
+        or colon and _YOU.search(colon.group(1))
+    if inner and len(inner.group(1).split()) <= 3 and calls:
         # "Diệp Phàm: Quỷ Vương: Đối thủ…": the second label is the listener being called.
-        translation = f"{labelled.group(1)}: {inner.group(1)}, {inner.group(2)}"
-        labelled = _LABEL.match(translation.strip())
+        translation = f"{labelled.group(1)}: {inner.group(1)}, {_after_call(inner.group(2), source)}"
+        labelled = _label(translation)
     if labelled and re.fullmatch(r"\s*[“\"「『].*[”\"」』]\s*", labelled.group(2), re.S):
         # "Lý Minh: “Đi thôi.”": the quotes only marked the line as speech.
         translation = f"{labelled.group(1)}: {labelled.group(2).strip()[1:-1].strip()}"
-        labelled = _LABEL.match(translation.strip())
+        labelled = _label(translation)
+    elif labelled and labelled.group(2)[:1] in "“\"「『" and not re.search(r"[”\"」』]", labelled.group(2)[1:]):
+        translation = f"{labelled.group(1)}: {labelled.group(2)[1:].strip()}"
+        labelled = _label(translation)
+    # A form row ("직업:없음" → "Nghề nghiệp: Không có") keeps the model's translated key.
+    value = name and "\n" not in source.strip() and not re.search(r"[.!?。！？…,，、]", body) and len(body.strip()) <= 8
+    model_name = labelled.group(1).strip() if labelled else ""
     # One spelling per character on every line: the known one replaces whatever the model wrote this time.
-    if labelled and name and (known or not readable(labelled.group(1).strip())):
+    if labelled and name and (known or not readable(model_name)) and not (value and readable(model_name)):
         return f"{known}: {labelled.group(2)}" if known else labelled.group(2)
-    if name and name in source.lstrip()[:len(name) + 2] and not labelled:
+    lead = source.lstrip()
+    unchannelled = lead[_CHANNEL.match(lead).end():] if _CHANNEL.match(lead) else lead
+    if name and not labelled and (name in lead[:len(name) + 2] or unchannelled.startswith(name)):
         return f"{shown}: {translation.strip()}" if shown else translation.strip()
-    if labelled and not name and not re.search("[:：]", source) and len(labelled.group(1).split()) <= 2 \
-            and called_title(source):
+    if labelled and not name and not re.search("[:：]", source) and len(model_name.split()) <= 2 \
+            and (called_title(source) or _calls(source, model_name)):
         # "哥你今天怎么这么早" answered "Anh: Hôm nay…": the line calls its listener, it does not name its speaker.
-        rest = labelled.group(2).strip()
-        words = rest.split()
-        # Lower-case an ordinary Vietnamese word ("Hôm nay" → "hôm nay"), not a name ("Lý Minh", "Tom").
-        name = len(words) > 1 and words[1][:1].isupper() or words[:1] and words[0].isascii() and words[0].lower() not in (
-            "anh", "em", "con", "ta", "ba", "me")
-        if words and not name:
-            rest = rest[:1].lower() + rest[1:]
-        return f"{labelled.group(1).strip()}, {rest}"
+        return f"{model_name}, {_after_call(labelled.group(2).strip(), source)}"
     return translation
 
 
