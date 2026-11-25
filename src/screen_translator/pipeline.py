@@ -182,11 +182,11 @@ def _punctuated(text: str) -> str:
     titles = (r"할머니|할아버지|어머님|아버님|장모님|장인어른|엄마|아빠|오빠|언니|누나|형|선배님|선배|선생님|사장님|부장님|"
               r"팀장님|과장님")
     # A greeting, "don't worry", "time to eat" or a report after the title is said to that person, honorific or not.
-    told = r"안녕|식사|걱정|보고서"
+    told = r"(?:안녕|식사|걱정|보고서|약)"
     # Not "할아버지어디가셨어" or "형지금없어요": an honorific verb or "isn't here" means the title is talked about.
     if not re.search(r"셨|시[어었고는지]|세요|계셔|계세|께서|주무|없어|안\s*계", text):
-        told += r"|저|나|제가|내가|우리|빨리|왜|어디|지금|이거|잠깐|같이|오늘"
-    text = re.sub(rf"^(\W*(?:{titles}))\s*(?=(?:{told})[가-힣])", r"\1, ", text)
+        told += r"|(?:저|나|제가|내가|우리|빨리|왜|어디|지금|이거|잠깐|같이|오늘)[가-힣]"
+    text = re.sub(rf"^(\W*(?:{titles}))\s*(?={told})", r"\1, ", text)
     text = re.sub(r"^(\W*(?:마마|중전마마|자기야|여보))(?=[가-힣])(?!세요|게)", r"\1, ", text)
     text = re.sub(r"(?<=[가-힣])((?:마마|자기야|여보)\W*)$", r", \1", text)
     return re.sub(r"^(\W*[爹娘爸妈])(?=女儿|儿子|孩儿|我|您|你)", r"\1，", text)
