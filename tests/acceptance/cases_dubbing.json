@@ -1,0 +1,2605 @@
+[
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 4,
+  "why": "Your Majesty in speech is a call to a ruler.",
+  "line": "Thank you, Your Majesty. I live to serve.",
+  "expect": [
+   "thần",
+   "bệ hạ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 4,
+  "why": "Your Highness is điện hạ, not bệ hạ.",
+  "line": "Forgive me, Your Highness.",
+  "expect": [
+   "thần",
+   "điện hạ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 4,
+  "why": "A princess is điện hạ or công chúa, never bệ hạ.",
+  "line": "Princess, the road north is dangerous.",
+  "expect": [
+   "thần",
+   "điện hạ"
+  ],
+  "accept": [
+   [
+    "thần",
+    "công chúa"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 4,
+  "why": "殿下 is điện hạ, not bệ hạ.",
+  "line": "殿下,请留步。",
+  "expect": [
+   "thần",
+   "điện hạ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 11,
+  "why": "A consort's 臣妾 is thần thiếp.",
+  "line": "皇上,臣妾冤枉啊!",
+  "gender": "female",
+  "expect": [
+   "thần thiếp",
+   "hoàng thượng"
+  ],
+  "accept": [
+   [
+    "thần thiếp",
+    "bệ hạ"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 11,
+  "why": "娘娘 is called by a servant: nô tì / nương nương.",
+  "line": "娘娘,该用膳了。",
+  "gender": "female",
+  "expect": [
+   "nô tì",
+   "nương nương"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 14,
+  "why": "An emperor's son uses palace register, not bố/con.",
+  "line": "父皇,儿臣有一事相求。",
+  "gender": "male",
+  "expect": [
+   "nhi thần",
+   "phụ hoàng"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "母后 is mẫu hậu in palace register.",
+  "line": "母后,儿臣告退。",
+  "gender": "male",
+  "expect": [
+   "nhi thần",
+   "mẫu hậu"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "The queen 중전마마 is nương nương, not bệ hạ.",
+  "line": "중전마마, 옥체를 보존하소서.",
+  "gender": "female",
+  "expect": [
+   "thần",
+   "nương nương"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "Glued 네마마 from SenseVoice still calls 마마.",
+  "line": "네마마.",
+  "gender": "female",
+  "expect": [
+   "thần",
+   "nương nương"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A Majesty said before the princess spoke must not leak bệ hạ into the knight-princess pair.",
+  "line": "Stay behind me, your Highness.",
+  "context": [
+   "Knight\nYour Majesty, the bridge to the north has fallen.",
+   "Princess\nThen we ride east, Sir Garrick."
+  ],
+  "expect": [
+   "thần",
+   "điện hạ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 4,
+  "why": "师傅 only mentioned after a verb is not a call.",
+  "line": "你少说两句,小心我告诉师傅,你偷吃了点心。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 12,
+  "why": "A female junior calling 大师兄 says muội, not đệ.",
+  "line": "大师兄，师父让你去后山练剑。",
+  "gender": "female",
+  "expect": [
+   "muội",
+   "sư huynh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 11,
+  "why": "The call that opens the line (师兄) decides, not the later mentioned 师傅.",
+  "line": "师兄师傅,让你去后山练剑。",
+  "gender": "female",
+  "expect": [
+   "muội",
+   "sư huynh"
+  ],
+  "accept": [
+   null
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "师傅 is how SenseVoice writes shīfu; it calls the master.",
+  "line": "师傅,您教训得是。",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "A disciple wanting to become a master still calls 师傅.",
+  "line": "师傅,我也想当师傅收很多徒弟。",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 23,
+  "why": "师傅 to a taxi driver is not a master, even with 徒弟 later.",
+  "line": "师傅，去火车站，我徒弟在那儿等我。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "An explicit little brother call outranks a mentioned father.",
+  "line": "No, little brother, you stay with father.",
+  "gender": "female",
+  "expect": [
+   "chị",
+   "em"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A parent mentioned after a verb is not a call.",
+  "line": "You stay with father.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A parent after a preposition is not a call.",
+  "line": "Give this to Mom.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 3,
+  "why": "'your mother' is a mention, not a call.",
+  "line": "Listen to your mother.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 3,
+  "why": "A quoted abuela in narration is not a call to the listener.",
+  "line": "So I told my grandmother, no te preocupes, abuela, and she just laughed.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "Miss <Name> opening a line calls a female teacher.",
+  "line": "Miss Carter, I forgot my book at home.",
+  "gender": "male",
+  "expect": [
+   "em",
+   "cô"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A closing title with no comma still calls.",
+  "line": "Thanks Dad.",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A closing 妈妈 with no comma still calls.",
+  "line": "谢谢妈妈。",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A closing 엄마 with no comma still calls.",
+  "line": "고마워 엄마.",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A closing 母さん still calls.",
+  "line": "いお母さん、今行く母さん。",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 2,
+  "why": "A child calling Mom mid-line gets con/mẹ.",
+  "line": "Just a minute, Mom, I'm almost done with this level.",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 9,
+  "why": "An audience word elsewhere does not cancel a direct Mom call.",
+  "line": "You guys, she never lets me help. Mom, can I at least cut the onions?",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 9,
+  "why": "A direct Sis call outranks an audience greeting.",
+  "line": "Hi guys. Sis, what are we making today?",
+  "gender": "male",
+  "expect": [
+   "em",
+   "chị"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "Lines to the viewers get no pair, even with one other voice around (policy 6).",
+  "line": "If you liked this video, please subscribe, and see you next time!",
+  "context": [
+   "Woman\nHi everyone, welcome back to my channel!",
+   "Man\nHi guys. Sis, what are we making today?",
+   "Woman\nKimchi fried rice. Grab the eggs for me."
+  ],
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 11,
+  "why": "'bro' to a viewer is friendly, not em/anh.",
+  "line": "Thanks for the 10 dollar donation, Mike! You're the best, bro.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 2,
+  "why": "Babe from a woman is a couple call.",
+  "line": "Babe, over here! I found us a spot.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "accept": [
+   null
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 9,
+  "why": "老公 is a wife calling her husband.",
+  "line": "老公，你妈又打电话来了。",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "あなた opening a wife's line calls her husband.",
+  "line": "あなた、明日は何時に家を出るの?",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 12,
+  "why": "자기야 from a woman calls her boyfriend.",
+  "line": "자기야, 오늘 저녁에 뭐 먹을까?",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "Glued 자기야 from a man still calls his girlfriend.",
+  "line": "자기야오늘저녁에뭐먹를까?",
+  "gender": "male",
+  "expect": [
+   "anh",
+   "em"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "Honey is said by parents too, so it gives no couple cue (policy 1).",
+  "line": "Honey, he said that last week too.",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "여보세요 is a phone hello, not a spouse call.",
+  "line": "여보세요?",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "Glued 여보세요 is still a phone hello.",
+  "line": "여보세요누구세요",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "The 여보 after the phone hello is a spouse call.",
+  "line": "여보세요? 여보, 나야.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A parent's sweetheart must not become a couple cue.",
+  "line": "Listen to your mother, sweetheart.",
+  "gender": "male",
+  "expect": null,
+  "accept": [
+   [
+    "bố",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A mother's Baby is not a couple cue.",
+  "line": "Baby, don't cry. Mommy's here.",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "亲爱的 from a mother is not a lover cue.",
+  "line": "亲爱的，妈妈回来了。",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A mother's 'young lady' is not tiểu thư.",
+  "line": "Young lady, you are grounded for a week.",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A colleague's 王小姐 is not tiểu thư.",
+  "line": "王小姐，这是您要的合同。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A customer calling a waitress 아가씨 is not tiểu thư.",
+  "line": "아가씨, 여기 소주 한 병 주세요.",
+  "gender": "male",
+  "expect": null,
+  "accept": [
+   [
+    "anh",
+    "em"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 12,
+  "why": "A mentioned guest does not make Mom quý khách.",
+  "line": "엄마, 손님 왔어.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "Glued 엄마 before a mentioned guest still calls Mom.",
+  "line": "엄마손님왔어.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "accept": [
+   null
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "아버님 is called; the guest is only mentioned.",
+  "line": "아버님, 손님 오셨어요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A maid telling 奥様 a guest came gives no quý khách cue.",
+  "line": "奥様、お客様がお見えです。",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A bare guest announcement talks about the guest.",
+  "line": "손님 오셨습니다.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 12,
+  "why": "王总 is a boss title.",
+  "line": "王总，车已经到了。",
+  "gender": "female",
+  "expect": [
+   "em",
+   "sếp"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 12,
+  "why": "사장님 is a boss title.",
+  "line": "사장님, 회의 준비됐습니다.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "sếp"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 23,
+  "why": "Glued 팀장님 before a noun still calls the team leader.",
+  "line": "팀장님보고서, 다됐습니다.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "sếp"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "Spaced 팀장님 opening a report line calls the team leader.",
+  "line": "팀장님 보고서 다 됐습니다.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "sếp"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 2,
+  "why": "Glued 오빠 opening a line calls him.",
+  "line": "오빠왜전화안받았어하루종일기다렸잖아.",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 9,
+  "why": "Glued 어머니 before a place is a mention.",
+  "line": "어머니병원원에갔었어.",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 9,
+  "why": "Spaced 엄마 followed by a pronoun is a call.",
+  "line": "엄마 나 오늘 늦어.",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 10,
+  "why": "어머니 with an honorific verb is talked about.",
+  "line": "어머니아까전화하셨는데안받았지?",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 16,
+  "why": "Grandpa is talked about (honorific verb).",
+  "line": "할아버지어디가셨어?아까계셨잖아.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 18,
+  "why": "A child saying Grandma is asleep is not a call.",
+  "line": "할머니지금주무세요.",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 17,
+  "why": "Wondering why the team leader is not here is a mention.",
+  "line": "팀장님왜안오시지?",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "Glued 할머니 before 저 is a call.",
+  "line": "할머니저왔어요",
+  "gender": "male",
+  "expect": [
+   "cháu",
+   "bà"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "Glued 장모님 before 제가 calls the mother-in-law.",
+  "line": "장모님제가설거지할게요.",
+  "gender": "male",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "Glued 어머님 before 식사 calls the in-law.",
+  "line": "어머님식사하세요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "Glued 어머님 before 걱정마세요 calls the in-law.",
+  "line": "어머님걱정마세요제가, 다할게요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "Glued 아버님 before a time-for-medicine line calls him.",
+  "line": "아버님약드실시간, 이에요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "Glued 아빠 before a question calls Dad.",
+  "line": "아빠오늘일찍와?",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "Glued 오빠 before 걱정마 calls him.",
+  "line": "오빠걱정마",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "'Has uncle come?' reads both as a call and as a question about him (policy 1).",
+  "line": "외삼촌오셨어요?",
+  "expect": null,
+  "accept": [
+   [
+    "cháu",
+    "cậu"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "Glued 아들아 is a mother calling her son.",
+  "line": "아들아밥은먹고다니니?",
+  "gender": "female",
+  "expect": [
+   "mẹ",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "딸아이 means 'my daughter', not a call.",
+  "line": "딸아이가이번에대학에붙었어요.",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A mid-line お母さん set off by commas is a call.",
+  "line": "はーい、お母さん、今行く!",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A mid-line おばあちゃん is a call.",
+  "line": "ねえ、おばあちゃん、これ見て。",
+  "expect": [
+   "cháu",
+   "bà"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "お兄ちゃん opening a line without a comma is a call.",
+  "line": "お兄ちゃん待って置いていかないで。",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "お姉ちゃん早く来て is a call.",
+  "line": "お姉ちゃん早く来て花火始まっちゃう。",
+  "gender": "female",
+  "expect": [
+   "em",
+   "chị"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 23,
+  "why": "お父さん before a よ invitation is a call.",
+  "line": "お父さん行こうよ、もう8時だよ。",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "The partial without a comma is the same call.",
+  "line": "お父さん行こうよもう8時だよ。",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 23,
+  "why": "お兄ちゃん起きてよ is a call.",
+  "line": "お兄ちゃん起きてよ遅刻するよ。",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "Wondering aloud about a brother is not a call.",
+  "line": "お兄ちゃん早く帰ってこないかなお腹空いた。",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "Asking a sibling whether Mom is awake reads two ways (policy 1).",
+  "line": "お母さん起きてる？",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "A title before a quote is a message, not a call.",
+  "line": "お母さんありがとうって言っといてね。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 3,
+  "why": "A quoted お姉ちゃん in narration is not a call.",
+  "line": "弟から届いた手紙には、お姉ちゃん、頑張って、とだけ書いてありました。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A filler before 先輩 does not cancel the senpai call.",
+  "line": "はい、あの先輩、一緒に帰りませんか?",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "accept": [
+   [
+    "em",
+    ""
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "好的 before 学长 does not cancel the call.",
+  "line": "好的学长，我知道了。",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A mother naming herself must not get the child's pronouns.",
+  "line": "お母さんかね、ずっと心配してたのよ。",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A mother threatening to tell Dad mentions him.",
+  "line": "お父さんに言うからね。",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "A father naming himself must not get the child's pronouns.",
+  "line": "爸爸给你买了礼物，快打开看看。",
+  "gender": "male",
+  "expect": null,
+  "accept": [
+   [
+    "bố",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A grandmother naming herself with 할머니가 is the elder.",
+  "line": "밥은먹었니할머니가맛있는거해줄게",
+  "gender": "female",
+  "expect": [
+   "bà",
+   "cháu"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A teacher naming himself with 先生は is the elder.",
+  "line": "先生は怒ってないよ。",
+  "gender": "male",
+  "expect": [
+   "thầy",
+   "em"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A grandfather naming himself is the elder.",
+  "line": "Come give your old grandpa a hug.",
+  "gender": "male",
+  "expect": [
+   "ông",
+   "cháu"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 17,
+  "why": "A mother naming herself before 给你 is the elder.",
+  "line": "真棒，妈妈给你做红烧肉。",
+  "gender": "female",
+  "expect": [
+   "mẹ",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 17,
+  "why": "我是你妈 is the mother speaking.",
+  "line": "我是你妈！听我的。",
+  "gender": "female",
+  "expect": [
+   "mẹ",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 16,
+  "why": "A title before 我 with 你 later gives no cue (policy 4).",
+  "line": "哥哥我来救你了！别怕。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 17,
+  "why": "A title before 我 with 你 later gives no cue (policy 4).",
+  "line": "哥我跟你说个事。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 16,
+  "why": "Either sister may say 姐姐我请客 (policy 4).",
+  "line": "姐姐我今天请客，想吃什么随便点。",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "chị",
+    "em"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 17,
+  "why": "A grandfather talking about his youth is not a child's call.",
+  "line": "爷爷,我年轻的时候也爱打游戏。",
+  "gender": "male",
+  "expect": null,
+  "accept": [
+   [
+    "ông",
+    "cháu"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "A mother using her own title must not get con/mẹ.",
+  "line": "妈妈,我也是第一次当妈妈,你们别吵了。",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "An elder sister using her own title must not get em/chị.",
+  "line": "姐姐,我做姐姐的当然要让着你。",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "chị",
+    "em"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "The call 爸 decides; becoming a grandpa is about the listener.",
+  "line": "爸，你要当爷爷了！",
+  "gender": "male",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "The call 老婆 decides, not the role he will take.",
+  "line": "老婆，我要当爸爸了！",
+  "gender": "male",
+  "expect": [
+   "anh",
+   "em"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "The call 妈妈 decides; 你当妈妈 is about the listener.",
+  "line": "妈妈，你当妈妈的怎么能这样说我？",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "The explicit call 老公 outranks the self role.",
+  "line": "老公，我做妈妈的难道不心疼孩子吗？",
+  "gender": "female",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "The explicit call 师父 outranks the self role.",
+  "line": "师父，我已经当师父了，您放心。",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "作为妈妈 means the speaker is the mother.",
+  "line": "作为妈妈,我不能不管你,你昨晚几点回来的?",
+  "gender": "female",
+  "expect": [
+   "mẹ",
+   "con"
+  ],
+  "accept": [
+   null
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "作为姐姐 means the speaker is the elder sister.",
+  "line": "作为姐姐，我当然要让着你。这块蛋糕给你。",
+  "gender": "female",
+  "expect": [
+   "chị",
+   "em"
+  ],
+  "accept": [
+   null
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "作为哥哥 with 你 is about the listener, so the speaker is not the brother.",
+  "line": "作为哥哥，你应该让着妹妹。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "A mid-line 'son' is the parent cue.",
+  "line": "Your mother said no, son, don't make her ask twice.",
+  "gender": "male",
+  "expect": [
+   "bố",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 21,
+  "why": "'Son, listen' is a parent's call.",
+  "line": "Son, listen, your mother and I need to talk to you.",
+  "gender": "male",
+  "expect": [
+   "bố",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "'Son' starting a list of names gives no cue (policy 5).",
+  "line": "Son, Kane, and Maddison all pressing high.",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 23,
+  "why": "A gamer's taunt 'owned, son' gives no cue (policy 5).",
+  "line": "You got owned, son. Get back to the lobby.",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "'kiddo' gives no cue (policy 5).",
+  "line": "Hey kiddo, want some candy?",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "'kiddo' gives no cue, so Grandma is never voiced as Bố.",
+  "line": "And Grandma made cookies for you, kiddo. Eat them while they're warm.",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "bà",
+    "cháu"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "An old lady's 'young man' to a stranger is not a parent cue.",
+  "line": "Young man, could you help me carry this bag to the bus stop?",
+  "gender": "female",
+  "expect": null,
+  "accept": [
+   [
+    "bà",
+    "cháu"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 20,
+  "why": "你个孙子 is an insult, not a grandparent's call.",
+  "line": "你个孙子，敢骂我？",
+  "expect": null,
+  "accept": [
+   [
+    "tao",
+    "mày"
+   ]
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "儿子 opening a line is a parent calling a son.",
+  "line": "儿子，你今天怎么回来这么晚？",
+  "gender": "female",
+  "expect": [
+   "mẹ",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "孫よ is a grandparent calling a grandchild.",
+  "line": "孫よ、よく来たな。",
+  "gender": "male",
+  "expect": [
+   "ông",
+   "cháu"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "Unpunctuated 傻孩子 opening a line is a parent's call.",
+  "line": "傻孩子说这些干什么?",
+  "gender": "male",
+  "expect": [
+   "bố",
+   "con"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 22,
+  "why": "孩子 as a topic in narration is not a call.",
+  "line": "孩子，是父母最大的牵挂。",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 18,
+  "why": "Cantonese 阿嫲 is a grandmother call.",
+  "line": "阿嫲，我返嚟喇。",
+  "expect": [
+   "cháu",
+   "bà"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "乖孫 is a grandparent calling a grandchild.",
+  "line": "乖孫，食咗飯未呀？",
+  "gender": "female",
+  "expect": [
+   "bà",
+   "cháu"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "Traditional 爺爺 gives ông, as 爷爷 does.",
+  "line": "爺爺，您慢點走。",
+  "gender": "male",
+  "expect": [
+   "cháu",
+   "ông"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 25,
+  "why": "A daughter-in-law calling 어머님 gets con/mẹ.",
+  "line": "어머님, 식사하세요. 제가 차렸어요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "丈母娘 is a son-in-law calling his mother-in-law.",
+  "line": "丈母娘，这是我给您买的补品。",
+  "gender": "male",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 27,
+  "why": "岳父大人 is a son-in-law calling his father-in-law.",
+  "line": "岳父大人，请喝茶。",
+  "gender": "male",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 27,
+  "why": "Comma-less 岳父 opening a line is a call.",
+  "line": "岳父请喝茶。",
+  "gender": "male",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "장인어른 needs a listener word too.",
+  "line": "장인어른, 한 잔 받으세요.",
+  "gender": "male",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "큰어머니 is an aunt (bác), not a mother.",
+  "line": "큰어머니, 제가 할게요.",
+  "gender": "female",
+  "expect": [
+   "cháu",
+   "bác"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "伯母 is bác, not cô (policy 8).",
+  "line": "伯母，您好。",
+  "expect": [
+   "cháu",
+   "bác"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "舅妈 is mợ.",
+  "line": "舅妈，新年快乐！",
+  "expect": [
+   "cháu",
+   "mợ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "婶婶 is thím.",
+  "line": "婶婶，我回来了。",
+  "expect": [
+   "cháu",
+   "thím"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "大伯 is bác (policy 8).",
+  "line": "大伯，您坐。",
+  "expect": [
+   "cháu",
+   "bác"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A doctor with surgery words is not the woman's child.",
+  "line": "네, 어머님. 수술은 잘 끝났습니다. 걱정 마세요.",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "お子さん is a staff phrase: no family cue.",
+  "line": "お母さん、お子さんは大丈夫ですよ。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "出しておきます is a staff phrase: no family cue.",
+  "line": "お母さん、お薬を出しておきますね。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "孩子妈妈 means 'the child's mother', said by staff.",
+  "line": "孩子妈妈，别担心，只是普通感冒。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "检查结果 is a staff phrase.",
+  "line": "妈妈，孩子的检查结果出来了，没什么大问题。",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 28,
+  "why": "Prescribing medicine is a staff phrase.",
+  "line": "어머님, 아이는 단순 감기예요. 약 지어 드릴게요.",
+  "gender": "male",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "어머님 in an ordinary line gives the family cue (policy 2).",
+  "line": "어머님, 걱정 마세요.",
+  "gender": "male",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 27,
+  "why": "A hospital word alone does not cancel a child's call.",
+  "line": "お父さん、病院に行ってきます。",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 27,
+  "why": "Reminding a parent-in-law about medicine is family talk.",
+  "line": "아버님, 약 드실 시간이에요.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "bố"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 27,
+  "why": "An adult child offering to mind the kids calls 妈.",
+  "line": "妈，您别担心，孩子我来带。",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 25,
+  "why": "A hospital word does not cancel a child's call.",
+  "line": "엄마, 나 병원 갔다 왔어.",
+  "gender": "female",
+  "expect": [
+   "con",
+   "mẹ"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A parent asking the doctor about their child gets no pupil cue.",
+  "line": "선생님, 우리 아이 괜찮은 거죠?",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 25,
+  "why": "퇴원 marks a doctor: no pupil cue.",
+  "line": "정말 감사합니다, 선생님. 언제 퇴원할 수 있을까요?",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "A parent talking about their daughter to a teacher.",
+  "line": "선생님, 우리 딸이 요즘 많이 힘들어해요.",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 25,
+  "why": "A parent asking about their own child (policy 3).",
+  "line": "老师，我家孩子最近表现怎么样？",
+  "gender": "female",
+  "expect": null,
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "てめえ with a plain え is rough talk, like てめぇ.",
+  "line": "てめえ、どこ見てんだ！",
+  "expect": [
+   "tao",
+   "mày"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "黙れ with お前 is rough talk.",
+  "line": "黙れ！お前に何が分かる！",
+  "expect": [
+   "tao",
+   "mày"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "닥쳐 with 너 따위 is rough talk.",
+  "line": "닥쳐! 너 따위가 뭘 알아?",
+  "expect": [
+   "tao",
+   "mày"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 26,
+  "why": "闭嘴 is rough talk.",
+  "line": "闭嘴！你懂什么！",
+  "expect": [
+   "tao",
+   "mày"
+  ],
+  "speech": true
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 6,
+  "why": "The reply to 오빠 from the other voice takes the mirrored pair.",
+  "line": "Man\n진짜미안해지금바로갈게.",
+  "context": [
+   "Woman\n오빠왜전화안받았어하루종일기다렸잖아."
+  ],
+  "expect": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "The senpai answering 先輩 takes the mirrored pair.",
+  "line": "Man\nいいよ。駅まで送るよ。",
+  "context": [
+   "Woman\n先輩、一緒に帰りませんか？"
+  ],
+  "expect": [
+   "anh",
+   "em"
+  ],
+  "accept": [
+   [
+    "",
+    "em"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 15,
+  "why": "The boyfriend answering 자기야 takes the mirrored pair.",
+  "line": "Man\n대신 영화는 네가 골라.",
+  "context": [
+   "Woman\n자기야, 오늘 저녁에 뭐 먹을까?"
+  ],
+  "expect": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 19,
+  "why": "A couple set up by 老公/老婆 keeps em/anh on later lines.",
+  "line": "Woman\n饭菜我都热了三遍了,你自己看着办吧。",
+  "context": [
+   "Woman\n老公,你怎么才回来?",
+   "Man\n老婆,对不起,今天加班。"
+  ],
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "dubbing",
+  "round": 8,
+  "why": "A mentioned 어머니 must not become the couple's stored pair cue.",
+  "line": "Woman\n어머니가왜나한테말안했어?",
+  "context": [
+   "Man\n어머니병원원에갔었어."
+  ],
+  "expect": null
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "여보세요 is a phone hello, not 여보 + 세요.",
+  "text": "여보세요",
+  "expect": "여보세요"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "Glued 여보세요 is not split into a spouse call.",
+  "text": "여보세요누구세요",
+  "expect": "여보세요누구세요"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "여보게 is one word, not 여보 + 게.",
+  "text": "여보게",
+  "expect": "여보게"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A glued closing 마마 gets its call comma.",
+  "text": "네마마.",
+  "expect": "네, 마마."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A glued opening 마마 gets its call comma.",
+  "text": "마마전하께서찾으십니다.",
+  "expect": "마마, 전하께서찾으십니다."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A glued opening 爹 gets its call comma.",
+  "text": "爹女儿回来了。",
+  "expect": "爹，女儿回来了。"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A glued opening 자기야 gets its call comma.",
+  "text": "자기야오늘저녁에뭐먹를까?",
+  "expect": "자기야, 오늘저녁에뭐먹를까?"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "A glued call before 저 gets a comma so the model reads it as a call.",
+  "text": "할머니저왔어요",
+  "expect": "할머니, 저왔어요"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "A glued call before 나 gets a comma.",
+  "text": "오빠나배고파",
+  "expect": "오빠, 나배고파"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 15,
+  "why": "A greeting after 선배님 is still a call.",
+  "text": "선배님안녕하세요",
+  "expect": "선배님, 안녕하세요"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 16,
+  "why": "An honorific verb means a mention: no comma.",
+  "text": "할아버지어디가셨어?아까계셨잖아.",
+  "expect": "할아버지어디가셨어?아까계셨잖아."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 16,
+  "why": "'isn't here' means a mention: no comma.",
+  "text": "형지금없어요.학원갔어요.",
+  "expect": "형지금없어요.학원갔어요."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 16,
+  "why": "Dad went out is a mention: no comma.",
+  "text": "아빠나가셨어요누구세요?",
+  "expect": "아빠나가셨어요누구세요?"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 17,
+  "why": "Grandma is asleep is a mention: no comma.",
+  "text": "할머니지금주무세요.",
+  "expect": "할머니지금주무세요."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 26,
+  "why": "A glued call before 제가 gets a comma.",
+  "text": "장모님제가설거지할게요.",
+  "expect": "장모님, 제가설거지할게요."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 26,
+  "why": "A glued call before 식사 gets a comma despite 세요.",
+  "text": "어머님식사하세요.",
+  "expect": "어머님, 식사하세요."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 28,
+  "why": "A glued call before 걱정 gets a comma.",
+  "text": "엄마걱정하지마",
+  "expect": "엄마, 걱정하지마"
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A glued office call before a noun gets a comma.",
+  "text": "팀장님보고서다됐습니다.",
+  "expect": "팀장님, 보고서다됐습니다."
+ },
+ {
+  "kind": "punctuated",
+  "area": "dubbing",
+  "round": 22,
+  "why": "딸아이 is 'my daughter', not a call.",
+  "text": "딸아이가이번에대학에붙었어요.",
+  "expect": "딸아이가이번에대학에붙었어요."
+ },
+ {
+  "kind": "label",
+  "area": "dubbing",
+  "round": 19,
+  "why": "A short Vietnamese heading is content, not a speaker label.",
+  "source": "The score is three to one.",
+  "translation": "Tỉ số: ba một.",
+  "expect": "Tỉ số: ba một."
+ },
+ {
+  "kind": "label",
+  "area": "dubbing",
+  "round": 19,
+  "why": "A called name the model wrote as a label is a call.",
+  "source": "Tom, wait for me!",
+  "translation": "Tom: Chờ anh với!",
+  "expect": "Tom, chờ anh với!"
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 9,
+  "why": "Percent is spoken.",
+  "text": "Pin còn 15%.",
+  "expect": "Pin còn mười lăm phần trăm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 9,
+  "why": "Dollar prices are spoken with đô after the number.",
+  "text": "Chiếc iPhone 16 Pro có giá $999.",
+  "expect": "Chiếc iPhone mười sáu Pro có giá chín trăm chín mươi chín đô."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A version with two dots is read with chấm, not dropped.",
+  "text": "Apple vừa ra mắt iOS 18.2.1.",
+  "expect": "Apple vừa ra mắt iOS mười tám chấm hai chấm một."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A day/month date is read with tháng.",
+  "text": "Hẹn ngày 20/11 nhé.",
+  "expect": "Hẹn ngày hai mươi tháng mười một nhé."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "Grams and a half are spoken.",
+  "text": "Cho 200g bột mì và 1/2 cốc sữa.",
+  "expect": "Cho hai trăm gam bột mì và nửa cốc sữa."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "°C is spoken as độ C.",
+  "text": "Nướng ở 180°C.",
+  "expect": "Nướng ở một trăm tám mươi độ C."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "đ after a price is đồng.",
+  "text": "Giá chỉ 50.000đ thôi.",
+  "expect": "Giá chỉ năm mươi nghìn đồng thôi."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A phone number is read digit by digit.",
+  "text": "Gọi cho tôi số 0912 345 678.",
+  "expect": "Gọi cho tôi số không chín một hai ba bốn năm sáu bảy tám."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 10,
+  "why": "A minus sign before a temperature is âm.",
+  "text": "Nhiệt độ -5 độ.",
+  "expect": "Nhiệt độ âm năm độ."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "A rating is read with trên, not as a date.",
+  "text": "Tổng cộng, mình cho 10/10.",
+  "expect": "Tổng cộng, mình cho mười trên mười."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "24/7 is not a date.",
+  "text": "Mở cửa 24/7.",
+  "expect": "Mở cửa hai mươi tư trên bảy.",
+  "accept": [
+   "Mở cửa hai tư trên bảy."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "A decimal rating is read with phẩy and trên.",
+  "text": "Đánh giá 4.5/5 sao.",
+  "expect": "Đánh giá bốn phẩy năm trên năm sao."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "4K is a resolution, not bốn nghìn.",
+  "text": "Màn hình 4K, 120Hz.",
+  "expect": "Màn hình bốn K, một trăm hai mươi Hz.",
+  "accept": [
+   "Màn hình bốn K, một trăm hai mươi héc."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "Letters glued to digits are split for the voice.",
+  "text": "Chơi trên PS5 Pro.",
+  "expect": "Chơi trên PS năm Pro."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "1m75 is a height.",
+  "text": "Cao 1m75.",
+  "expect": "Cao một mét bảy mươi lăm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "Thứ 4 is thứ tư.",
+  "text": "Thứ 4 tuần sau nhé.",
+  "expect": "Thứ tư tuần sau nhé."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "thứ 1 is thứ nhất.",
+  "text": "Đây là lần thứ 1 tôi đến đây.",
+  "expect": "Đây là lần thứ nhất tôi đến đây."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "¥ is yên, after the number.",
+  "text": "Chỉ ¥1000 thôi.",
+  "expect": "Chỉ một nghìn yên thôi."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "h:mm:ss is a duration.",
+  "text": "Video dài 1:30:25.",
+  "expect": "Video dài một tiếng ba mươi phút hai mươi lăm giây."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "km/h is spoken in full.",
+  "text": "Tốc độ 100km/h.",
+  "expect": "Tốc độ một trăm ki lô mét trên giờ."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "8pm is tám giờ tối.",
+  "text": "Live lúc 8pm.",
+  "expect": "Live lúc tám giờ tối."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 11,
+  "why": "90+3 is chín mươi cộng ba.",
+  "text": "Phút 90+3.",
+  "expect": "Phút chín mươi cộng ba."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A GPU model number is not a quantity.",
+  "text": "RTX 4090 vẫn khoảng 1599 đô la.",
+  "expect": "RTX bốn không chín mươi vẫn khoảng một nghìn năm trăm chín mươi chín đô la.",
+  "accept": [
+   "RTX bốn mươi chín mươi vẫn khoảng một nghìn năm trăm chín mươi chín đô la.",
+   "RTX bốn không chín không vẫn khoảng một nghìn năm trăm chín mươi chín đô la."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 13,
+  "why": "A range is read with đến.",
+  "text": "Nướng 25-30 phút.",
+  "expect": "Nướng hai mươi lăm đến ba mươi phút."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 13,
+  "why": "2010s keeps its century.",
+  "text": "Nhạc pop 2010s.",
+  "expect": "Nhạc pop những năm hai nghìn không trăm mười."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 13,
+  "why": "những năm is not doubled.",
+  "text": "Cuối những năm 1980s.",
+  "expect": "Cuối những năm tám mươi."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 14,
+  "why": "A capitalized Những năm is not doubled.",
+  "text": "Những năm 2010s.",
+  "expect": "Những năm hai nghìn không trăm mười."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 12,
+  "why": "18+ is mười tám cộng.",
+  "text": "Game này 18+.",
+  "expect": "Game này mười tám cộng."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 20,
+  "why": "3:45 PM is chiều, with one giờ.",
+  "text": "Hẹn em lúc 3:45 PM nhé.",
+  "expect": "Hẹn em lúc ba giờ bốn mươi lăm chiều nhé."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 20,
+  "why": "12:15 PM is trưa.",
+  "text": "Tàu chạy lúc 12:15 PM.",
+  "expect": "Tàu chạy lúc mười hai giờ mười lăm trưa."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 20,
+  "why": "12 AM is midnight.",
+  "text": "Lúc 12 AM.",
+  "expect": "Lúc mười hai giờ đêm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 20,
+  "why": "đô goes after the scale word.",
+  "text": "90 giây để chuyển $2.5 triệu.",
+  "expect": "chín mươi giây để chuyển hai phẩy năm triệu đô.",
+  "accept": [
+   "Chín mươi giây để chuyển hai phẩy năm triệu đô."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "đô is not said twice.",
+  "text": "Nợ $1.2 triệu đô.",
+  "expect": "Nợ một phẩy hai triệu đô."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "million after a dollar amount is triệu.",
+  "text": "Giá $2.5 million.",
+  "expect": "Giá hai phẩy năm triệu đô."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "giờ PM is read tối, not left in English.",
+  "text": "Lúc 7 giờ PM.",
+  "expect": "Lúc bảy giờ tối."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "tối is not said twice.",
+  "text": "Stream lúc 8pm tối nay.",
+  "expect": "Stream lúc tám giờ tối nay."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "sáng is not said twice.",
+  "text": "Cuộc gọi lúc 2 AM sáng.",
+  "expect": "Cuộc gọi lúc hai giờ sáng."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "Thousands on both sides of a slash are numbers.",
+  "text": "Còn 1.250/3.000 máu.",
+  "expect": "Còn một nghìn hai trăm năm mươi trên ba nghìn máu."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 22,
+  "why": "#1 is số một.",
+  "text": "Hạng #1 server.",
+  "expect": "Hạng số một server.",
+  "accept": [
+   "Hạng một server."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 23,
+  "why": "A version number uses chấm.",
+  "text": "Phiên bản 2.0.",
+  "expect": "Phiên bản hai chấm không."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 24,
+  "why": "mg is spoken.",
+  "text": "Liều 500mg.",
+  "expect": "Liều năm trăm mi li gam."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 24,
+  "why": "1tr2 is một triệu hai.",
+  "text": "Giá 1tr2.",
+  "expect": "Giá một triệu hai."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A minute mark drops the apostrophe.",
+  "text": "Hiệp 2, phút 45'.",
+  "expect": "Hiệp hai, phút bốn mươi lăm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 24,
+  "why": "A time range is read with đến.",
+  "text": "Từ 9h-17h.",
+  "expect": "Từ chín giờ đến mười bảy giờ."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 25,
+  "why": "lần/ngày keeps its meaning.",
+  "text": "Ăn 3 lần/ngày sau bữa ăn.",
+  "expect": "Ăn ba lần một ngày sau bữa ăn.",
+  "accept": [
+   "Ăn ba lần mỗi ngày sau bữa ăn."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 25,
+  "why": "Blood pressure is read with trên.",
+  "text": "Huyết áp 120/80.",
+  "expect": "Huyết áp một trăm hai mươi trên tám mươi."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 25,
+  "why": "quarter/year reads năm for the slash.",
+  "text": "Quý 3/2025.",
+  "expect": "Quý ba năm hai nghìn không trăm hai mươi lăm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 25,
+  "why": "Lv is cấp.",
+  "text": "Lv 99.",
+  "expect": "Cấp chín mươi chín."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 25,
+  "why": "A Roman-numeral century is read as a number.",
+  "text": "Thế kỷ XIX.",
+  "expect": "Thế kỷ mười chín."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 26,
+  "why": "month/year reads năm for the slash.",
+  "text": "Tháng 12/2025.",
+  "expect": "Tháng mười hai năm hai nghìn không trăm hai mươi lăm."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 26,
+  "why": "A score is not a date.",
+  "text": "Tỷ số 2/1.",
+  "expect": "Tỷ số hai - một.",
+  "accept": [
+   "Tỷ số hai một."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 26,
+  "why": "An aspect ratio is not a date.",
+  "text": "Màn 16/9.",
+  "expect": "Màn mười sáu trên chín.",
+  "accept": [
+   "Màn mười sáu chín."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 27,
+  "why": "A plus sign is spoken.",
+  "text": "Tăng +20% sát thương.",
+  "expect": "Tăng cộng hai mươi phần trăm sát thương."
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 27,
+  "why": "# is not dropped silently.",
+  "text": "Rank #3.",
+  "expect": "Rank số ba.",
+  "accept": [
+   "Rank hạng ba."
+  ]
+ },
+ {
+  "kind": "number",
+  "area": "dubbing",
+  "round": 27,
+  "why": "1v1 is một chọi một.",
+  "text": "Đấu 1v1 nào.",
+  "expect": "Đấu một chọi một nào.",
+  "accept": [
+   "Đấu một vê một nào."
+  ]
+ }
+]

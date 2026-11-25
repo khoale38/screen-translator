@@ -1,0 +1,4238 @@
+[
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 1,
+  "why": "Side-menu labels 82 px apart are separate items.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "アイテム",
+    105,
+    74,
+    169,
+    51
+   ],
+   [
+    "スキル",
+    104,
+    156,
+    133,
+    51
+   ],
+   [
+    "そうび",
+    103,
+    233,
+    136,
+    59
+   ],
+   [
+    "ステータス",
+    106,
+    323,
+    205,
+    47
+   ],
+   [
+    "ならびかえ",
+    105,
+    402,
+    210,
+    51
+   ],
+   [
+    "コンフィグ",
+    106,
+    484,
+    210,
+    51
+   ],
+   [
+    "セーブ",
+    103,
+    566,
+    133,
+    52
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "アイテム",
+   "スキル",
+   "そうび",
+   "ステータス",
+   "ならびかえ",
+   "コンフィグ",
+   "セーブ"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 2,
+  "why": "Stacked control hints and a squad chat line are separate blocks.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Hold R2 to sprint",
+    35,
+    694,
+    221,
+    36
+   ],
+   [
+    "L1 Aim Down Sights",
+    35,
+    734,
+    271,
+    36
+   ],
+   [
+    "[Squad] Minh: anh em gi tr nhé, tôi đi vòng sau",
+    36,
+    776,
+    567,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Hold R2 to sprint",
+   "L1 Aim Down Sights",
+   "[Squad] Minh: anh em gi tr nhé, tôi đi vòng sau"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "Each kill-feed event is its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Viper eliminated Ghost",
+    1619,
+    37,
+    266,
+    30
+   ],
+   [
+    "You eliminated Raven [Headshot]",
+    1500,
+    75,
+    382,
+    32
+   ],
+   [
+    "Hawk revived Nova",
+    1655,
+    116,
+    229,
+    30
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Viper eliminated Ghost",
+   "You eliminated Raven [Headshot]",
+   "Hawk revived Nova"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "Race HUD labels on stacked rows stay apart (Best Lap is not Gap).",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Current",
+    1516,
+    40,
+    96,
+    31
+   ],
+   [
+    "1:12.408",
+    1695,
+    39,
+    111,
+    33
+   ],
+   [
+    "Best Lap",
+    1513,
+    87,
+    112,
+    38
+   ],
+   [
+    "1:10.952",
+    1697,
+    90,
+    108,
+    31
+   ],
+   [
+    "Gap",
+    1510,
+    135,
+    67,
+    45
+   ],
+   [
+    "+0.384",
+    1694,
+    139,
+    90,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Current",
+   "Best Lap",
+   "Gap"
+  ],
+  "accept": [
+   [
+    "Current 1:12.408",
+    "Best Lap 1:10.952",
+    "Gap +0.384"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "The ready banner and the button row under it are separate buttons.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "準備完了",
+    872,
+    951,
+    171,
+    57
+   ],
+   [
+    "決定",
+    784,
+    1016,
+    72,
+    42
+   ],
+   [
+    "戻る",
+    964,
+    1017,
+    68,
+    42
+   ],
+   [
+    "カラー変更",
+    1145,
+    1019,
+    158,
+    38
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "準備完了",
+   "決定",
+   "戻る",
+   "カラー変更"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "A drift score and the nitro prompt under it are separate HUD rows.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Drift x3 +1,250",
+    35,
+    972,
+    265,
+    45
+   ],
+   [
+    "Nitro ready - press Space",
+    33,
+    1021,
+    332,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Drift x3 +1,250",
+   "Nitro ready - press Space"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "A reward title and its Claim button stay apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Daily Login Reward",
+    55,
+    299,
+    254,
+    36
+   ],
+   [
+    "Claim",
+    53,
+    344,
+    85,
+    40
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Daily Login Reward",
+   "Claim"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 3,
+  "why": "Toggle values in one column (On / Off / On / Off) are separate.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "On",
+    1272,
+    264,
+    55,
+    40
+   ],
+   [
+    "Off",
+    1271,
+    332,
+    58,
+    43
+   ],
+   [
+    "On",
+    1271,
+    402,
+    57,
+    44
+   ],
+   [
+    "Off",
+    1271,
+    471,
+    59,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "On",
+   "Off",
+   "On",
+   "Off"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 1,
+  "why": "Each MMO chat line is its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "[파티] 민수: 힐 좀 해주세요!! 죽을 것 같아요",
+    37,
+    659,
+    445,
+    30
+   ],
+   [
+    "[길드] 하늘:오늘 레이드 9시에 시작해요 늦지 마세요~",
+    37,
+    711,
+    549,
+    30
+   ],
+   [
+    "[일반] 검은늑대:같이 사냥하실 분 구합니다",
+    34,
+    760,
+    444,
+    34
+   ],
+   [
+    "[귓속말] 소연:오빠 아까 그 아이템 얼마에 팔았어?",
+    36,
+    815,
+    508,
+    30
+   ],
+   [
+    "[시스템] 전설 아이템 [불멸의 검]을 획득했습니다.",
+    37,
+    867,
+    497,
+    29
+   ],
+   [
+    "[파티] 민수: ㅋㅋㅋ 대박 축하해요",
+    37,
+    919,
+    345,
+    30
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "[파티] 민수: 힐 좀 해주세요!! 죽을 것 같아요",
+   "[길드] 하늘:오늘 레이드 9시에 시작해요 늦지 마세요",
+   "[일반] 검은늑대:같이 사냥하실 분 구합니다",
+   "[귓속말] 소연:오빠 아까 그 아이템 얼마에 팔았어?",
+   "[시스템] 전설 아이템 [불멸의 검]을 획득했습니다.",
+   "[파티] 민수: ㅋㅋㅋ 대박 축하해요"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 23,
+  "why": "Chinese chat rows opening with 【channel】 are one block per row.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "【世界】风行者：副本缺一个奶妈，速来",
+    58,
+    713,
+    431,
+    38
+   ],
+   [
+    "【帮派】小石头：恭喜帮主拿到新坐骑！",
+    58,
+    746,
+    417,
+    39
+   ],
+   [
+    "【队伍】老刘：等我回蓝再拉怪",
+    58,
+    780,
+    334,
+    40
+   ],
+   [
+    "【私聊】青青：哥，能帮我做一把弓吗？",
+    58,
+    814,
+    420,
+    40
+   ],
+   [
+    "【系统】你获得了古钱币×3。",
+    59,
+    850,
+    311,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "【世界】风行者:副本缺一个奶妈,速来",
+   "【帮派】小石头:恭喜帮主拿到新坐骑!",
+   "【队伍】老刘:等我回蓝再拉怪",
+   "【私聊】青青:哥,能帮我做一把弓吗?",
+   "【系统】你获得了古钱币×3。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 6,
+  "why": "Each pickup toast is its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Picked up: Iron Ore x5",
+    1415,
+    813,
+    291,
+    39
+   ],
+   [
+    "Picked up: Wolf Pelt",
+    1414,
+    857,
+    266,
+    38
+   ],
+   [
+    "Picked up: Minor Healing Potion x2",
+    1414,
+    901,
+    452,
+    38
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Picked up: Iron Ore x5",
+   "Picked up: Wolf Pelt",
+   "Picked up: Minor Healing Potion x2"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 4,
+  "why": "Tooltip stat rows stay apart while the wrapped sentence under them stays one paragraph.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "+86 Strength",
+    1210,
+    352,
+    172,
+    40
+   ],
+   [
+    "+12% Critical Strike Chance",
+    1211,
+    397,
+    359,
+    36
+   ],
+   [
+    "+40 Fire Resistance",
+    1212,
+    441,
+    259,
+    37
+   ],
+   [
+    "Increases your attack speed by 15",
+    1209,
+    514,
+    444,
+    38
+   ],
+   [
+    "percent for 10 seconds after a kill.",
+    1210,
+    553,
+    433,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "+86 Strength",
+   "+12% Critical Strike Chance",
+   "+40 Fire Resistance",
+   "Increases your attack speed by 15 percent for 10 seconds after a kill."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 6,
+  "why": "Numbered replies under the merchant's line are one block each; the name tab joins the line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Merchant",
+    243,
+    660,
+    156,
+    48
+   ],
+   [
+    "Times are hard, stranger. What brings you to my stall?",
+    241,
+    715,
+    826,
+    50
+   ],
+   [
+    "1. Who are you?",
+    285,
+    811,
+    246,
+    47
+   ],
+   [
+    "2. I need supplies.",
+    282,
+    871,
+    272,
+    45
+   ],
+   [
+    "3. [Leave]",
+    281,
+    931,
+    157,
+    47
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Merchant\nTimes are hard, stranger. What brings you to my stall?",
+   "1. Who are you?",
+   "2. I need supplies.",
+   "3. [Leave]"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 8,
+  "why": "A wrapped tutorial sentence whose second row starts with a [key] stays one block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "インベントリを開くには、いつでも",
+    517,
+    383,
+    581,
+    48
+   ],
+   [
+    "[川]キーを押すか、画面下のバッグを",
+    514,
+    437,
+    587,
+    53
+   ],
+   [
+    "クリックしてください。",
+    516,
+    492,
+    385,
+    53
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "インベントリを開くには、いつでも[川]キーを押すか、画面下のバッグをクリックしてください。"
+  ],
+  "accept": [
+   [
+    "インベントリを開くには、いつでも [川]キーを押すか、画面下のバッグをクリックしてください。"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 9,
+  "why": "Party frames get the same treatment for every member: the HP readout is never joined as a name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Elena",
+    48,
+    43,
+    98,
+    41
+   ],
+   [
+    "812/950",
+    49,
+    83,
+    116,
+    35
+   ],
+   [
+    "Bram",
+    48,
+    139,
+    90,
+    39
+   ],
+   [
+    "1,430 / 1,600",
+    51,
+    180,
+    156,
+    33
+   ],
+   [
+    "Sora",
+    48,
+    234,
+    82,
+    40
+   ],
+   [
+    "390/720",
+    48,
+    274,
+    117,
+    34
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Elena",
+   "Bram",
+   "Sora"
+  ],
+  "accept": [
+   [
+    "Elena 812/950",
+    "Bram 1,430 / 1,600",
+    "Sora 390/720"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 9,
+  "why": "A screen title over a backlog is not a name tab; each Name「line」 row stays its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "バックログ",
+    175,
+    82,
+    214,
+    54
+   ],
+   [
+    "アキラ「姉ちゃん、俺の弁当どこ？」",
+    195,
+    193,
+    667,
+    54
+   ],
+   [
+    "ナツミ「冷蔵庫の中よ。自分で探しなさい。」",
+    196,
+    343,
+    826,
+    53
+   ],
+   [
+    "アキラ「ないってば！また食べたでしょ！」",
+    195,
+    493,
+    788,
+    55
+   ],
+   [
+    "朝の台所に、気まずい沈黙が流れた。",
+    234,
+    644,
+    666,
+    52
+   ],
+   [
+    "ナツミ「……ごめん、お腹すいてたの。」",
+    195,
+    791,
+    748,
+    57
+   ],
+   [
+    "戻る",
+    1571,
+    953,
+    79,
+    49
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "バックログ",
+   "アキラ「姉ちゃん、俺の弁当どこ?」",
+   "ナツミ「冷蔵庫の中よ。自分で探しなさい。」",
+   "アキラ「ないってば!また食べたでしょ!」",
+   "朝の台所に、気まずい沈黙が流れた。",
+   "ナツミ「......ごめん、お腹すいてたの。」",
+   "戻る"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "Backlog names in a left column pair with the line on their baseline.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "历史记录",
+    113,
+    64,
+    237,
+    68
+   ],
+   [
+    "陆远",
+    153,
+    202,
+    86,
+    51
+   ],
+   [
+    "师姐，掌门让你去大殿一趟。",
+    474,
+    202,
+    460,
+    49
+   ],
+   [
+    "苏晴",
+    154,
+    328,
+    84,
+    48
+   ],
+   [
+    "知道了，你先回去吧。",
+    475,
+    326,
+    348,
+    49
+   ],
+   [
+    "陆远",
+    154,
+    452,
+    84,
+    48
+   ],
+   [
+    "师姐小心，后山最近不太平。",
+    476,
+    453,
+    456,
+    45
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "历史记录",
+   "陆远\n师姐,掌门让你去大殿一趟。",
+   "苏晴\n知道了,你先回去吧。",
+   "陆远\n师姐小心,后山最近不太平。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 17,
+  "why": "A katakana name tab misread ミ力 is read ミカ and joins its line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "ミ力",
+    145,
+    693,
+    85,
+    53
+   ],
+   [
+    "はいはい、",
+    167,
+    793,
+    229,
+    54
+   ],
+   [
+    "お姉ちゃんは強いんだから。",
+    368,
+    789,
+    540,
+    63
+   ],
+   [
+    "オート",
+    1294,
+    997,
+    75,
+    31
+   ],
+   [
+    "スキップ",
+    1465,
+    994,
+    98,
+    35
+   ],
+   [
+    "ログ",
+    1637,
+    997,
+    50,
+    29
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ミカ\nはいはい、お姉ちゃんは強いんだから。",
+   "オート",
+   "スキップ",
+   "ログ"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 12,
+  "why": "Two skit bubbles side by side each get their own name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "リオ",
+    152,
+    202,
+    76,
+    48
+   ],
+   [
+    "エマ",
+    1045,
+    206,
+    72,
+    42
+   ],
+   [
+    "なあ、腹減らないか？",
+    154,
+    295,
+    384,
+    49
+   ],
+   [
+    "さっき食べたばかりでしょ。",
+    1045,
+    291,
+    482,
+    57
+   ],
+   [
+    "そろそろ休憩しようぜ。",
+    154,
+    353,
+    405,
+    52
+   ],
+   [
+    "あと少しで町に着くわよ。",
+    1044,
+    352,
+    445,
+    53
+   ],
+   [
+    "スキップ",
+    1696,
+    1015,
+    105,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "リオ\nなあ、腹減らないか?そろそろ休憩しようぜ。",
+   "エマ\nさっき食べたばかりでしょ。あと少しで町に着くわよ。",
+   "スキップ"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 11,
+  "why": "A map legend header and its entries are separate rows, not a name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Legend",
+    1585,
+    876,
+    94,
+    34
+   ],
+   [
+    "Fast Travel Point",
+    1586,
+    920,
+    174,
+    27
+   ],
+   [
+    "Main Quest",
+    1584,
+    959,
+    123,
+    30
+   ],
+   [
+    "Merchant",
+    1585,
+    1000,
+    100,
+    27
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Legend",
+   "Fast Travel Point",
+   "Main Quest",
+   "Merchant"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 15,
+  "why": "One-kanji element badges stay apart from the skill names and descriptions.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "スキルー覧",
+    358,
+    106,
+    248,
+    58
+   ],
+   [
+    "火",
+    355,
+    203,
+    60,
+    59
+   ],
+   [
+    "フレイムバースト",
+    361,
+    265,
+    322,
+    46
+   ],
+   [
+    "敵単体に火属性の大ダメージ。",
+    357,
+    321,
+    410,
+    38
+   ],
+   [
+    "光",
+    355,
+    774,
+    61,
+    58
+   ],
+   [
+    "ホーリーライト",
+    357,
+    835,
+    286,
+    46
+   ],
+   [
+    "味方一人のHPを大きく回復する。",
+    356,
+    889,
+    457,
+    41
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "スキルー覧",
+   "火",
+   "フレイムバースト",
+   "敵単体に火属性の大ダメージ。",
+   "光",
+   "ホーリーライト",
+   "味方一人のHPを大きく回復する。"
+  ],
+  "accept": [
+   [
+    "スキルー覧",
+    "フレイムバースト",
+    "敵単体に火属性の大ダメージ。",
+    "ホーリーライト",
+    "味方一人のHPを大きく回復する。"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 14,
+  "why": "A results heading stays apart from the item row under it.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "획득 아이템",
+    534,
+    586,
+    186,
+    47
+   ],
+   [
+    "회복 물약x3강화석 x1",
+    534,
+    687,
+    372,
+    47
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "획득 아이템",
+   "회복 물약x3강화석 x1"
+  ],
+  "accept": [
+   [
+    "획득 아이템\n회복 물약x3강화석 x1"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 14,
+  "why": "A quest log keeps its 'Objectives' heading, each objective and the reward apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Objectives",
+    415,
+    413,
+    198,
+    51
+   ],
+   [
+    "- Search the old mill (0/1)",
+    443,
+    482,
+    369,
+    42
+   ],
+   [
+    "- Defeat the bandits (3/8)",
+    445,
+    543,
+    363,
+    42
+   ],
+   [
+    "- Return to Master Elric",
+    446,
+    606,
+    340,
+    35
+   ],
+   [
+    "Reward: 450 gold, 1200 XP",
+    416,
+    795,
+    401,
+    39
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Objectives",
+   "- Search the old mill (0/1)",
+   "- Defeat the bandits (3/8)",
+   "- Return to Master Elric",
+   "Reward: 450 gold, 1200 XP"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 20,
+  "why": "A Japanese pause menu at 72 px pitch: title and four items apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "ポーズ",
+    836,
+    244,
+    249,
+    109
+   ],
+   [
+    "ゲームに戻る",
+    832,
+    411,
+    253,
+    59
+   ],
+   [
+    "設定",
+    912,
+    482,
+    96,
+    59
+   ],
+   [
+    "操作方法",
+    870,
+    554,
+    179,
+    61
+   ],
+   [
+    "タイトルに戻る",
+    811,
+    626,
+    294,
+    59
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ポーズ",
+   "ゲームに戻る",
+   "設定",
+   "操作方法",
+   "タイトルに戻る"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 20,
+  "why": "An English pause menu: title and four items apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "PAUSED",
+    803,
+    248,
+    314,
+    93
+   ],
+   [
+    "Resume",
+    879,
+    413,
+    162,
+    49
+   ],
+   [
+    "Options",
+    883,
+    481,
+    155,
+    59
+   ],
+   [
+    "Controls",
+    878,
+    553,
+    165,
+    55
+   ],
+   [
+    "Quit to Main Menu",
+    793,
+    625,
+    335,
+    54
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "PAUSED",
+   "Resume",
+   "Options",
+   "Controls",
+   "Quit to Main Menu"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "A Korean pause menu at the tightest pitch (64 px) still splits per item.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "일시 정지",
+    817,
+    246,
+    286,
+    97
+   ],
+   [
+    "계속하기",
+    881,
+    411,
+    153,
+    52
+   ],
+   [
+    "설정",
+    919,
+    474,
+    82,
+    54
+   ],
+   [
+    "조작법",
+    899,
+    539,
+    119,
+    53
+   ],
+   [
+    "타이틀로",
+    883,
+    603,
+    152,
+    51
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "일시 정지",
+   "계속하기",
+   "설정",
+   "조작법",
+   "타이틀로"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 22,
+  "why": "A 32 px Japanese pause menu at 2.2x pitch: no merged pair read as a name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "ゲームに戻る",
+    854,
+    392,
+    208,
+    54
+   ],
+   [
+    "設定",
+    920,
+    467,
+    80,
+    48
+   ],
+   [
+    "操作方法",
+    887,
+    535,
+    145,
+    50
+   ],
+   [
+    "タイトルに戻る",
+    843,
+    608,
+    233,
+    46
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ゲームに戻る",
+   "設定",
+   "操作方法",
+   "タイトルに戻る"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "A 40 px English pause menu: four items, no 'Resume / Options' speaker block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Resume",
+    878,
+    392,
+    165,
+    53
+   ],
+   [
+    "Options",
+    882,
+    474,
+    156,
+    63
+   ],
+   [
+    "Controls",
+    877,
+    561,
+    166,
+    61
+   ],
+   [
+    "Return to Title Screen",
+    760,
+    655,
+    399,
+    52
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Resume",
+   "Options",
+   "Controls",
+   "Return to Title Screen"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 24,
+  "why": "A left-aligned all-caps pause menu is not comic lettering: one block per item.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "PAUSED",
+    153,
+    250,
+    276,
+    72
+   ],
+   [
+    "RESUME",
+    154,
+    390,
+    184,
+    50
+   ],
+   [
+    "SETTINGS",
+    154,
+    461,
+    212,
+    50
+   ],
+   [
+    "CONTROLS",
+    154,
+    528,
+    236,
+    54
+   ],
+   [
+    "QUIT TO MENU",
+    154,
+    599,
+    303,
+    53
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "PAUSED",
+   "RESUME",
+   "SETTINGS",
+   "CONTROLS",
+   "QUIT TO MENU"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 23,
+  "why": "A smaller hint line under a Japanese menu does not cancel menu detection.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "ゲームに戻る",
+    833,
+    350,
+    250,
+    58
+   ],
+   [
+    "設定",
+    913,
+    425,
+    95,
+    56
+   ],
+   [
+    "操作方法",
+    872,
+    496,
+    175,
+    55
+   ],
+   [
+    "タイトルに戻る",
+    815,
+    569,
+    289,
+    53
+   ],
+   [
+    "セーブしていないデータは失われます。",
+    704,
+    653,
+    497,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ゲームに戻る",
+   "設定",
+   "操作方法",
+   "タイトルに戻る",
+   "セーブしていないデータは失われます。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 25,
+  "why": "Centred all-caps title buttons are separate, not 'continue the new game'.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "CONTINUE",
+    844,
+    662,
+    231,
+    67
+   ],
+   [
+    "NEW GAME",
+    838,
+    732,
+    242,
+    56
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "CONTINUE",
+   "NEW GAME"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 24,
+  "why": "A confirm question and its YES / NO choices are three blocks.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "QUIT TO MAIN MENU?",
+    740,
+    408,
+    439,
+    56
+   ],
+   [
+    "YES",
+    910,
+    472,
+    99,
+    55
+   ],
+   [
+    "NO",
+    920,
+    536,
+    80,
+    59
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "QUIT TO MAIN MENU?",
+   "YES",
+   "NO"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "Bare choices stacked above the question box are separate.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "戦う",
+    910,
+    349,
+    96,
+    61
+   ],
+   [
+    "逃げる",
+    888,
+    412,
+    139,
+    63
+   ],
+   [
+    "話しかける",
+    851,
+    479,
+    215,
+    58
+   ],
+   [
+    "どうする？",
+    167,
+    790,
+    213,
+    62
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "戦う",
+   "逃げる",
+   "話しかける",
+   "どうする?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 20,
+  "why": "A choice OCR splits into 'そっとしてお' + 'く' is rejoined as one choice.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "声をかける",
+    857,
+    302,
+    201,
+    53
+   ],
+   [
+    "そっとしてお",
+    820,
+    412,
+    241,
+    56
+   ],
+   [
+    "く",
+    1059,
+    424,
+    25,
+    33
+   ],
+   [
+    "彼女は黙ってこちらを見つめている。",
+    159,
+    787,
+    709,
+    66
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "声をかける",
+   "そっとしておく",
+   "彼女は黙ってこちらを見つめている。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 24,
+  "why": "An all-caps quest list header and its objectives are separate rows.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "CURRENT QUEST",
+    1395,
+    53,
+    270,
+    39
+   ],
+   [
+    "FREE THE PRISONERS",
+    1395,
+    101,
+    297,
+    33
+   ],
+   [
+    "DEFEAT THE WARDEN",
+    1395,
+    139,
+    294,
+    36
+   ],
+   [
+    "ESCAPE THE FORTRESS",
+    1395,
+    179,
+    322,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "CURRENT QUEST",
+   "FREE THE PRISONERS",
+   "DEFEAT THE WARDEN",
+   "ESCAPE THE FORTRESS"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 22,
+  "why": "Chinese quest tracker rows stay apart; the inline subtitle is its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "主线：寒江之约",
+    1412,
+    141,
+    251,
+    47
+   ],
+   [
+    "前往渡口找船夫",
+    1434,
+    199,
+    222,
+    42
+   ],
+   [
+    "击败水寇 (0/8)",
+    1434,
+    237,
+    225,
+    43
+   ],
+   [
+    "与沈姑娘对话",
+    1433,
+    274,
+    193,
+    44
+   ],
+   [
+    "沈姑娘：公子，船夫已经等你多时了。",
+    610,
+    928,
+    674,
+    62
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "主线:寒江之约",
+   "前往渡口找船夫",
+   "击败水寇 (0/8)",
+   "与沈姑娘对话",
+   "沈姑娘:公子,船夫已经等你多时了。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 22,
+  "why": "Korean daily-quest tracker: header and rows apart, header not a name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "일일임무",
+    1413,
+    144,
+    141,
+    49
+   ],
+   [
+    "몬스터 처치(12/30)",
+    1432,
+    198,
+    250,
+    42
+   ],
+   [
+    "던전1회 클리어",
+    1434,
+    238,
+    194,
+    41
+   ],
+   [
+    "길드 기부하기",
+    1433,
+    274,
+    181,
+    47
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "일일임무",
+   "몬스터 처치(12/30)",
+   "던전1회 클리어",
+   "길드 기부하기"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 22,
+  "why": "English tracker rows at 1.6x pitch stay apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Active Quests",
+    1414,
+    142,
+    210,
+    42
+   ],
+   [
+    "Gather Iron Ore (2/5)",
+    1433,
+    192,
+    276,
+    43
+   ],
+   [
+    "Clear the Mine Entrance",
+    1434,
+    237,
+    317,
+    39
+   ],
+   [
+    "Report to Smith Hal",
+    1434,
+    282,
+    259,
+    39
+   ],
+   [
+    "Hal: Bring me the ore and I'll fix that blade.",
+    575,
+    927,
+    765,
+    62
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Active Quests",
+   "Gather Iron Ore (2/5)",
+   "Clear the Mine Entrance",
+   "Report to Smith Hal",
+   "Hal: Bring me the ore and I'll fix that blade."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 23,
+  "why": "Party HP and MP rows stay separate for every member.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Wren's turn. Choose an action.",
+    702,
+    91,
+    514,
+    51
+   ],
+   [
+    "Aldric",
+    137,
+    868,
+    99,
+    42
+   ],
+   [
+    "Wren",
+    575,
+    865,
+    96,
+    47
+   ],
+   [
+    "Tobias",
+    1016,
+    867,
+    118,
+    44
+   ],
+   [
+    "Isolde",
+    1457,
+    868,
+    104,
+    42
+   ],
+   [
+    "HP 1,284 / 1,500",
+    138,
+    923,
+    236,
+    39
+   ],
+   [
+    "HP 986 / 1,020",
+    579,
+    924,
+    209,
+    37
+   ],
+   [
+    "HP 2,047 / 2,300",
+    1019,
+    924,
+    234,
+    37
+   ],
+   [
+    "HP 740 /910",
+    1458,
+    922,
+    186,
+    40
+   ],
+   [
+    "MP 212 /300",
+    139,
+    972,
+    189,
+    40
+   ],
+   [
+    "MP 455 / 480",
+    578,
+    972,
+    189,
+    40
+   ],
+   [
+    "MP 80 / 150",
+    1019,
+    972,
+    172,
+    40
+   ],
+   [
+    "MP 610 / 640",
+    1458,
+    972,
+    189,
+    40
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Wren's turn. Choose an action.",
+   "Aldric",
+   "Wren",
+   "Tobias",
+   "Isolde",
+   "HP 1,284 / 1,500",
+   "HP 986 / 1,020",
+   "HP 2,047 / 2,300",
+   "HP 740 /910",
+   "MP 212 /300",
+   "MP 455 / 480",
+   "MP 80 / 150",
+   "MP 610 / 640"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 23,
+  "why": "An all-caps HUD heading, objective and counter stay apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "LV 27",
+    52,
+    43,
+    102,
+    42
+   ],
+   [
+    "OBJECTIVE",
+    1496,
+    54,
+    176,
+    36
+   ],
+   [
+    "XP 4,350/6,000",
+    53,
+    91,
+    224,
+    37
+   ],
+   [
+    "REACH THE EXTRACTION POINT",
+    1496,
+    104,
+    418,
+    30
+   ],
+   [
+    "SURVIVORS 3/4",
+    1495,
+    143,
+    218,
+    36
+   ],
+   [
+    "Ready up. Chopper lands in thirty seconds.",
+    589,
+    952,
+    736,
+    52
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "LV 27",
+   "OBJECTIVE",
+   "XP 4,350/6,000",
+   "REACH THE EXTRACTION POINT",
+   "SURVIVORS 3/4",
+   "Ready up. Chopper lands in thirty seconds."
+  ],
+  "accept": [
+   [
+    "LV 27",
+    "OBJECTIVE\nREACH THE EXTRACTION POINT",
+    "XP 4,350/6,000",
+    "SURVIVORS 3/4",
+    "Ready up. Chopper lands in thirty seconds."
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 25,
+  "why": "Centred results stats are one block per row.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "MISSION COMPLETE",
+    592,
+    204,
+    735,
+    79
+   ],
+   [
+    "TIME 12:48",
+    848,
+    394,
+    226,
+    44
+   ],
+   [
+    "ENEMIES DEFEATED 48",
+    720,
+    455,
+    480,
+    44
+   ],
+   [
+    "ACCURACY 72%",
+    791,
+    516,
+    336,
+    46
+   ],
+   [
+    "RANK A",
+    874,
+    580,
+    171,
+    44
+   ],
+   [
+    "Press any button to continue",
+    763,
+    877,
+    393,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MISSION COMPLETE",
+   "TIME 12:48",
+   "ENEMIES DEFEATED 48",
+   "ACCURACY 72%",
+   "RANK A",
+   "Press any button to continue"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 25,
+  "why": "A right-aligned price column never joins into one box.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "やくそう",
+    254,
+    191,
+    153,
+    51
+   ],
+   [
+    "8 G",
+    968,
+    193,
+    78,
+    48
+   ],
+   [
+    "どくけしそう",
+    256,
+    259,
+    221,
+    53
+   ],
+   [
+    "10 G",
+    950,
+    262,
+    97,
+    51
+   ],
+   [
+    "せいすい",
+    256,
+    335,
+    151,
+    44
+   ],
+   [
+    "20 G",
+    946,
+    332,
+    100,
+    51
+   ],
+   [
+    "キメラのつばさ",
+    257,
+    405,
+    255,
+    44
+   ],
+   [
+    "25 G",
+    946,
+    402,
+    101,
+    51
+   ],
+   [
+    "てつのたて",
+    256,
+    473,
+    189,
+    48
+   ],
+   [
+    "180 G",
+    928,
+    472,
+    118,
+    50
+   ],
+   [
+    "いらっしゃい! なにをかっていくかね？",
+    243,
+    873,
+    750,
+    55
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "やくそう",
+   "どくけしそう",
+   "せいすい",
+   "キメラのつばさ",
+   "てつのたて",
+   "いらっしゃい! なにをかっていくかね?"
+  ],
+  "accept": [
+   [
+    "やくそう",
+    "8 G",
+    "どくけしそう",
+    "10 G",
+    "せいすい",
+    "20 G",
+    "キメラのつばさ",
+    "25 G",
+    "てつのたて",
+    "180 G",
+    "いらっしゃい! なにをかっていくかね?"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "An all-caps name tab flush left over all-caps dialogue joins it as the speaker.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "OLD MINER",
+    166,
+    784,
+    208,
+    41
+   ],
+   [
+    "THE CAVE ENTRANCE IS ABOUT",
+    165,
+    845,
+    640,
+    45
+   ],
+   [
+    "200 STEPS PAST THE BROKEN",
+    165,
+    902,
+    608,
+    46
+   ],
+   [
+    "BRIDGE. BRING A LANTERN!",
+    163,
+    960,
+    563,
+    48
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "OLD MINER\nTHE CAVE ENTRANCE IS ABOUT 200 STEPS PAST THE BROKEN BRIDGE. BRING A LANTERN!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 25,
+  "why": "An all-caps name tab flush left over all-caps dialogue joins it as the speaker.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "KNIGHT",
+    165,
+    784,
+    145,
+    41
+   ],
+   [
+    "HALT! NOBODY ENTERS THE",
+    164,
+    845,
+    573,
+    45
+   ],
+   [
+    "CASTLE",
+    163,
+    899,
+    170,
+    51
+   ],
+   [
+    "WITHOUT THE KING'S SEAL.",
+    163,
+    959,
+    556,
+    49
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "KNIGHT\nHALT! NOBODY ENTERS THE CASTLE WITHOUT THE KING'S SEAL."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "An all-caps name tab flush left over all-caps dialogue joins it as the speaker.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "DAD",
+    164,
+    782,
+    89,
+    44
+   ],
+   [
+    "WHERE HAVE YOU BEEN? IT'S PAST",
+    163,
+    843,
+    721,
+    48
+   ],
+   [
+    "MIDNIGHT. YOUR MOTHER WAS WORRIED.",
+    164,
+    902,
+    848,
+    46
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "DAD\nWHERE HAVE YOU BEEN? IT'S PAST MIDNIGHT. YOUR MOTHER WAS WORRIED."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 24,
+  "why": "A centred all-caps title over a comic bubble is a call, not a name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "MOM!",
+    899,
+    221,
+    123,
+    50
+   ],
+   [
+    "I'M HOME! WHAT'S",
+    773,
+    272,
+    373,
+    53
+   ],
+   [
+    "FOR DINNER?",
+    812,
+    319,
+    294,
+    61
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MOM! I'M HOME! WHAT'S FOR DINNER?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "Tutorial card heading stays apart from its body.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Dodging",
+    600,
+    325,
+    155,
+    63
+   ],
+   [
+    "Press B right before an attack lands",
+    600,
+    394,
+    497,
+    59
+   ],
+   [
+    "to dodge. A perfect dodge slows time.",
+    600,
+    443,
+    521,
+    52
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Dodging",
+   "Press B right before an attack lands to dodge. A perfect dodge slows time."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "Japanese tutorial heading stays apart from its body.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "回避",
+    604,
+    330,
+    85,
+    53
+   ],
+   [
+    "攻撃が当たる直前にBボタンを押すと",
+    604,
+    402,
+    510,
+    45
+   ],
+   [
+    "回避できます。ジャスト回避で時間が遅くなります。",
+    604,
+    448,
+    714,
+    44
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "回避",
+   "攻撃が当たる直前にBボタンを押すと回避できます。ジャスト回避で時間が遅くなります。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 23,
+  "why": "An achievement toast heading stays apart from the achievement name.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "実績解除",
+    1483,
+    49,
+    116,
+    37
+   ],
+   [
+    "はじめての釣り",
+    1486,
+    89,
+    214,
+    41
+   ],
+   [
+    "リン",
+    167,
+    794,
+    74,
+    46
+   ],
+   [
+    "お兄ちゃん、すごい！こんなに大きい魚、はじめて見たよ！",
+    163,
+    853,
+    1092,
+    55
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "実績解除",
+   "はじめての釣り",
+   "リン\nお兄ちゃん、すごい!こんなに大きい魚、はじめて見たよ!"
+  ],
+  "accept": [
+   [
+    "実績解除\nはじめての釣り",
+    "リン\nお兄ちゃん、すごい!こんなに大きい魚、はじめて見たよ!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 26,
+  "why": "A HUD heading over a warning stays apart; the subtitle is its own block.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "SHIELDS 12%",
+    54,
+    43,
+    208,
+    39
+   ],
+   [
+    "WARNING",
+    1443,
+    52,
+    164,
+    40
+   ],
+   [
+    "HULL INTEGRITY CRITICAL",
+    1445,
+    99,
+    345,
+    35
+   ],
+   [
+    "Captain, we can't take another hit!",
+    665,
+    951,
+    589,
+    54
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "SHIELDS 12%",
+   "WARNING",
+   "HULL INTEGRITY CRITICAL",
+   "Captain, we can't take another hit!"
+  ],
+  "accept": [
+   [
+    "SHIELDS 12%",
+    "WARNING\nHULL INTEGRITY CRITICAL",
+    "Captain, we can't take another hit!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 11,
+  "why": "A centred speaker name over a short cutscene line is a name tab, not glued into the line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "自动",
+    1598,
+    47,
+    57,
+    33
+   ],
+   [
+    "跳过",
+    1755,
+    45,
+    61,
+    36
+   ],
+   [
+    "星璃",
+    922,
+    859,
+    78,
+    44
+   ],
+   [
+    "旅行者，快跟上！",
+    789,
+    909,
+    316,
+    63
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "自动",
+   "跳过",
+   "星璃\n旅行者,快跟上!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 12,
+  "why": "A centred speaker name over a short cutscene line is a name tab, not glued into the line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "オート",
+    1596,
+    46,
+    84,
+    35
+   ],
+   [
+    "スキップ",
+    1754,
+    42,
+    117,
+    41
+   ],
+   [
+    "レン",
+    923,
+    858,
+    76,
+    44
+   ],
+   [
+    "もう大丈夫だ。行こう。",
+    729,
+    907,
+    437,
+    66
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "オート",
+   "スキップ",
+   "レン\nもう大丈夫だ。行こう。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 12,
+  "why": "A centred speaker name over a short cutscene line is a name tab, not glued into the line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Auto",
+    1596,
+    45,
+    60,
+    33
+   ],
+   [
+    "Skip",
+    1753,
+    41,
+    63,
+    42
+   ],
+   [
+    "Aria",
+    922,
+    855,
+    76,
+    46
+   ],
+   [
+    "Stay close to me.",
+    797,
+    906,
+    324,
+    68
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Auto",
+   "Skip",
+   "Aria\nStay close to me."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "A centred name (not a title) over a subtitle is the speaker's name tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "Mira",
+    911,
+    839,
+    98,
+    56
+   ],
+   [
+    "Dinner's ready, sweetie.",
+    727,
+    894,
+    463,
+    69
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Mira\nDinner's ready, sweetie."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "Policy 9: a centred title over a subtitle is a call and joins it with a comma.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "妈妈",
+    913,
+    842,
+    91,
+    57
+   ],
+   [
+    "饭做好了，快去洗手。",
+    739,
+    896,
+    414,
+    67
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "妈妈,饭做好了,快去洗手。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "Policy 9: a centred Korean title over a subtitle is a call and joins it with a comma.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "엄마",
+    920,
+    841,
+    82,
+    54
+   ],
+   [
+    "밥 다 됐다.손 씻고 와.",
+    767,
+    893,
+    379,
+    67
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "엄마, 밥 다 됐다.손 씻고 와."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 19,
+  "why": "A popup title over its message is never a speaker tab.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "파티 초대",
+    877,
+    400,
+    160,
+    51
+   ],
+   [
+    "[불꽃전사]님이 파티에 초대했습니다.",
+    736,
+    485,
+    441,
+    43
+   ],
+   [
+    "10초 후 자동으로 거절됩니다.",
+    815,
+    539,
+    287,
+    37
+   ],
+   [
+    "수락",
+    793,
+    614,
+    72,
+    49
+   ],
+   [
+    "거절",
+    1055,
+    616,
+    67,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "파티 초대",
+   "[불꽃전사]님이 파티에 초대했습니다.",
+   "10초 후 자동으로 거절됩니다.",
+   "수락",
+   "거절"
+  ],
+  "accept": [
+   [
+    "파티 초대\n[불꽃전사]님이 파티에 초대했습니다.",
+    "10초 후 자동으로 거절됩니다.",
+    "수락",
+    "거절"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 20,
+  "why": "Area mode over a pause menu keeps each item on its own line.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "ポーズ",
+    836,
+    244,
+    249,
+    109
+   ],
+   [
+    "ゲームに戻る",
+    832,
+    411,
+    253,
+    59
+   ],
+   [
+    "設定",
+    912,
+    482,
+    96,
+    59
+   ],
+   [
+    "操作方法",
+    870,
+    554,
+    179,
+    61
+   ],
+   [
+    "タイトルに戻る",
+    811,
+    626,
+    294,
+    59
+   ]
+  ],
+  "mode": "area",
+  "expect": "ポーズ\nゲームに戻る\n設定\n操作方法\nタイトルに戻る"
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 24,
+  "why": "Area mode keeps a question and its YES / NO choices apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "QUIT TO MAIN MENU?",
+    740,
+    408,
+    439,
+    56
+   ],
+   [
+    "YES",
+    910,
+    472,
+    99,
+    55
+   ],
+   [
+    "NO",
+    920,
+    536,
+    80,
+    59
+   ]
+  ],
+  "mode": "area",
+  "expect": "QUIT TO MAIN MENU?\nYES\nNO"
+ },
+ {
+  "kind": "group",
+  "area": "games",
+  "round": 21,
+  "why": "Area mode keeps short choices stacked over the question apart.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "戦う",
+    910,
+    349,
+    96,
+    61
+   ],
+   [
+    "逃げる",
+    888,
+    412,
+    139,
+    63
+   ],
+   [
+    "話しかける",
+    851,
+    479,
+    215,
+    58
+   ],
+   [
+    "どうする？",
+    167,
+    790,
+    213,
+    62
+   ]
+  ],
+  "mode": "area",
+  "expect": "戦う\n逃げる\n話しかける\nどうする?"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 12: a HUD heading is never a speaker.",
+  "text": "OBJECTIVE\nREACH THE EXTRACTION POINT",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 12: a WARNING heading is never a speaker.",
+  "text": "WARNING\nHULL INTEGRITY CRITICAL",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 11,
+  "why": "A map legend header is not a speaker.",
+  "text": "Legend\nFast Travel Point",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A quest panel header is not a speaker.",
+  "text": "Side Quest\nBring three wolf pelts to the tanner.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A Japanese quest header is not a speaker.",
+  "text": "クエスト目標\n古い風車小屋に隠れた盗賊の頭を倒せ。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A reward header is not a speaker.",
+  "text": "報酬\n銀貨300枚と、村長からの感謝の手紙。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A Korean chat tab is not a speaker.",
+  "text": "채팅\n[길드] 민수:오늘 레이드 몇 시에 시작해요?",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A quest tracker header is not a speaker.",
+  "text": "진행 중인 퀘스트\n철광석 모으기(2/5)",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 6,
+  "why": "A 'Quest: name' heading is not a speaker label.",
+  "text": "任务：青云山妖患",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 9,
+  "why": "A settings section header is not a speaker.",
+  "text": "VIDEO\nDisplay Mode",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 9,
+  "why": "A screen title over a backlog row is not a speaker.",
+  "text": "バックログ\nアキラ「姉ちゃん、俺の弁当どこ？」",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 14,
+  "why": "An 'Objectives' heading is not a speaker.",
+  "text": "Objectives\n- Search the old mill (0/1)",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 19,
+  "why": "A popup title is not a speaker.",
+  "text": "파티 초대\n[불꽃전사]님이 파티에 초대했습니다.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 21,
+  "why": "A login-bonus popup title is not a speaker.",
+  "text": "ログインボーナス\n本日のログインボーナスを受け取りました。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 24,
+  "why": "An achievement toast heading is not a speaker.",
+  "text": "実績解除\nはじめての釣り",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 10,
+  "why": "A party member's HP readout is not a line they say.",
+  "text": "Bram\n1,430 / 1,600",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 10,
+  "why": "An all-caps stage direction is not a speaker.",
+  "text": "(LAUGHS) You actually believed him, Dad?",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 10,
+  "why": "A one-kanji stage direction is not a speaker.",
+  "text": "（笑）それは無理だよ、先輩。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 10,
+  "why": "A whispered aside marker is not a speaker.",
+  "text": "（小声）早く逃げて。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 9,
+  "why": "An inner thought in brackets is not a speaker.",
+  "text": "（まずい……）先輩に見られた。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 8,
+  "why": "A one-kanji kinship tab is the speaker.",
+  "text": "母\nユウ、もう八時よ！早く起きなさい。",
+  "expect": "母"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 26,
+  "why": "An all-caps kinship tab over all-caps dialogue is the speaker, not a call.",
+  "text": "DAD\nWHERE HAVE YOU BEEN? IT'S PAST MIDNIGHT. YOUR MOTHER WAS WORRIED.",
+  "expect": "DAD"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 26,
+  "why": "A two-word all-caps tab is the speaker.",
+  "text": "OLD MINER\nTHE CAVE ENTRANCE IS ABOUT 200 STEPS PAST THE BROKEN BRIDGE. BRING A LANTERN!",
+  "expect": "OLD MINER"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 15,
+  "why": "A name over a lowercase chat body is still the sender.",
+  "text": "Jake\njust got the new iPhone lol",
+  "expect": "Jake"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 9,
+  "why": "A Name「line」 backlog row names its speaker.",
+  "text": "アキラ「姉ちゃん、俺の弁当どこ？」",
+  "expect": "アキラ"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 22,
+  "why": "An inline 'Name：line' subtitle names its speaker.",
+  "text": "沈姑娘：公子，船夫已经等你多时了。",
+  "expect": "沈姑娘"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 24,
+  "why": "A call sign with a digit is a speaker label.",
+  "text": "VIPER-1: Contact left, two tangos on the ridge.",
+  "expect": "VIPER-1"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 28,
+  "why": "An all-caps 'NAME:' subtitle names its speaker.",
+  "text": "MIRA: BIG BROTHER, DON'T GO!",
+  "expect": "MIRA"
+ },
+ {
+  "kind": "speaker",
+  "area": "games",
+  "round": 27,
+  "why": "A fighter's bark names its speaker.",
+  "text": "Kaede: Is that all you've got?",
+  "expect": "Kaede"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 9,
+  "why": "An inner thought in brackets gets no speaker label.",
+  "source": "（まずい……）先輩に見られた。",
+  "translation": "(Chết rồi…) Bị senpai nhìn thấy rồi.",
+  "expect": "(Chết rồi…) Bị senpai nhìn thấy rồi."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 10,
+  "why": "An all-caps stage direction gets no speaker label.",
+  "source": "(LAUGHS) No way!",
+  "translation": "(Cười) Không đời nào!",
+  "expect": "(Cười) Không đời nào!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 25,
+  "why": "A radio call sign the model dropped is put back.",
+  "source": "OVERLORD: Copy, Viper. Hold position.",
+  "translation": "Rõ, Viper. Giữ vị trí.",
+  "expect": "OVERLORD: Rõ, Viper. Giữ vị trí."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 25,
+  "why": "A call sign with a digit the model dropped is put back.",
+  "source": "VIPER-2: Moving to flank. Cover me.",
+  "translation": "Đang vòng sang sườn. Yểm trợ tôi.",
+  "expect": "VIPER-2: Đang vòng sang sườn. Yểm trợ tôi."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 28,
+  "why": "An all-caps subtitle speaker the model dropped is put back.",
+  "source": "MIRA: BIG BROTHER, DON'T GO!",
+  "translation": "Anh ơi, đừng đi!",
+  "expect": "MIRA: Anh ơi, đừng đi!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 16,
+  "why": "A chat sender over a lowercase body is put back.",
+  "source": "Jake\nyeah, I'll stream it on YouTube",
+  "translation": "Được, mình sẽ stream nó trên YouTube nhé.",
+  "expect": "Jake: Được, mình sẽ stream nó trên YouTube nhé."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 11,
+  "why": "A title-plus-name label over 24 characters still becomes 'Label: line'.",
+  "source": "冒险家协会凯瑟琳\n旅行者，你终于来了！",
+  "translation": "Hội Mạo hiểm giả – Catherine\nLữ khách, cuối cùng cậu cũng đến!",
+  "expect": "Hội Mạo hiểm giả – Catherine: Lữ khách, cuối cùng cậu cũng đến!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 28,
+  "why": "A known spelling replaces the all-caps subtitle name.",
+  "source": "MIRA: BIG BROTHER, DON'T GO!",
+  "translation": "Anh ơi, đừng đi!",
+  "names": {
+   "MIRA": "Mira"
+  },
+  "expect": "Mira: Anh ơi, đừng đi!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 9,
+  "why": "The master's subtitle label is put back in Vietnamese when the model drops it.",
+  "source": "师父：去吧，记住，剑在人在。",
+  "translation": "Đi đi, nhớ lấy: có người thì mới có kiếm.",
+  "names": {
+   "师父": "Sư phụ"
+  },
+  "expect": "Sư phụ: Đi đi, nhớ lấy: có người thì mới có kiếm."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 19,
+  "why": "A call the model wrote as a second label becomes a vocative with a lowercase continuation.",
+  "source": "叶凡\n鬼王，你的对手是我！",
+  "translation": "Diệp Phàm: Quỷ Vương: Đối thủ của ngươi là ta!",
+  "names": {
+   "叶凡": "Diệp Phàm"
+  },
+  "expect": "Diệp Phàm: Quỷ Vương, đối thủ của ngươi là ta!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 20,
+  "why": "A call written as a label after the tab echoed on its own line becomes a vocative.",
+  "source": "叶凡\n鬼王，你的对手是我！",
+  "translation": "叶凡\nQuỷ Vương: Đối thủ của ngươi là ta!",
+  "names": {
+   "叶凡": "Diệp Phàm"
+  },
+  "expect": "Diệp Phàm: Quỷ Vương, đối thủ của ngươi là ta!"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 14,
+  "why": "A vocative after a name tab is a call, not a second speaker label.",
+  "source": "アルトリア\nマスター、ようやくお会いできましたね。",
+  "translation": "Artoria: Chủ nhân: Cuối cùng chúng ta cũng gặp nhau.",
+  "names": {
+   "アルトリア": "Artoria"
+  },
+  "expect": "Artoria: Chủ nhân, cuối cùng chúng ta cũng gặp nhau."
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 23,
+  "why": "A 【channel】Name: chat row prints the sender once and does not take the channel as the speaker.",
+  "source": "【帮派】小石头：恭喜帮主拿到新坐骑！",
+  "translation": "【Hội】Tiểu Thạch Đầu: Chúc mừng bang chủ có thú cưỡi mới!",
+  "expect": "【Hội】Tiểu Thạch Đầu: Chúc mừng bang chủ có thú cưỡi mới!",
+  "accept": [
+   "Tiểu Thạch Đầu: Chúc mừng bang chủ có thú cưỡi mới!"
+  ]
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 24,
+  "why": "An English chat row keeps who said it when the model drops the prefix.",
+  "source": "[Guild] Bramble: grats on the new mount!",
+  "translation": "Chúc mừng có thú cưỡi mới!",
+  "expect": "[Guild] Bramble: Chúc mừng có thú cưỡi mới!",
+  "accept": [
+   "Bramble: Chúc mừng có thú cưỡi mới!"
+  ]
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 12,
+  "why": "A 【name】 speaker in the answer is shown with its known spelling, not hanzi.",
+  "source": "【灵儿】逍遥哥哥，你要去哪里？",
+  "translation": "【灵儿】Anh Tiêu Dao đi đâu vậy?",
+  "names": {
+   "灵儿": "Linh Nhi"
+  },
+  "expect": "Linh Nhi: Anh Tiêu Dao đi đâu vậy?"
+ },
+ {
+  "kind": "label",
+  "area": "games",
+  "round": 8,
+  "why": "A leaked letter and hanzi in the model's label give way to the known spelling.",
+  "source": "리나\n오빠, 나도 같이 갈래! 혼자 가면 위험하잖아.",
+  "translation": "A.丽娜: Anh ơi, em cũng muốn đi cùng! Đi một mình thì nguy hiểm lắm.",
+  "names": {
+   "리나": "Rina"
+  },
+  "expect": "Rina: Anh ơi, em cũng muốn đi cùng! Đi một mình thì nguy hiểm lắm."
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 26,
+  "why": "Trigger names stay capitalised.",
+  "text": "HOLD RT TO AIM",
+  "expect": "Hold RT to aim"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 26,
+  "why": "A single-letter button stays capitalised.",
+  "text": "PRESS X TO RELOAD",
+  "expect": "Press X to reload"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 26,
+  "why": "A rank letter stays capitalised.",
+  "text": "RANK A",
+  "expect": "Rank A"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 27,
+  "why": "A bracketed key stays capitalised.",
+  "text": "PRESS [E] TO OPEN THE DOOR",
+  "expect": "Press [E] to open the door"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 28,
+  "why": "'A' after PRESS is a button, not an article.",
+  "text": "PRESS A TO JUMP",
+  "expect": "Press A to jump"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 27,
+  "why": "Button letters in a tutorial line stay capitalised.",
+  "text": "PRESS B TO BLOCK, THEN HIT Y TO COUNTER.",
+  "expect": "Press B to block, then hit Y to counter."
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 27,
+  "why": "A weapon code stays capitalised while the article 'A' is lowered.",
+  "text": "TAKE THE MP5 AND A FEW FLASHBANGS.",
+  "expect": "Take the MP5 and a few flashbangs."
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 28,
+  "why": "A short HUD prompt still gets sentence case, keeping its key.",
+  "text": "[F] PICK UP",
+  "expect": "[F] Pick up"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 28,
+  "why": "Contraction endings are lowercased (Don't, It's, I'm).",
+  "text": "DON'T MOVE. IT'S A TRAP, AND WE'RE SURROUNDED. I'M NOT LEAVING YOU HERE.",
+  "expect": "Don't move. It's a trap, and we're surrounded. I'm not leaving you here."
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 28,
+  "why": "A mixed-case gamer tag keeps its case.",
+  "text": "ELIMINATED BY XxSNIPERxX",
+  "expect": "Eliminated by XxSNIPERxX"
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 28,
+  "why": "Two prompts on one row keep both 'A' buttons.",
+  "text": "PRESS A TO TALK   HOLD A TO SKIP",
+  "expect": "Press A to talk   hold A to skip",
+  "accept": [
+   "Press A to talk   Hold A to skip"
+  ]
+ },
+ {
+  "kind": "case",
+  "area": "games",
+  "round": 27,
+  "why": "START and P2 are a button and a player tag.",
+  "text": "PRESS START TO JOIN P2",
+  "expect": "Press START to join P2",
+  "accept": [
+   "Press Start to join P2"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 9,
+  "why": "A big sister calling herself お姉ちゃん speaks as chị.",
+  "line": "ミサキ\n今日はお姉ちゃんがご飯作ってあげるね。ユウは何が食べたい？",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 10,
+  "why": "お兄ちゃんに任せて from the brother himself: anh / em.",
+  "line": "ジン\nお兄ちゃんに任せて！",
+  "expect": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 10,
+  "why": "姐姐在这儿，别怕 from the sister: chị / em.",
+  "line": "苏月\n姐姐在这儿，别怕。",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 10,
+  "why": "오빠만 믿어 from the brother: anh / em.",
+  "line": "민호\n오빠만 믿어. 내가 다 해결할게.",
+  "expect": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 21,
+  "why": "お姉ちゃんに任せなさい with あんた: the sister speaks as chị.",
+  "line": "ミカ\nお姉ちゃんに任せなさい。あんたは宿で休んでて。",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 10,
+  "why": "A mention of one's brother (兄さんに会いたい) is no call and no cue.",
+  "line": "ユウ\n兄さんに会いたい……。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 16,
+  "why": "Policy 4: 姐姐我…你 reads either way, so no cue.",
+  "line": "林小雪\n姐姐我今天请你吃饭，想吃什么随便点！",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 17,
+  "why": "Policy 4: 姐姐我好想你 reads either way, so no cue.",
+  "line": "林小雨\n姐姐我好想你啊！这次能多住几天吗？",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 16,
+  "why": "Policy 4: 爸爸我…你 reads either way, so no cue.",
+  "line": "王建国\n爸爸我给你买了新书包，明天开学要好好学习。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "A senior sister calling 小师弟 with 师姐 in her own line speaks as sư tỷ.",
+  "line": "苏月\n小师弟，师姐请你吃饭。今天想吃什么？",
+  "expect": [
+   "sư tỷ",
+   "sư đệ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "A girl calling 师姐 is never told đệ.",
+  "line": "小雨\n师姐，等等我！",
+  "expect": [
+   "muội",
+   "sư tỷ"
+  ],
+  "accept": [
+   [
+    "",
+    "sư tỷ"
+   ],
+   [
+    "em",
+    "sư tỷ"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 14,
+  "why": "A title straight before an imperative (师兄小心!) is a call.",
+  "line": "柳如烟\n师兄小心!那老魔头的掌风有毒,千万别硬接!",
+  "expect": [
+   "muội",
+   "sư huynh"
+  ],
+  "accept": [
+   [
+    "",
+    "sư huynh"
+   ],
+   [
+    "em",
+    "sư huynh"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 14,
+  "why": "오빠 조심해! calls the brother.",
+  "line": "유나\n오빠 조심해!",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 11,
+  "why": "臣妾 sets the consort's words.",
+  "line": "华妃\n臣妾给皇上请安。皇上近日操劳，臣妾亲手炖了参汤。",
+  "expect": [
+   "thần thiếp",
+   "hoàng thượng"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 11,
+  "why": "朕 with 爱妃 sets the emperor's words.",
+  "line": "皇上\n爱妃有心了。朕今晚就留在你宫里用膳吧。",
+  "expect": [
+   "trẫm",
+   "ái phi"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 15,
+  "why": "臣妾 with 太后 sets thần thiếp / Thái hậu.",
+  "line": "宁贵人\n臣妾知错，求太后恕罪。",
+  "expect": [
+   "thần thiếp",
+   "Thái hậu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "Policy 7: the consort keeps thần thiếp on a later page without the self word.",
+  "line": "华妃\n皇上说笑了，我只是担心您的身子。",
+  "context": [
+   "华妃\n臣妾听说皇上今日又没用早膳，特地送了些点心来。",
+   "皇上\n爱妃有心了。坐下陪朕说说话吧。"
+  ],
+  "expect": [
+   "thần thiếp",
+   "hoàng thượng"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "Policy 7: the emperor keeps trẫm / ái phi on a later page.",
+  "line": "皇上\n你啊，总是这么会说话。",
+  "context": [
+   "华妃\n臣妾听说皇上今日又没用早膳，特地送了些点心来。",
+   "皇上\n爱妃有心了。坐下陪朕说说话吧。",
+   "华妃\n皇上说笑了，我只是担心您的身子。"
+  ],
+  "expect": [
+   "trẫm",
+   "ái phi"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 17,
+  "why": "为师 is the master speaking of herself: master to disciple.",
+  "line": "玄真\n明日随为师下山。",
+  "expect": [
+   "ta",
+   "con"
+  ],
+  "accept": [
+   [
+    "sư phụ",
+    "con"
+   ],
+   [
+    "vi sư",
+    "con"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 19,
+  "why": "小弟 with 李兄 sets the younger sworn brother's words.",
+  "line": "张远\n李兄说笑了，小弟一直惦记着你呢。",
+  "expect": [
+   "tiểu đệ",
+   "huynh"
+  ],
+  "accept": [
+   [
+    "đệ",
+    "huynh"
+   ],
+   [
+    "tiểu đệ",
+    "Lý huynh"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 23,
+  "why": "小女子 … 公子 sets tiểu nữ / công tử.",
+  "line": "柳如烟\n公子，今夜可否陪小女子去城外看灯？",
+  "expect": [
+   "tiểu nữ",
+   "công tử"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 22,
+  "why": "A young woman calling 公子 in an inline subtitle: công tử.",
+  "line": "沈姑娘：公子，船夫已经等你多时了。",
+  "expect": [
+   "",
+   "công tử"
+  ],
+  "accept": [
+   [
+    "tiểu nữ",
+    "công tử"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 22,
+  "why": "An older smith calling 小子: nhóc, not con bé.",
+  "line": "老周：小子，矿石凑齐了再来找我。",
+  "expect": [
+   "ta",
+   "nhóc"
+  ],
+  "accept": [
+   [
+    "",
+    "nhóc"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 14,
+  "why": "Korean queen to king (전하, 사옵니다): thần thiếp / điện hạ.",
+  "line": "중전\n전하께서 걱정해 주시니 한결 낫사옵니다.",
+  "expect": [
+   "thần thiếp",
+   "điện hạ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 8: 舅舅 is cậu.",
+  "line": "小杰\n舅舅，你答应过带我去钓鱼的，不许耍赖哦！",
+  "expect": [
+   "cháu",
+   "cậu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 8: 伯伯 is bác.",
+  "line": "小杰\n伯伯，你答应过带我去钓鱼的，不许耍赖哦！",
+  "expect": [
+   "cháu",
+   "bác"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 8: 외삼촌 is cậu.",
+  "line": "민준\n외삼촌, 낚시 데려가 주기로 약속했잖아요!",
+  "expect": [
+   "cháu",
+   "cậu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 8: 이모 is dì.",
+  "line": "민준\n이모, 낚시 데려가 주기로 약속했잖아요!",
+  "expect": [
+   "cháu",
+   "dì"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 8: 伯父さん is bác.",
+  "line": "ユウ\n伯父さん、釣りに連れて行ってくれるって約束したよね！",
+  "expect": [
+   "cháu",
+   "bác"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 28,
+  "why": "A sister-in-law calling 형부: em / anh.",
+  "line": "수진\n형부, 언니 아직 안 왔어요? 제가 전화해 볼게요.",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 28,
+  "why": "A brother-in-law calling 嫂子: em / chị.",
+  "line": "小叔\n嫂子，我哥让我来接你。车就在外面等着。",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 27,
+  "why": "Grandpa's tab sets ông / cháu; 'kiddo' does not make him a parent.",
+  "line": "Grandpa\nBack in my day, kiddo, we walked to school through the snow.",
+  "expect": [
+   "ông",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 25,
+  "why": "An all-caps GRANDPA tab with KIDDO: ông / cháu.",
+  "line": "GRANDPA\nSIT DOWN, KIDDO. LET ME TELL YOU ABOUT THE WINTER OF '58.",
+  "expect": [
+   "ông",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 27,
+  "why": "Policy 5: 'kiddo' from an unknown speaker gives no cue.",
+  "line": "Sit down, kiddo. Let me tell you a story.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 23,
+  "why": "Policy 5: 'son' gives the parent cue; the Dad label makes it bố.",
+  "line": "Dad: You're not going out in that storm, son.",
+  "speaker": "Dad",
+  "expect": [
+   "bố",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 8,
+  "why": "An old man calling the listener 'Child' speaks as ông.",
+  "line": "Old Tobin\nChild, take this lantern.",
+  "expect": [
+   "ông",
+   "cháu"
+  ],
+  "accept": [
+   [
+    "ta",
+    "con"
+   ],
+   [
+    "ông",
+    "con"
+   ],
+   [
+    "",
+    "con"
+   ],
+   [
+    "",
+    "cháu"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 25,
+  "why": "An all-caps MOM tab is the mother speaking: mẹ / con.",
+  "line": "MOM\nWAKE UP, SLEEPYHEAD! YOU'LL MISS THE SCHOOL BUS AGAIN.",
+  "expect": [
+   "mẹ",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "An all-caps DAD tab is the father speaking: bố / con.",
+  "line": "DAD\nWHERE HAVE YOU BEEN? IT'S PAST MIDNIGHT. YOUR MOTHER WAS WORRIED.",
+  "expect": [
+   "bố",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 26,
+  "why": "Policy 1: a SIS tab can be either sibling, so no cue, and never the call cue em / chị.",
+  "line": "SIS\nI TOLD YOU NOT TO TOUCH MY STUFF! GET OUT OF MY ROOM!",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "'Uncle Joe,' before a request: cháu / chú.",
+  "line": "Tim\nUncle Joe, can I borrow the truck? I'll bring it back tonight.",
+  "expect": [
+   "cháu",
+   "chú"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "A bare 母 tab sets mẹ / con.",
+  "line": "母\n起きなさい、レイ。遅刻するわよ。",
+  "expect": [
+   "mẹ",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "A wife greeting with あなた、おかえりなさい: em / anh.",
+  "line": "ハルカ\nあなた、おかえりなさい。ご飯できてるわよ。",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 21,
+  "why": "A teacher saying 我当了二十年老师 is the teacher.",
+  "line": "李老师\n我当了二十年老师，没见过你这样的学生。",
+  "expect": [
+   "",
+   "em"
+  ],
+  "accept": [
+   [
+    "cô",
+    "em"
+   ],
+   [
+    "thầy",
+    "em"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "A father's call to his daughter: bố / con.",
+  "line": "아빠\n지은아, 오늘 학교 끝나고 바로 집에 와야 한다.",
+  "expect": [
+   "bố",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 12,
+  "why": "The daughter's reply after her father's call: con / bố.",
+  "line": "지은\n네, 알겠어요. 내일은 일찍 올게요.",
+  "context": [
+   "아빠\n지은아, 오늘 학교 끝나고 바로 집에 와야 한다."
+  ],
+  "expect": [
+   "con",
+   "bố"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 9,
+  "why": "'Your Highness' answers the princess who just spoke, not the king with more lines.",
+  "line": "Kael\nForgive me, Your Highness, but the roads are not safe.",
+  "context": [
+   "King Aldric\nKael, you will escort the caravan to the northern border.",
+   "Kael\nAs you command, Your Majesty.",
+   "King Aldric\nTake my daughter with you. She must see the realm.",
+   "Princess Lyra\nFather, I can protect myself! I don't need a guard."
+  ],
+  "expect": [
+   "thần",
+   "điện hạ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 8,
+  "why": "Mira thanking Grandpa Tobin right after he spoke: cháu / ông.",
+  "line": "Mira\nThank you, Grandpa Tobin.",
+  "context": [
+   "Captain Reyes\nPrivate Mira, you're late again. Report to the armory before sundown.",
+   "Mira\nYes, Captain! It won't happen again, I promise.",
+   "Captain Reyes\nSee that it doesn't.",
+   "Old Tobin\nChild, take this lantern. The road is dark tonight."
+  ],
+  "expect": [
+   "cháu",
+   "ông"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 9,
+  "why": "The maid answering お嬢様 is not given the 母さん cue from an untabbed scene.",
+  "line": "メイド\nお嬢様、馬車の用意ができました。お急ぎください。",
+  "context": [
+   "ユウ、もう八時よ！早く起きなさい。",
+   "ユウ\nわかってるよ、母さん。あと五分だけ寝かせて……。"
+  ],
+  "expect": [
+   "tôi",
+   "tiểu thư"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "games",
+  "round": 6,
+  "why": "A junior greeting ミサキ先輩 speaks as em.",
+  "line": "ハルト\nミサキ先輩、おはようございます！今日も早いですね。",
+  "expect": [
+   "em",
+   ""
+  ],
+  "accept": [
+   [
+    "em",
+    "chị"
+   ]
+  ]
+ }
+]

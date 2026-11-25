@@ -1,0 +1,3125 @@
+[
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 4,
+  "why": "A speaker label after a [sound] tag is still the speaker.",
+  "text": "[thunder rumbling]\nSARAH: I had nowhere else to go.",
+  "expect": "SARAH"
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 7,
+  "why": "A sentence-opening first subtitle line is not a name.",
+  "text": "Then Jake\nshowed up at my door with flowers.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 7,
+  "why": "'Sorry Dad' is the line calling Dad, not its speaker.",
+  "text": "Sorry Dad\nI didn't mean to scare you.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 7,
+  "why": "A name tab longer than 12 characters is still a speaker.",
+  "text": "Old Man Hemlock\nAbsolutely not, Pip. You're staying right here with me.",
+  "expect": "Old Man Hemlock"
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 7,
+  "why": "English CC speaker tag in parentheses.",
+  "text": "(MOM) Sam, wake your brother up.",
+  "expect": "MOM"
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 8,
+  "why": "【name】 VN label is the speaker.",
+  "text": "【ハルカ】お兄ちゃん、朝だよ！早く起きて！",
+  "expect": "ハルカ"
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 15,
+  "why": "A one-syllable interjection row is not a speaker.",
+  "text": "응\n손 씻고 밥 먹어",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 15,
+  "why": "A one-character interjection row is not a speaker.",
+  "text": "嗯\n快去洗手 饭马上好",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 19,
+  "why": "The narration tag 旁白 is not a speaker.",
+  "text": "【旁白】三年后，江湖再无人提起这个名字。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 21,
+  "why": "Half a sentence wrapped over two rows is not a speaker.",
+  "text": "要是你明天\n还不回来的话",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 23,
+  "why": "Two choice rows have no speaker.",
+  "text": "跟着她走\n回家",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 23,
+  "why": "A two-item battle menu has no speaker.",
+  "text": "Fight\nRun away",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 26,
+  "why": "The corner tag S2 E5 is never a speaker (policy 12).",
+  "text": "S2 E5\nMom, I'm home! Is dinner ready?",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 26,
+  "why": "The corner tag 第12集 is never a speaker (policy 12).",
+  "text": "第12集\n师兄，你先走，我来断后。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 28,
+  "why": "The corner tag HD is never a speaker (policy 12).",
+  "text": "HD\nGrandpa, tell me the story again.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "subtitles",
+  "round": 28,
+  "why": "The corner tag 제5화 is never a speaker (policy 12).",
+  "text": "제5화\n오빠, 우리 헤어지자.",
+  "expect": null
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 3,
+  "why": "Karaoke current line (left) and next line (right, lower) are two lyrics.",
+  "frame": [
+   1280,
+   200
+  ],
+  "rows": [
+   [
+    "夜空に光る星を数えて",
+    69,
+    16,
+    457,
+    69
+   ],
+   [
+    "君の名前をそっと呼んだ",
+    707,
+    100,
+    499,
+    62
+   ]
+  ],
+  "mode": "area",
+  "expect": "夜空に光る星を数えて\n君の名前をそっと呼んだ"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 4,
+  "why": "A choice menu beside the dialogue stays apart from the spoken line.",
+  "frame": [
+   1280,
+   260
+  ],
+  "rows": [
+   [
+    "Innkeeper",
+    48,
+    23,
+    141,
+    38
+   ],
+   [
+    "> Yes",
+    933,
+    66,
+    94,
+    37
+   ],
+   [
+    "A room for the night is 40 gold. Will you stay?",
+    48,
+    84,
+    659,
+    47
+   ],
+   [
+    "No",
+    951,
+    115,
+    55,
+    42
+   ]
+  ],
+  "mode": "area",
+  "expect": "Innkeeper\nA room for the night is 40 gold. Will you stay?\n> Yes\nNo",
+  "accept": [
+   "Innkeeper\nA room for the night is 40 gold. Will you stay?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 8,
+  "why": "A three-choice menu at the right is not woven into the dialogue.",
+  "frame": [
+   1280,
+   260
+  ],
+  "rows": [
+   [
+    "Mira",
+    47,
+    22,
+    67,
+    36
+   ],
+   [
+    "> Of course.",
+    933,
+    65,
+    184,
+    38
+   ],
+   [
+    "Will you help us find the missing children?",
+    50,
+    84,
+    609,
+    46
+   ],
+   [
+    "What's in it for me?",
+    954,
+    117,
+    281,
+    38
+   ],
+   [
+    "Not now.",
+    954,
+    169,
+    133,
+    37
+   ]
+  ],
+  "mode": "area",
+  "expect": "Mira\nWill you help us find the missing children?\n> Of course.\nWhat's in it for me?\nNot now.",
+  "accept": [
+   "Mira\nWill you help us find the missing children?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 9,
+  "why": "A dash misread as '口' is put back, keeping two speakers.",
+  "frame": [
+   1280,
+   170
+  ],
+  "rows": [
+   [
+    "Don't lie to me, Tom.",
+    484,
+    10,
+    328,
+    54
+   ],
+   [
+    "口",
+    472,
+    30,
+    18,
+    15
+   ],
+   [
+    "- I'm not lying, Mom!",
+    478,
+    53,
+    323,
+    58
+   ]
+  ],
+  "mode": "area",
+  "expect": "- Don't lie to me, Tom.\n- I'm not lying, Mom!"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 9,
+  "why": "Both '0' dashes overlapping their rows are re-attached, so the subtitle stays two lines.",
+  "frame": [
+   1280,
+   170
+  ],
+  "rows": [
+   [
+    "Big brother, you're in trouble, huh?",
+    380,
+    10,
+    535,
+    54
+   ],
+   [
+    "0",
+    368,
+    30,
+    17,
+    15
+   ],
+   [
+    "Shut up and eat, kid.",
+    483,
+    53,
+    330,
+    56
+   ],
+   [
+    "0",
+    472,
+    75,
+    18,
+    14
+   ]
+  ],
+  "mode": "area",
+  "expect": "- Big brother, you're in trouble, huh?\n- Shut up and eat, kid."
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 9,
+  "why": "A small kana role name flush over a VN line is the name tab.",
+  "frame": [
+   1280,
+   260
+  ],
+  "rows": [
+   [
+    "おばあちゃん",
+    52,
+    35,
+    151,
+    34
+   ],
+   [
+    "アオイ、帯は私が結んであげるからね。",
+    50,
+    65,
+    602,
+    47
+   ]
+  ],
+  "mode": "area",
+  "expect": "おばあちゃん\nアオイ、帯は私が結んであげるからね。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 14,
+  "why": "A one-kanji name tab is kept apart as the speaker.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "姫",
+    35,
+    15,
+    172,
+    65
+   ],
+   [
+    "ありがとう。少し休みたいの。",
+    53,
+    83,
+    495,
+    58
+   ]
+  ],
+  "mode": "area",
+  "expect": "姫\nありがとう。少し休みたいの。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 16,
+  "why": "A lone 형 over a subtitle line is a call joined with a comma (policy 9).",
+  "frame": [
+   1280,
+   220
+  ],
+  "rows": [
+   [
+    "형",
+    616,
+    92,
+    45,
+    52
+   ],
+   [
+    "어디가?",
+    564,
+    135,
+    148,
+    70
+   ]
+  ],
+  "mode": "area",
+  "expect": "형, 어디가?"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 16,
+  "why": "OCR noise for an ellipsis does not become a separate first line.",
+  "frame": [
+   1280,
+   220
+  ],
+  "rows": [
+   [
+    "嗯",
+    580,
+    94,
+    49,
+    49
+   ],
+   [
+    "0oo00o",
+    612,
+    99,
+    87,
+    32
+   ],
+   [
+    "那我们明天见。",
+    503,
+    139,
+    251,
+    61
+   ]
+  ],
+  "mode": "area",
+  "expect": "嗯…… 那我们明天见。",
+  "accept": [
+   "嗯……那我们明天见。",
+   "嗯，那我们明天见。",
+   "嗯 那我们明天见。",
+   "嗯那我们明天见。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 17,
+  "why": "A centred one-hanzi title over a short subtitle is a call (policy 9).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "姐",
+    573,
+    46,
+    98,
+    63
+   ],
+   [
+    "这个给你。",
+    534,
+    98,
+    188,
+    69
+   ]
+  ],
+  "mode": "area",
+  "expect": "姐，这个给你。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 17,
+  "why": "An orphan wrapped row joins its line; a far UI hint stays apart.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "李明",
+    55,
+    14,
+    78,
+    45
+   ],
+   [
+    "天已经黑了，我们今晚就在这间破庙里歇一晚",
+    54,
+    69,
+    732,
+    47
+   ],
+   [
+    "吧。",
+    54,
+    120,
+    63,
+    47
+   ],
+   [
+    "按空格键继续",
+    897,
+    227,
+    173,
+    34
+   ]
+  ],
+  "mode": "area",
+  "expect": "李明\n天已经黑了，我们今晚就在这间破庙里歇一晚吧。\n按空格键继续",
+  "accept": [
+   "李明\n天已经黑了，我们今晚就在这间破庙里歇一晚吧。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 17,
+  "why": "Choices stacked under the line stay apart from it and from each other.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "天已经黑了，我们今晚就在这间破庙里歇一晚",
+    54,
+    25,
+    731,
+    45
+   ],
+   [
+    "吧。",
+    53,
+    73,
+    64,
+    49
+   ],
+   [
+    "好的，听你的",
+    154,
+    163,
+    215,
+    47
+   ],
+   [
+    "不行，继续赶路",
+    155,
+    220,
+    247,
+    44
+   ]
+  ],
+  "mode": "area",
+  "expect": "天已经黑了，我们今晚就在这间破庙里歇一晚吧。\n好的，听你的\n不行，继续赶路"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 19,
+  "why": "Left-aligned 예/아니요 under a question are two choices.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "정말 이 마을을 떠나시겠습니까?",
+    53,
+    33,
+    432,
+    49
+   ],
+   [
+    "예",
+    94,
+    115,
+    39,
+    43
+   ],
+   [
+    "아니요",
+    95,
+    174,
+    93,
+    44
+   ]
+  ],
+  "mode": "area",
+  "expect": "정말 이 마을을 떠나시겠습니까?\n예\n아니요"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 18,
+  "why": "AUTO/SKIP/LOG buttons on the name row are dropped (policy 12).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "白露",
+    57,
+    35,
+    68,
+    41
+   ],
+   [
+    "自动",
+    897,
+    40,
+    56,
+    34
+   ],
+   [
+    "跳过",
+    994,
+    39,
+    59,
+    34
+   ],
+   [
+    "记录",
+    1094,
+    40,
+    59,
+    34
+   ],
+   [
+    "师兄，这次的任务就交给我吧！",
+    53,
+    102,
+    495,
+    52
+   ]
+  ],
+  "mode": "area",
+  "expect": "白露\n师兄，这次的任务就交给我吧！"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 19,
+  "why": "A misread skip button (스컵) is dropped with the other buttons.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "하린",
+    54,
+    25,
+    63,
+    42
+   ],
+   [
+    "선배, 오늘 공연 꼭 보러 와야 해요!",
+    54,
+    95,
+    486,
+    49
+   ],
+   [
+    "자동",
+    894,
+    237,
+    53,
+    33
+   ],
+   [
+    "스컵",
+    994,
+    237,
+    51,
+    31
+   ],
+   [
+    "로그",
+    1095,
+    238,
+    50,
+    28
+   ]
+  ],
+  "mode": "area",
+  "expect": "하린\n선배, 오늘 공연 꼭 보러 와야 해요!"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 18,
+  "why": "Furigana rows over a subtitle are dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "あした",
+    306,
+    153,
+    66,
+    29
+   ],
+   [
+    "えきまえ",
+    408,
+    153,
+    129,
+    30
+   ],
+   [
+    "ま",
+    567,
+    157,
+    31,
+    23
+   ],
+   [
+    "明日、駅の前で待ってるから。",
+    293,
+    172,
+    522,
+    56
+   ]
+  ],
+  "mode": "area",
+  "expect": "明日、駅の前で待ってるから。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 19,
+  "why": "Furigana set close above the kanji is dropped, not made a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "ハルカ",
+    57,
+    26,
+    95,
+    38
+   ],
+   [
+    "せんせい",
+    57,
+    105,
+    85,
+    26
+   ],
+   [
+    "ほんとう",
+    167,
+    105,
+    85,
+    27
+   ],
+   [
+    "先生、本当にありがとうございました。",
+    50,
+    120,
+    677,
+    57
+   ]
+  ],
+  "mode": "area",
+  "expect": "ハルカ\n先生、本当にありがとうございました。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 19,
+  "why": "Two short centred subtitle rows are one sentence.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "我真的不知道",
+    523,
+    101,
+    232,
+    53
+   ],
+   [
+    "你到底在说什么",
+    507,
+    150,
+    264,
+    52
+   ]
+  ],
+  "mode": "area",
+  "expect": "我真的不知道你到底在说什么"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 20,
+  "why": "A four-option menu under a prompt keeps one row per option.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "What will you do?",
+    52,
+    20,
+    282,
+    51
+   ],
+   [
+    "Attack",
+    94,
+    84,
+    102,
+    39
+   ],
+   [
+    "Defend",
+    94,
+    130,
+    116,
+    43
+   ],
+   [
+    "Use item",
+    95,
+    179,
+    136,
+    41
+   ],
+   [
+    "Run away",
+    94,
+    227,
+    154,
+    45
+   ]
+  ],
+  "mode": "area",
+  "expect": "What will you do?\nAttack\nDefend\nUse item\nRun away"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 20,
+  "why": "A centred 오빠 row is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "오빠",
+    599,
+    102,
+    84,
+    55
+   ],
+   [
+    "어디 가?",
+    567,
+    144,
+    145,
+    67
+   ]
+  ],
+  "mode": "area",
+  "expect": "오빠, 어디 가?"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 21,
+  "why": "Left-aligned short wrapped rows of one clause are one line.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "要是你明天",
+    52,
+    91,
+    196,
+    55
+   ],
+   [
+    "还不回来的话",
+    51,
+    148,
+    232,
+    53
+   ]
+  ],
+  "mode": "area",
+  "expect": "要是你明天还不回来的话"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 21,
+  "why": "A role title flush left over a wider line is the name tab (policy 9).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "妈妈",
+    53,
+    23,
+    73,
+    45
+   ],
+   [
+    "宝贝，快来吃饭了。",
+    48,
+    88,
+    322,
+    60
+   ]
+  ],
+  "mode": "area",
+  "expect": "妈妈\n宝贝，快来吃饭了。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 22,
+  "why": "All-caps centred MOM over a line is a call (policy 9).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "MOM",
+    583,
+    50,
+    115,
+    53
+   ],
+   [
+    "I'M HOME!",
+    533,
+    98,
+    215,
+    61
+   ]
+  ],
+  "mode": "area",
+  "expect": "MOM, I'M HOME!"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 22,
+  "why": "Three short choice rows with no prompt stay separate (policy 10).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "答应她",
+    74,
+    33,
+    114,
+    47
+   ],
+   [
+    "拒绝她",
+    73,
+    96,
+    116,
+    49
+   ],
+   [
+    "先离开这里",
+    73,
+    160,
+    182,
+    50
+   ]
+  ],
+  "mode": "area",
+  "expect": "答应她\n拒绝她\n先离开这里"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 22,
+  "why": "はい/いいえ are known choice words and stay apart (policy 11).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "はい",
+    69,
+    26,
+    90,
+    59
+   ],
+   [
+    "いいえ",
+    67,
+    89,
+    125,
+    63
+   ]
+  ],
+  "mode": "area",
+  "expect": "はい\nいいえ"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 23,
+  "why": "Two short rows of a speech bubble are one line.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "나도",
+    602,
+    32,
+    75,
+    49
+   ],
+   [
+    "갈래",
+    604,
+    77,
+    73,
+    50
+   ]
+  ],
+  "mode": "area",
+  "expect": "나도 갈래"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 23,
+  "why": "All-caps rows centred close together are comic lettering (policy 10).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "WHERE",
+    568,
+    31,
+    143,
+    47
+   ],
+   [
+    "WERE",
+    580,
+    74,
+    121,
+    48
+   ],
+   [
+    "YOU",
+    592,
+    115,
+    94,
+    53
+   ]
+  ],
+  "mode": "area",
+  "expect": "WHERE WERE YOU"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 23,
+  "why": "A four-row kana battle menu stays apart.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "たたかう",
+    72,
+    29,
+    148,
+    54
+   ],
+   [
+    "じゅもん",
+    76,
+    93,
+    146,
+    55
+   ],
+   [
+    "どうぐ",
+    75,
+    155,
+    113,
+    55
+   ],
+   [
+    "にげる",
+    74,
+    222,
+    113,
+    52
+   ]
+  ],
+  "mode": "area",
+  "expect": "たたかう\nじゅもん\nどうぐ\nにげる"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 23,
+  "why": "A 'Press A to continue' hint is dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Kai",
+    54,
+    23,
+    56,
+    40
+   ],
+   [
+    "We should head out before dark.",
+    53,
+    93,
+    531,
+    46
+   ],
+   [
+    "Press A to continue",
+    997,
+    251,
+    195,
+    26
+   ]
+  ],
+  "mode": "area",
+  "expect": "Kai\nWe should head out before dark."
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 23,
+  "why": "A 次へ button hint is dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "ユウト",
+    56,
+    24,
+    95,
+    42
+   ],
+   [
+    "そろそろ行こうか。",
+    54,
+    92,
+    313,
+    52
+   ],
+   [
+    "次へ",
+    1160,
+    245,
+    62,
+    36
+   ]
+  ],
+  "mode": "area",
+  "expect": "ユウト\nそろそろ行こうか。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 24,
+  "why": "A name tab over a short reply stays the speaker.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "小林",
+    51,
+    22,
+    77,
+    48
+   ],
+   [
+    "好吧",
+    48,
+    89,
+    94,
+    57
+   ]
+  ],
+  "mode": "area",
+  "expect": "小林\n好吧"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 24,
+  "why": "A four-row English command menu stays apart.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Attack",
+    72,
+    30,
+    110,
+    49
+   ],
+   [
+    "Magic",
+    70,
+    92,
+    111,
+    56
+   ],
+   [
+    "Item",
+    73,
+    161,
+    79,
+    46
+   ],
+   [
+    "Flee",
+    72,
+    221,
+    83,
+    51
+   ]
+  ],
+  "mode": "area",
+  "expect": "Attack\nMagic\nItem\nFlee"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A title menu keeps every item, Load included.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "New Game",
+    71,
+    29,
+    187,
+    51
+   ],
+   [
+    "Load",
+    72,
+    95,
+    92,
+    47
+   ],
+   [
+    "Options",
+    72,
+    156,
+    134,
+    56
+   ],
+   [
+    "Quit",
+    74,
+    223,
+    76,
+    47
+   ]
+  ],
+  "mode": "area",
+  "expect": "New Game\nLoad\nOptions\nQuit"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "Save/Load items are not dropped from a menu.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "セーブ",
+    71,
+    27,
+    121,
+    58
+   ],
+   [
+    "ロード",
+    72,
+    92,
+    118,
+    56
+   ],
+   [
+    "タイトルへ",
+    69,
+    152,
+    189,
+    65
+   ]
+  ],
+  "mode": "area",
+  "expect": "セーブ\nロード\nタイトルへ"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A centred senior title over a subtitle is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "先輩",
+    593,
+    110,
+    91,
+    54
+   ],
+   [
+    "待ってください！",
+    485,
+    155,
+    297,
+    61
+   ]
+  ],
+  "mode": "area",
+  "expect": "先輩、待ってください！",
+  "accept": [
+   "先輩，待ってください！"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A centred 前辈 row is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "前辈",
+    596,
+    110,
+    88,
+    54
+   ],
+   [
+    "请再指点我一次",
+    504,
+    156,
+    272,
+    59
+   ]
+  ],
+  "mode": "area",
+  "expect": "前辈，请再指点我一次"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A centred 師匠 row is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "師匠",
+    597,
+    112,
+    86,
+    51
+   ],
+   [
+    "もう一度お願いします！",
+    435,
+    158,
+    399,
+    55
+   ]
+  ],
+  "mode": "area",
+  "expect": "師匠、もう一度お願いします！",
+  "accept": [
+   "師匠，もう一度お願いします！"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A centred Captain row is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Captain",
+    572,
+    112,
+    137,
+    50
+   ],
+   [
+    "They're right behind us!",
+    443,
+    155,
+    396,
+    59
+   ]
+  ],
+  "mode": "area",
+  "expect": "Captain, they're right behind us!",
+  "accept": [
+   "Captain, They're right behind us!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A centred 엄마 over 미안해 joins with a comma.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "엄마",
+    600,
+    110,
+    82,
+    57
+   ],
+   [
+    "미안해",
+    582,
+    156,
+    117,
+    61
+   ]
+  ],
+  "mode": "area",
+  "expect": "엄마, 미안해"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A centred Mom over help! joins with a comma (policy 9).",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Mom",
+    584,
+    106,
+    111,
+    63
+   ],
+   [
+    "help!",
+    579,
+    160,
+    120,
+    76
+   ]
+  ],
+  "mode": "area",
+  "expect": "Mom, help!"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "Corner tags S2 E5 and HD are dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "S2 E5",
+    25,
+    11,
+    75,
+    32
+   ],
+   [
+    "HD",
+    1215,
+    11,
+    45,
+    32
+   ],
+   [
+    "Mom, I'm home! Is dinner ready?",
+    369,
+    186,
+    542,
+    58
+   ]
+  ],
+  "mode": "area",
+  "expect": "Mom, I'm home! Is dinner ready?"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "LIVE and clock tags are dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "LIVE",
+    25,
+    12,
+    62,
+    31
+   ],
+   [
+    "21:34",
+    1171,
+    12,
+    69,
+    31
+   ],
+   [
+    "ちょっと待って、お兄ちゃん！",
+    384,
+    143,
+    501,
+    49
+   ],
+   [
+    "財布、忘れてるよ。",
+    471,
+    197,
+    314,
+    51
+   ]
+  ],
+  "mode": "area",
+  "expect": "ちょっと待って、お兄ちゃん！財布、忘れてるよ。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "第12集 and HD tags are dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "第12集",
+    25,
+    13,
+    89,
+    34
+   ],
+   [
+    "HD",
+    1216,
+    12,
+    44,
+    31
+   ],
+   [
+    "师兄，你先走，我来断后。",
+    416,
+    191,
+    426,
+    55
+   ]
+  ],
+  "mode": "area",
+  "expect": "师兄，你先走，我来断后。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A title menu with descenders stays a list.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Continue",
+    75,
+    33,
+    148,
+    44
+   ],
+   [
+    "New Game",
+    72,
+    94,
+    185,
+    49
+   ],
+   [
+    "Options",
+    72,
+    156,
+    134,
+    56
+   ],
+   [
+    "Quit",
+    74,
+    223,
+    76,
+    46
+   ]
+  ],
+  "mode": "area",
+  "expect": "Continue\nNew Game\nOptions\nQuit"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A tight kana system menu stays a list.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "セーブ",
+    74,
+    30,
+    116,
+    52
+   ],
+   [
+    "ロード",
+    74,
+    84,
+    114,
+    52
+   ],
+   [
+    "コンフィグ",
+    74,
+    135,
+    184,
+    57
+   ],
+   [
+    "タイトルへ",
+    72,
+    190,
+    184,
+    56
+   ]
+  ],
+  "mode": "area",
+  "expect": "セーブ\nロード\nコンフィグ\nタイトルへ"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A tight Chinese title menu stays a list.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "继续游戏",
+    73,
+    32,
+    149,
+    48
+   ],
+   [
+    "新游戏",
+    73,
+    87,
+    115,
+    48
+   ],
+   [
+    "设置",
+    75,
+    140,
+    79,
+    48
+   ],
+   [
+    "退出",
+    73,
+    194,
+    80,
+    49
+   ]
+  ],
+  "mode": "area",
+  "expect": "继续游戏\n新游戏\n设置\n退出"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 26,
+  "why": "A 나 player tab is not joined into the line as a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "나",
+    54,
+    26,
+    38,
+    40
+   ],
+   [
+    "선배,오늘 같이 점심 먹을래요?",
+    53,
+    93,
+    447,
+    52
+   ]
+  ],
+  "mode": "area",
+  "expect": "나\n선배,오늘 같이 점심 먹을래요?",
+  "accept": [
+   "선배,오늘 같이 점심 먹을래요?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 27,
+  "why": "A 제5화 episode tag is dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "제5화",
+    23,
+    12,
+    67,
+    36
+   ],
+   [
+    "오빠,우리 헤어지자.",
+    490,
+    190,
+    296,
+    57
+   ]
+  ],
+  "mode": "area",
+  "expect": "오빠,우리 헤어지자."
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 27,
+  "why": "A 第3話 episode tag is dropped.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "第3話",
+    24,
+    13,
+    75,
+    36
+   ],
+   [
+    "お兄ちゃん、早く起きて！",
+    417,
+    191,
+    435,
+    54
+   ]
+  ],
+  "mode": "area",
+  "expect": "お兄ちゃん、早く起きて！"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 27,
+  "why": "Danmaku crossing the subtitle area are not part of the subtitle.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "这段我看了十遍",
+    76,
+    22,
+    175,
+    31
+   ],
+   [
+    "来了来了",
+    995,
+    20,
+    103,
+    34
+   ],
+   [
+    "你要是敢走，",
+    524,
+    153,
+    203,
+    51
+   ],
+   [
+    "就别再回来了。",
+    509,
+    209,
+    238,
+    47
+   ]
+  ],
+  "mode": "area",
+  "expect": "你要是敢走，就别再回来了。"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A small flush-left role tab over a wider dialogue line is the name tab, whatever word the line starts with.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Mom",
+    55,
+    24,
+    77,
+    38
+   ],
+   [
+    "Could you take the trash out before dinner?",
+    54,
+    92,
+    704,
+    50
+   ]
+  ],
+  "mode": "area",
+  "expect": "Mom\nCould you take the trash out before dinner?"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A small flush-left role tab over a wider dialogue line is the name tab, whatever word the line starts with.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "MOM",
+    55,
+    26,
+    82,
+    34
+   ],
+   [
+    "NEVER TALK TO YOUR SISTER LIKE THAT AGAIN.",
+    56,
+    95,
+    868,
+    40
+   ]
+  ],
+  "mode": "area",
+  "expect": "MOM\nNEVER TALK TO YOUR SISTER LIKE THAT AGAIN."
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A name tab over a 'Could…' line stays the speaker.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Kaito",
+    55,
+    24,
+    78,
+    38
+   ],
+   [
+    "Could you hold this for a second?",
+    53,
+    91,
+    547,
+    52
+   ]
+  ],
+  "mode": "area",
+  "expect": "Kaito\nCould you hold this for a second?"
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A centred Mom before a lower-case verb is the subject of the sentence.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Mom",
+    593,
+    142,
+    93,
+    48
+   ],
+   [
+    "was right about everything.",
+    415,
+    195,
+    444,
+    55
+   ]
+  ],
+  "mode": "area",
+  "expect": "Mom was right about everything."
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A centred 'Dad,' over a lower-case line is a call.",
+  "frame": [
+   1280,
+   300
+  ],
+  "rows": [
+   [
+    "Dad,",
+    596,
+    142,
+    86,
+    48
+   ],
+   [
+    "could you pick me up at eight?",
+    388,
+    194,
+    502,
+    58
+   ]
+  ],
+  "mode": "area",
+  "expect": "Dad, could you pick me up at eight?"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 9,
+  "why": "The known spelling replaces the bracketed name once.",
+  "source": "【ソウタ】あと五分だけ……。",
+  "translation": "【Souta】Còn 5 phút nữa thôi......",
+  "names": {
+   "ソウタ": "Sota"
+  },
+  "expect": "Sota: Còn 5 phút nữa thôi......"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 17,
+  "why": "An invented label on a space-separated call becomes a call; the name after it keeps its capital.",
+  "source": "妈 小美去哪儿了",
+  "translation": "Mẹ: Tiểu Mỹ đi đâu rồi?",
+  "expect": "Mẹ, Tiểu Mỹ đi đâu rồi?"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 17,
+  "why": "An invented 'Mẹ:' label on a call becomes 'Mẹ,'; Tom stays capitalised.",
+  "source": "Mom, Tom's here!",
+  "translation": "Mẹ: Tom đến rồi!",
+  "expect": "Mẹ, Tom đến rồi!"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 17,
+  "why": "Korean call: the name after the call keeps its capital.",
+  "source": "엄마 민수 왔어",
+  "translation": "Mẹ: Minsu đến rồi.",
+  "expect": "Mẹ, Minsu đến rồi."
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 17,
+  "why": "A game tip heading keeps its colon.",
+  "source": "提示 按E键调查",
+  "translation": "Gợi ý: Nhấn E để điều tra",
+  "expect": "Gợi ý: Nhấn E để điều tra"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 18,
+  "why": "老板 starting a line calls the boss.",
+  "source": "老板 来两碗面",
+  "translation": "Ông chủ: Cho hai bát mì.",
+  "expect": "Ông chủ, cho hai bát mì."
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 20,
+  "why": "A quest heading inside a labelled line keeps its colon.",
+  "source": "システム\nクエスト：スライムを10匹倒せ",
+  "translation": "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime.",
+  "expect": "Hệ thống: Nhiệm vụ: Đánh bại 10 con Slime."
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 21,
+  "why": "A title label inside a tabbed line is the called listener, not a nested label.",
+  "source": "叶凡\n鬼王：你的对手是我！",
+  "translation": "Diệp Phàm: Quỷ Vương: Đối thủ của ngươi là ta!",
+  "expect": "Diệp Phàm: Quỷ Vương, đối thủ của ngươi là ta!",
+  "accept": [
+   "Diệp Phàm: Quỷ Vương, Đối thủ của ngươi là ta!"
+  ]
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 23,
+  "why": "The model's 'Mẹ.' tab line becomes the label, not a doubled label.",
+  "source": "妈妈\n吃饭了。",
+  "translation": "Mẹ.\nĂn cơm thôi.",
+  "expect": "Mẹ: Ăn cơm thôi."
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 23,
+  "why": "A tab line the model ends with a period is not shown as 'Bệ hạ: Vua.'.",
+  "source": "陛下\n爱卿平身。今日为何事而来？",
+  "translation": "Vua.\nÁi khanh bình thân. Hôm nay vì việc gì mà đến?",
+  "expect": "Bệ hạ: Ái khanh bình thân. Hôm nay vì việc gì mà đến?",
+  "accept": [
+   "Vua: Ái khanh bình thân. Hôm nay vì việc gì mà đến?"
+  ]
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 24,
+  "why": "Choice words are not turned into 'choice 1: choice 2'.",
+  "source": "はい\nいいえ",
+  "translation": "Vâng\nKhông",
+  "expect": "Vâng\nKhông"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 24,
+  "why": "A two-item menu is not labelled.",
+  "source": "Fight\nRun away",
+  "translation": "Chiến đấu\nBỏ chạy",
+  "expect": "Chiến đấu\nBỏ chạy"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 25,
+  "why": "Two choices are not shown as 'choice 1: choice 2'.",
+  "source": "跟着她走\n回家",
+  "translation": "Đi theo cô ấy\nVề nhà",
+  "expect": "Đi theo cô ấy\nVề nhà"
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 27,
+  "why": "A player self-tab is not shown as a name label.",
+  "source": "나\n누나, 나 배고파.",
+  "translation": "Em\nChị ơi, em đói rồi.",
+  "expect": "Chị ơi, em đói rồi."
+ },
+ {
+  "kind": "label",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A 私 self-tab is not shown as 'Tôi, …' or 'Tôi: …'.",
+  "source": "私\n先輩、一緒に帰りませんか？",
+  "translation": "Tôi\nAnh ơi, mình cùng về không ạ?",
+  "expect": "Anh ơi, mình cùng về không ạ?"
+ },
+ {
+  "kind": "case",
+  "area": "subtitles",
+  "round": 28,
+  "why": "The letter after an apostrophe is lower-cased.",
+  "text": "I'D RATHER DIE THAN GO BACK THERE.",
+  "expect": "I'd rather die than go back there."
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 1,
+  "why": "Mentioning 'your sister' does not make the listener older.",
+  "line": "Your sister is in her room, studying for her exam.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 3,
+  "why": "'Mom made me' mentions a parent rather than calling the listener.",
+  "line": "Max: Mom made me bring it. She said you'd starve otherwise.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 3,
+  "why": "Calling 'Mom' gives con/mẹ, never bố.",
+  "line": "Daniel: Sorry, Mom. The traffic was terrible.",
+  "context": [
+   "Grace: Daniel, you're late again."
+  ],
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 4,
+  "why": "'little sister' makes Joe the elder sibling; one insult before it does not make them tao/mày.",
+  "line": "Joe: A month. I didn't want you to worry, little sister.",
+  "context": [
+   "Grace: You stubborn old fool. How long have you known?"
+  ],
+  "expect": [
+   "",
+   "em"
+  ],
+  "accept": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 2,
+  "why": "先輩 marks the senior but not their gender, so only the junior's em is certain.",
+  "line": "ハルト：すみません、ミサキ先輩！委員会が長引いちゃって…",
+  "expect": [
+   "em",
+   ""
+  ],
+  "accept": [
+   [
+    "em",
+    "chị"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 2,
+  "why": "누나 as 'you' gives em/chị.",
+  "line": "민호: 아, 몰라. 누나는 왜 이렇게 눈치가 빨라?",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 3,
+  "why": "A teacher tab using お前 still talks as teacher to pupils, not tao/mày.",
+  "line": "田中先生\nおい、お前たち、廊下で騒ぐな。",
+  "expect": [
+   "",
+   "em"
+  ],
+  "accept": [
+   [
+    "thầy",
+    "em"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 4,
+  "why": "Pip's Grandpa call to Hemlock is not pinned on Kai; Pip calls Kai big brother.",
+  "line": "Pip: Promise? Pinky promise, big brother?",
+  "context": [
+   "Old Man Hemlock: The ruins? No one who goes there comes back the same.",
+   "Kai: Everyone says that, Gramps. I'll be fine.",
+   "Kai: I can handle a curse.",
+   "Pip: Grandpa, let me guide him!",
+   "Kai: Don't worry, kid. I'll be back before dark."
+  ],
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 7,
+  "why": "A Grandpa cue said to nobody does not leak into the Bram/Wren pair.",
+  "line": "Bram\nSis, you're carrying the shovel this time.",
+  "context": [
+   "Bram\nSorry, Grandpa… the bridge was out.",
+   "Wren\nTold you, little brother. Shortcuts are for people who can read maps."
+  ],
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "Bram's opening 'Grandpa' is answered by Hemlock, so Hemlock's reply gets ông/cháu.",
+  "line": "Old Man Hemlock\nHmph. Your sister got here an hour ago, and she walked.",
+  "context": [
+   "Old Man Hemlock\nAh, the young knight. You're late.",
+   "Bram\nSorry, Grandpa. The bridge was out, so we took the long way."
+  ],
+  "expect": [
+   "ông",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 9,
+  "why": "Wren's 'little brother' cue goes to the pair Wren/Bram because Bram answers it.",
+  "line": "Bram\nI can read maps! The map was just wrong.",
+  "context": [
+   "Old Man Hemlock\nHmph. Your sister got here an hour ago, and she walked.",
+   "Wren\nTold you, little brother. Shortcuts are for people who can read maps."
+  ],
+  "expect": [
+   "em",
+   ""
+  ],
+  "accept": [
+   [
+    "em",
+    "chị"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 7,
+  "why": "大哥 calls the sworn elder brother.",
+  "line": "林风：大哥小心！",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "accept": [
+   [
+    "đệ",
+    "đại ca"
+   ],
+   [
+    "đệ",
+    "huynh"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 7,
+  "why": "대리님 calls the speaker labelled 최 대리, not the sister from the earlier exchange.",
+  "line": "준호\n네, 대리님. 바로 갈게요.",
+  "context": [
+   "서연\n오빠, 내일 엄마 생신인 거 알지?",
+   "준호\n당연하지. 선물도 벌써 샀어.",
+   "최 대리\n준호 씨, 팀장님이 찾으세요."
+  ],
+  "expect": [
+   "em",
+   ""
+  ],
+  "accept": [
+   [
+    "tôi",
+    ""
+   ],
+   [
+    "em",
+    "anh"
+   ],
+   [
+    "tôi",
+    "anh"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 3,
+  "why": "A two-speaker dash subtitle gets no single note.",
+  "line": "- Is he angry?\n- What do you think?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 9,
+  "why": "The second speaker's cue is not applied to both dash lines.",
+  "line": "Don't lie to me, Tom.\n- I'm not lying, Mom!",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 8,
+  "why": "妈 at the head of a line gives con/mẹ (with mẹ for you).",
+  "line": "妈，公司加班，我也没办法。",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 8,
+  "why": "A mentioned 王总 is not the listener.",
+  "line": "王总刚才打电话找你",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 12,
+  "why": "Sageuk 마마 addresses royalty.",
+  "line": "마마, 통촉하여 주시옵소서.",
+  "expect": [
+   "thần",
+   "nương nương"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 12,
+  "why": "兄上 calls the elder brother.",
+  "line": "若葉\n兄上、お待ちください！",
+  "expect": [
+   "em",
+   "anh"
+  ],
+  "accept": [
+   [
+    "em",
+    "huynh"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "臣妾 to 太后 mid-line: you is Thái hậu, not hoàng thượng.",
+  "line": "多谢太后关心，臣妾无碍。",
+  "expect": [
+   "thần thiếp",
+   "Thái hậu"
+  ],
+  "accept": [
+   [
+    "thần thiếp",
+    "thái hậu"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "师傅 for a taxi driver is not sư phụ.",
+  "line": "师傅，去火车站，麻烦快一点。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "学姐 gives em/chị.",
+  "line": "学姐，这道题我还是不会做。",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "Thanking 学姐 gives em/chị.",
+  "line": "谢谢学姐！下次我请你喝奶茶。",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 15,
+  "why": "Unpunctuated 哥你… is a call.",
+  "line": "哥你今天怎么这么早",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "A space after 妈 works like a comma.",
+  "line": "妈 我回来了",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "A full-width space after 爸 works like a comma.",
+  "line": "爸　我回来了",
+  "expect": [
+   "con",
+   "bố"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 17,
+  "why": "您 is how a junior addresses an elder.",
+  "line": "师父 我替您报仇了",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 24,
+  "why": "A phone opener 喂 does not hide the 妈 call.",
+  "line": "喂，妈，是我。",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 24,
+  "why": "喂？ before 爸 still calls the father.",
+  "line": "喂？爸，你到了吗？",
+  "expect": [
+   "con",
+   "bố"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "Glued 형 call gives em/anh.",
+  "line": "형어디가?",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "Glued 언니같이 gives em/chị.",
+  "line": "언니같이 가자",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "Glued 누나이거… gives em/chị.",
+  "line": "누나이거먹어도돼?",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 16,
+  "why": "Glued 오빠 call gives em/anh (already worked).",
+  "line": "오빠어디가?",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 11,
+  "why": "선배님 as 'you' with a particle still gives the junior em.",
+  "line": "선배님 덕분이에요.",
+  "expect": [
+   "em",
+   ""
+  ],
+  "accept": [
+   [
+    "em",
+    "anh"
+   ],
+   [
+    "em",
+    "chị"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "A Mom tab saying 'young lady' is a mother to her daughter.",
+  "line": "Mom\nDon't you roll your eyes at me, young lady.",
+  "expect": [
+   "mẹ",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "'young lady' alone is said by any elder: no noble cue, no pair.",
+  "line": "Don't you take that tone with me, young lady!",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "'Oh my Lord' is an exclamation, not addressing a lord.",
+  "line": "Grandma\nOh my Lord, look at the size of you!",
+  "expect": [
+   "bà",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 9,
+  "why": "'My lady' is a noble lady, never bệ hạ.",
+  "line": "Ser Aldric\nMy lady, the road ahead is not safe. Let me ride in front.",
+  "expect": [
+   "tôi",
+   "tiểu thư"
+  ],
+  "accept": [
+   [
+    "thần",
+    "tiểu thư"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 12,
+  "why": "A grandparent's 'sweetie' is not a couple cue.",
+  "line": "Grandma\nCome here, sweetie. Let me look at you.",
+  "expect": [
+   "bà",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "The grandchild answering Grandma's 'sweetie' talks up to her.",
+  "line": "Mia\nHi, Grandma! I missed you so much.",
+  "context": [
+   "Grandma\nCome here, sweetie. Let me look at you."
+  ],
+  "expect": [
+   "cháu",
+   "bà"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "The child answering Mom's 'Sweetheart' says con/mẹ.",
+  "line": "Ava\nAlmost, Mom…",
+  "context": [
+   "Mom\nSweetheart, did you finish your homework?"
+  ],
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 14,
+  "why": "A guest mentioned to the boss is not a customer cue.",
+  "line": "손님이 오셨어요.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 18,
+  "why": "やくそく (promise) is not a swear.",
+  "line": "やくそくだよ、ぜったいね！",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 19,
+  "why": "A real swear keeps the rough cue.",
+  "line": "くそくらえ",
+  "expect": [
+   "tao",
+   "mày"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 21,
+  "why": "爸爸妈妈的话 is not rough speech, and 宝贝 alone does not settle the pair.",
+  "line": "宝贝，要听爸爸妈妈的话。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 22,
+  "why": "아들아이가 ('my son is') does not call anyone.",
+  "line": "아들아이가 아파요.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 22,
+  "why": "아들아 calls a son: the speaker is the parent (policy 5).",
+  "line": "아들아, 밥 먹어.",
+  "expect": [
+   "",
+   "con"
+  ],
+  "accept": [
+   [
+    "mẹ",
+    "con"
+   ],
+   [
+    "bố",
+    "con"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 23,
+  "why": "作为妈妈，你… names the listener's role; no self-role cue.",
+  "line": "作为妈妈，你应该多陪陪孩子。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 24,
+  "why": "作为哥哥你… is a parent scolding the elder child: no anh/em for the speaker.",
+  "line": "作为哥哥你要让着妹妹。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 23,
+  "why": "你给我滚出去 is rough speech.",
+  "line": "你给我滚出去！",
+  "expect": [
+   "tao",
+   "mày"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 23,
+  "why": "お母さん calling the mother gives con/mẹ.",
+  "line": "お母さん早くしてよ！",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A clinic word in an everyday family line keeps the family cue (policy 2).",
+  "line": "엄마, 병원 가봤어?",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 25,
+  "why": "先生 next to clinic words reads as a doctor: no teacher/pupil cue (policy 3).",
+  "line": "先生、お母さんが病院に運ばれたって本当ですか？",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 25,
+  "why": "선생님 next to 병원/입원 gives no teacher cue (policy 3).",
+  "line": "선생님, 저희 엄마가 병원에 입원하셨어요.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 25,
+  "why": "어머님/아버님 in an ordinary line is the family cue (policy 2).",
+  "line": "어머님, 제가 설거지할게요.",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "Clinic or school words that family members also say keep the family cue (policy 2).",
+  "line": "妈，您别担心，孩子我会照顾好的。",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 26,
+  "why": "No staff-only phrase, so 어머님 keeps the family cue (policy 2 over the round's no-cue).",
+  "line": "어머님, 민수 숙제를 좀 봐 주세요.",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 26,
+  "why": "수업 is a staff-only word: no family cue (policy 2).",
+  "line": "어머님, 민수가 요즘 수업에 집중을 잘 해요.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "담임 marks the homeroom teacher.",
+  "line": "어머님, 담임 이수정입니다.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 28,
+  "why": "您家孩子 is staff-only (policy 2).",
+  "line": "妈妈，您家孩子最近上课很认真。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 28,
+  "why": "三者面談 is a teacher talking to a parent.",
+  "line": "お母さん、三者面談の日程ですが…",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "큰아버지 is bác (policy 8).",
+  "line": "큰아버지, 안녕하셨어요? 오랜만이에요.",
+  "expect": [
+   "cháu",
+   "bác"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "외삼촌 is cậu (policy 8).",
+  "line": "외삼촌, 저 대학교 합격했어요!",
+  "expect": [
+   "cháu",
+   "cậu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "姨妈 is dì (policy 8).",
+  "line": "姨妈，我好想你！",
+  "expect": [
+   "cháu",
+   "dì"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "儿臣 to 母后: the emperor talks up to his mother.",
+  "line": "皇上\n母后恕罪，儿臣今早忙于朝政。",
+  "expect": [
+   "nhi thần",
+   "mẫu hậu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "A maid's 启禀太后 is said to 太后.",
+  "line": "宫女\n启禀太后，御膳已经备好了。",
+  "expect": [
+   "nô tì",
+   "Thái hậu"
+  ],
+  "accept": [
+   [
+    "nô tì",
+    "thái hậu"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 22,
+  "why": "A master tab calling 徒儿 gives the master cue.",
+  "line": "师父\n徒儿，你下山去吧。",
+  "expect": [
+   "ta",
+   "con"
+  ],
+  "accept": [
+   [
+    "sư phụ",
+    "con"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 11,
+  "why": "为师 is the master's own word, never sư tỷ.",
+  "line": "掌门\n阿木，过来。为师有话要问你。",
+  "expect": [
+   "ta",
+   "con"
+  ],
+  "accept": [
+   [
+    "sư phụ",
+    "con"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 27,
+  "why": "A 나 self-tab is not the speaker; the 누나 call still cues em/chị.",
+  "line": "나\n누나, 나 배고파.",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 25,
+  "why": "A senior's name tab speaking to her junior.",
+  "line": "ミサキ先輩\nユウトくん、今日の練習サボったでしょ？",
+  "expect": [
+   "",
+   "em"
+  ],
+  "accept": [
+   [
+    "chị",
+    "em"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 28,
+  "why": "'kiddo' alone gives no cue: any elder says it (policy 5).",
+  "line": "Still up? It's past midnight, kiddo.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 28,
+  "why": "A Dad tab with kiddo is the father talking to his child.",
+  "line": "Dad\nStill up? It's past midnight, kiddo.",
+  "expect": [
+   "bố",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "subtitles",
+  "round": 10,
+  "why": "A waiter's 小姐 is a customer, not a noble lady.",
+  "line": "服务员\n小姐，您的咖啡好了。小心烫。",
+  "expect": [
+   "tôi",
+   "quý khách"
+  ],
+  "accept": [
+   [
+    "em",
+    "chị"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "subtitles",
+  "round": 15,
+  "why": "A one-kanji interjection row in a box joins its line; it is not a name tab.",
+  "frame": [
+   1280,
+   260
+  ],
+  "rows": [
+   [
+    "何",
+    46,
+    51,
+    50,
+    51
+   ],
+   [
+    "今なんて言った？",
+    43,
+    94,
+    274,
+    57
+   ]
+  ],
+  "mode": "area",
+  "expect": "何、今なんて言った？",
+  "accept": [
+   "何 今なんて言った？",
+   "何，今なんて言った？",
+   "何？今なんて言った？"
+  ]
+ }
+]

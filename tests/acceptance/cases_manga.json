@@ -1,0 +1,3669 @@
+[
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 1,
+  "why": "Furigana beside the kanji are dropped, not made into their own blocks.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "急げ！",
+    860,
+    192,
+    54,
+    116
+   ],
+   [
+    "いそ",
+    900,
+    199,
+    23,
+    42
+   ],
+   [
+    "解け始めている。",
+    924,
+    195,
+    44,
+    274
+   ],
+   [
+    "と",
+    961,
+    204,
+    19,
+    27
+   ],
+   [
+    "魔王の封印が",
+    981,
+    194,
+    51,
+    219
+   ],
+   [
+    "まおう",
+    1019,
+    203,
+    24,
+    68
+   ],
+   [
+    "はじ",
+    962,
+    264,
+    19,
+    39
+   ],
+   [
+    "ふういん",
+    1018,
+    298,
+    25,
+    75
+   ],
+   [
+    "ご無事で。",
+    332,
+    314,
+    48,
+    153
+   ],
+   [
+    "どうか",
+    379,
+    314,
+    43,
+    109
+   ],
+   [
+    "勇者様、",
+    422,
+    314,
+    45,
+    122
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "魔王の封印が解け始めている。急げ!",
+   "勇者様、どうかご無事で。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 1,
+  "why": "Columns of one bubble centred on each other form one block per bubble.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "誰にも言えない秘密",
+    432,
+    542,
+    36,
+    255
+   ],
+   [
+    "逃げるつもりか",
+    959,
+    560,
+    40,
+    214
+   ],
+   [
+    "それは",
+    467,
+    621,
+    42,
+    95
+   ],
+   [
+    "だよ",
+    390,
+    634,
+    40,
+    70
+   ],
+   [
+    "待て",
+    999,
+    632,
+    44,
+    75
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "待て逃げるつもりか",
+   "それは誰にも言えない秘密だよ"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 1,
+  "why": "A short last column (だ) stays in its bubble.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "だ",
+    337,
+    153,
+    44,
+    58
+   ],
+   [
+    "そうなん",
+    379,
+    154,
+    42,
+    129
+   ],
+   [
+    "本当に",
+    421,
+    155,
+    42,
+    100
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "本当にそうなんだ"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 11,
+  "why": "A lone ！ column misread as 一 is dropped or restored, never a block or a dash.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "一",
+    150,
+    185,
+    20,
+    31
+   ],
+   [
+    "行くぞ",
+    178,
+    178,
+    46,
+    101
+   ],
+   [
+    "だ",
+    337,
+    153,
+    44,
+    58
+   ],
+   [
+    "そうなん",
+    379,
+    154,
+    42,
+    129
+   ],
+   [
+    "本当に",
+    421,
+    155,
+    42,
+    100
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "本当にそうなんだ",
+   "行くぞ"
+  ],
+  "accept": [
+   [
+    "本当にそうなんだ",
+    "行くぞ!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 2,
+  "why": "Two overlapping bubbles 18 px apart stay two blocks, one per speaker.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "から°",
+    894,
+    122,
+    52,
+    101
+   ],
+   [
+    "電車がある",
+    943,
+    125,
+    44,
+    168
+   ],
+   [
+    "ラん",
+    991,
+    125,
+    42,
+    98
+   ],
+   [
+    "早いね°",
+    1051,
+    122,
+    48,
+    125
+   ],
+   [
+    "もう行くの？",
+    1096,
+    124,
+    47,
+    198
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "もう行くの?早いね。",
+   "ラん電車があるから。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 2,
+  "why": "A short first line not ending in punctuation joins the rest of its bubble.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "NOT WITHOUT",
+    389,
+    296,
+    162,
+    27
+   ],
+   [
+    "THE MAP!",
+    415,
+    326,
+    112,
+    25
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "NOT WITHOUT THE MAP!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 3,
+  "why": "Line boxes overlapping by more than 20% of a line height are one bubble.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "못 하겠으면",
+    792,
+    840,
+    137,
+    40
+   ],
+   [
+    "지금말해",
+    796,
+    870,
+    125,
+    49
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "못 하겠으면 지금말해"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 3,
+  "why": "A short first line is not a name tab; no line break reaches the model.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "待って、",
+    341,
+    651,
+    100,
+    38
+   ],
+   [
+    "置いていかないで！",
+    278,
+    685,
+    235,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "待って、置いていかないで!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 3,
+  "why": "'Jake is' over a wider line is the start of a sentence, not a speaker.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "Jake is",
+    1037,
+    294,
+    85,
+    31
+   ],
+   [
+    "at school, Lily.",
+    1000,
+    324,
+    157,
+    34
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Jake is at school, Lily."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 4,
+  "why": "Bubbles whose first line ends in a number stay whole and in reading order.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "Meet me at gate 7",
+    210,
+    160,
+    239,
+    36
+   ],
+   [
+    "I've waited 10",
+    869,
+    179,
+    181,
+    36
+   ],
+   [
+    "before midnight.",
+    223,
+    196,
+    210,
+    34
+   ],
+   [
+    "years for this!",
+    868,
+    214,
+    182,
+    37
+   ],
+   [
+    "Only 3",
+    283,
+    618,
+    93,
+    39
+   ],
+   [
+    "Your room is 204,",
+    845,
+    611,
+    229,
+    33
+   ],
+   [
+    "tickets left?!",
+    249,
+    653,
+    162,
+    36
+   ],
+   [
+    "second floor.",
+    874,
+    646,
+    169,
+    32
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Meet me at gate 7 before midnight.",
+   "I've waited 10 years for this!",
+   "Only 3 tickets left?!",
+   "Your room is 204, second floor."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "Chained webtoon bubbles and a caption over narration stay separate blocks.",
+  "frame": [
+   800,
+   1100
+  ],
+  "rows": [
+   [
+    "지수야",
+    255,
+    96,
+    91,
+    40
+   ],
+   [
+    "어젯밤에 어디 있었어?전화도 안 받고",
+    105,
+    185,
+    449,
+    33
+   ],
+   [
+    "서울역",
+    433,
+    432,
+    89,
+    39
+   ],
+   [
+    "그날 밤,모든 것이 바뀌었다.",
+    427,
+    485,
+    309,
+    36
+   ],
+   [
+    "Mina",
+    219,
+    774,
+    80,
+    40
+   ],
+   [
+    "Did you eat dinner already?",
+    112,
+    857,
+    376,
+    37
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "지수야",
+   "어젯밤에 어디 있었어?전화도 안 받고",
+   "서울역",
+   "그날 밤,모든 것이 바뀌었다.",
+   "Mina",
+   "Did you eat dinner already?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "A small kana lead-in over a shouted line is part of the shout, not furigana.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "いいかげんに",
+    247,
+    634,
+    163,
+    34
+   ],
+   [
+    "しろ！！",
+    220,
+    667,
+    211,
+    66
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "いいかげんにしろ!!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "An 'NN%' second line stays with its bubble.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "We have a",
+    884,
+    626,
+    153,
+    37
+   ],
+   [
+    "90% chance.",
+    869,
+    667,
+    182,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "We have a 90% chance."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 8,
+  "why": "A '10%!' line under a Chinese line stays in the bubble.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "成功率只有",
+    247,
+    616,
+    166,
+    41
+   ],
+   [
+    "10%!",
+    275,
+    653,
+    95,
+    45
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "成功率只有10%!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 8,
+  "why": "One-syllable address and one-letter reaction bubbles are kept.",
+  "frame": [
+   800,
+   1100
+  ],
+  "rows": [
+   [
+    "형!",
+    236,
+    86,
+    49,
+    41
+   ],
+   [
+    "같이 가!",
+    203,
+    124,
+    115,
+    46
+   ],
+   [
+    "응.",
+    517,
+    357,
+    47,
+    42
+   ],
+   [
+    "뭐?!",
+    222,
+    570,
+    79,
+    51
+   ],
+   [
+    "누나,나 배고파",
+    440,
+    827,
+    200,
+    40
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "형! 같이 가!",
+   "응.",
+   "뭐?!",
+   "누나,나 배고파"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 9,
+  "why": "A one-syllable reply bubble with no punctuation is kept.",
+  "frame": [
+   800,
+   1100
+  ],
+  "rows": [
+   [
+    "응",
+    520,
+    357,
+    40,
+    42
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "응"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 8,
+  "why": "A chat timestamp beside a message is not glued into the message.",
+  "frame": [
+   800,
+   1200
+  ],
+  "rows": [
+   [
+    "민지",
+    322,
+    14,
+    63,
+    42
+   ],
+   [
+    "내가 도시락 갖다줄게",
+    95,
+    755,
+    231,
+    36
+   ],
+   [
+    "오후9:21",
+    336,
+    771,
+    80,
+    31
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "민지\n내가 도시락 갖다줄게",
+   "오후9:21"
+  ],
+  "accept": [
+   [
+    "민지\n내가 도시락 갖다줄게"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 27,
+  "why": "A read receipt and time beside a chat bubble are not glued into the message.",
+  "frame": [
+   720,
+   1500
+  ],
+  "rows": [
+   [
+    "已读",
+    431,
+    282,
+    47,
+    30
+   ],
+   [
+    "还没呢，在加班",
+    492,
+    287,
+    196,
+    36
+   ],
+   [
+    "21:41",
+    414,
+    307,
+    60,
+    27
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "已读",
+   "还没呢,在加班",
+   "21:41"
+  ],
+  "accept": [
+   [
+    "还没呢,在加班"
+   ],
+   [
+    "还没呢,在加班",
+    "21:41"
+   ],
+   [
+    "已读",
+    "还没呢,在加班"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 8,
+  "why": "A word broken with a hyphen across lines is rejoined without the hyphen.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "THAT'S IMPOS-",
+    237,
+    136,
+    187,
+    26
+   ],
+   [
+    "SIBLE! NOBODY",
+    231,
+    167,
+    199,
+    26
+   ],
+   [
+    "SURVIVES A FALL",
+    220,
+    197,
+    220,
+    26
+   ],
+   [
+    "LIKE THAT!",
+    260,
+    228,
+    141,
+    24
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "THAT'S IMPOSSIBLE! NOBODY SURVIVES A FALL LIKE THAT!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 9,
+  "why": "An interruption dash keeps the break before the next line.",
+  "frame": [
+   800,
+   1700
+  ],
+  "rows": [
+   [
+    "It's just-",
+    472,
+    383,
+    96,
+    32
+   ],
+   [
+    "I can't go back there.",
+    397,
+    416,
+    244,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "It's just- I can't go back there."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 9,
+  "why": "A compound keeps its hyphen across a line break (ex-fiancée).",
+  "frame": [
+   800,
+   1700
+  ],
+  "rows": [
+   [
+    "She's my ex-",
+    441,
+    921,
+    157,
+    36
+   ],
+   [
+    "fiancée. Nothing more.",
+    386,
+    954,
+    266,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "She's my ex-fiancée. Nothing more."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 11,
+  "why": "A lower-case line after an interruption dash is not glued on.",
+  "frame": [
+   800,
+   1700
+  ],
+  "rows": [
+   [
+    "I was just-",
+    455,
+    383,
+    130,
+    32
+   ],
+   [
+    "never mind.",
+    460,
+    416,
+    120,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "I was just- never mind."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 11,
+  "why": "A lower-case compound across a line break keeps its hyphen (self-aware).",
+  "frame": [
+   800,
+   1700
+  ],
+  "rows": [
+   [
+    "Wait, are you self-",
+    400,
+    634,
+    215,
+    36
+   ],
+   [
+    "aware right now?",
+    410,
+    668,
+    190,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Wait, are you self-aware right now?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 9,
+  "why": "Vertical narration 十年後/東京 keeps both columns and no dash.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "東京",
+    536,
+    53,
+    40,
+    83
+   ],
+   [
+    "十年後",
+    576,
+    52,
+    42,
+    99
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "十年後東京"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 9,
+  "why": "A short bubble はい is translated and its neighbour gets no dash.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "置いてくれる?",
+    737,
+    109,
+    43,
+    214
+   ],
+   [
+    "そこに",
+    781,
+    110,
+    39,
+    99
+   ],
+   [
+    "ありがとう。",
+    822,
+    110,
+    41,
+    171
+   ],
+   [
+    "はい",
+    398,
+    165,
+    46,
+    93
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ありがとう。そこに置いてくれる?",
+   "はい"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "An all-caps title centred over its line is a call joined with a comma.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "MOM",
+    290,
+    177,
+    82,
+    36
+   ],
+   [
+    "I'M HOME!",
+    255,
+    217,
+    153,
+    31
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MOM, I'M HOME!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "'Captain' centred over a lower-case line is a call.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "Captain",
+    904,
+    627,
+    113,
+    38
+   ],
+   [
+    "the engines are dead.",
+    809,
+    666,
+    300,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Captain, the engines are dead."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 5,
+  "why": "A short non-name first row (WAIT) joins its bubble instead of becoming a name tab.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "WAIT",
+    918,
+    187,
+    85,
+    35
+   ],
+   [
+    "DON'T GO!",
+    881,
+    225,
+    162,
+    34
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "WAIT, DON'T GO!"
+  ],
+  "accept": [
+   [
+    "WAIT DON'T GO!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 17,
+  "why": "A centred two-character call over its line is a call, not a name tab.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "师父",
+    918,
+    179,
+    81,
+    53
+   ],
+   [
+    "弟子知错了。",
+    861,
+    226,
+    179,
+    41
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "师父,弟子知错了。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "A centred one-character call 哥 over its line is a call, not a name tab.",
+  "frame": [
+   820,
+   2600
+  ],
+  "rows": [
+   [
+    "哥",
+    240,
+    721,
+    41,
+    42
+   ],
+   [
+    "快跑",
+    224,
+    764,
+    70,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "哥,快跑"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "A one-syllable pronoun 너 over its line is not a speaker.",
+  "frame": [
+   820,
+   2200
+  ],
+  "rows": [
+   [
+    "너",
+    541,
+    1560,
+    36,
+    35
+   ],
+   [
+    "지금 뭐라고 했어?",
+    448,
+    1606,
+    222,
+    38
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "너 지금 뭐라고 했어?"
+  ],
+  "accept": [
+   [
+    "너, 지금 뭐라고 했어?"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 12,
+  "why": "A vertical call column without 、 is joined as a call.",
+  "frame": [
+   600,
+   1500
+  ],
+  "rows": [
+   [
+    "いない！",
+    361,
+    179,
+    40,
+    120
+   ],
+   [
+    "猫が",
+    400,
+    178,
+    40,
+    69
+   ],
+   [
+    "ママ",
+    439,
+    179,
+    42,
+    78
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ママ、猫がいない!"
+  ],
+  "accept": [
+   [
+    "ママ,猫がいない!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 19,
+  "why": "じいちゃん on its own column is a call joined to ただいま.",
+  "frame": [
+   1280,
+   1000
+  ],
+  "rows": [
+   [
+    "ただいま！",
+    1058,
+    180,
+    41,
+    156
+   ],
+   [
+    "じいちゃん",
+    1100,
+    178,
+    43,
+    160
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "じいちゃん、ただいま!"
+  ],
+  "accept": [
+   [
+    "じいちゃん,ただいま!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "A centred English title over a line of similar width is a call, not a name tab.",
+  "frame": [
+   820,
+   2600
+  ],
+  "rows": [
+   [
+    "Mom",
+    218,
+    122,
+    83,
+    43
+   ],
+   [
+    "help!",
+    218,
+    161,
+    83,
+    47
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Mom, help!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "A centred romanized title (Senpai) over its line is a call.",
+  "frame": [
+   820,
+   2600
+  ],
+  "rows": [
+   [
+    "Senpai",
+    505,
+    2224,
+    110,
+    43
+   ],
+   [
+    "thanks!",
+    504,
+    2261,
+    113,
+    43
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Senpai, thanks!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 23,
+  "why": "A family word before a verb row is the subject; before a question or warning it is a call.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "MOM",
+    361,
+    113,
+    79,
+    32
+   ],
+   [
+    "SAYS WE CAN'T GO",
+    262,
+    150,
+    273,
+    27
+   ],
+   [
+    "TO THE PARTY!",
+    290,
+    183,
+    221,
+    31
+   ],
+   [
+    "DAD",
+    386,
+    442,
+    68,
+    33
+   ],
+   [
+    "IS GOING TO",
+    328,
+    479,
+    183,
+    30
+   ],
+   [
+    "BE SO MAD!",
+    333,
+    514,
+    175,
+    30
+   ],
+   [
+    "GRANDPA",
+    327,
+    771,
+    146,
+    34
+   ],
+   [
+    "WAS A PILOT",
+    306,
+    808,
+    189,
+    31
+   ],
+   [
+    "IN THE WAR.",
+    310,
+    844,
+    180,
+    30
+   ],
+   [
+    "MOM",
+    380,
+    1121,
+    79,
+    32
+   ],
+   [
+    "WHERE'S MY BACKPACK?",
+    238,
+    1157,
+    362,
+    29
+   ],
+   [
+    "DAD",
+    366,
+    1440,
+    68,
+    32
+   ],
+   [
+    "LOOK OUT!",
+    318,
+    1477,
+    162,
+    30
+   ],
+   [
+    "SIS",
+    391,
+    1741,
+    56,
+    33
+   ],
+   [
+    "ALREADY ATE YOUR CAKE.",
+    230,
+    1777,
+    380,
+    29
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MOM SAYS WE CAN'T GO TO THE PARTY!",
+   "DAD IS GOING TO BE SO MAD!",
+   "GRANDPA WAS A PILOT IN THE WAR.",
+   "MOM, WHERE'S MY BACKPACK?",
+   "DAD, LOOK OUT!",
+   "SIS ALREADY ATE YOUR CAKE."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 25,
+  "why": "Family words before a statement are subjects; before a plea or imperative they are calls.",
+  "frame": [
+   820,
+   2500
+  ],
+  "rows": [
+   [
+    "DAD",
+    226,
+    120,
+    69,
+    35
+   ],
+   [
+    "WILL KILL US!",
+    160,
+    155,
+    199,
+    33
+   ],
+   [
+    "MOM",
+    520,
+    412,
+    79,
+    32
+   ],
+   [
+    "IS GONNA FREAK OUT.",
+    398,
+    447,
+    320,
+    29
+   ],
+   [
+    "MOM",
+    220,
+    701,
+    79,
+    33
+   ],
+   [
+    "I'M SCARED!",
+    172,
+    737,
+    177,
+    30
+   ],
+   [
+    "DAD",
+    525,
+    992,
+    68,
+    32
+   ],
+   [
+    "WON'T BELIEVE THIS.",
+    407,
+    1027,
+    304,
+    29
+   ],
+   [
+    "DAD",
+    226,
+    1280,
+    69,
+    35
+   ],
+   [
+    "GOT FIRED TODAY.",
+    124,
+    1317,
+    272,
+    30
+   ],
+   [
+    "MOM",
+    520,
+    1571,
+    79,
+    32
+   ],
+   [
+    "PLEASE WAKE UP!",
+    428,
+    1607,
+    265,
+    30
+   ],
+   [
+    "GRANDMA",
+    183,
+    1861,
+    151,
+    33
+   ],
+   [
+    "LOOK AT THIS!",
+    155,
+    1896,
+    211,
+    30
+   ],
+   [
+    "DAD",
+    525,
+    2150,
+    69,
+    35
+   ],
+   [
+    "LOST HIS JOB.",
+    455,
+    2185,
+    208,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "DAD WILL KILL US!",
+   "MOM IS GONNA FREAK OUT.",
+   "MOM, I'M SCARED!",
+   "DAD WON'T BELIEVE THIS.",
+   "DAD GOT FIRED TODAY.",
+   "MOM, PLEASE WAKE UP!",
+   "GRANDMA, LOOK AT THIS!",
+   "DAD LOST HIS JOB."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 21,
+  "why": "爸爸 as the subject of 知道了 gets no vocative comma.",
+  "frame": [
+   820,
+   1700
+  ],
+  "rows": [
+   [
+    "爸爸",
+    384,
+    432,
+    72,
+    41
+   ],
+   [
+    "知道了",
+    369,
+    473,
+    99,
+    44
+   ],
+   [
+    "一定会生气的",
+    326,
+    515,
+    188,
+    42
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "爸爸知道了一定会生气的"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "DAD centred over a COULD question is a call.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "DAD",
+    373,
+    400,
+    74,
+    30
+   ],
+   [
+    "COULD YOU HELP ME?",
+    238,
+    437,
+    344,
+    30
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "DAD, COULD YOU HELP ME?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "MOM centred over an IS question is a call.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "MOM",
+    373,
+    400,
+    74,
+    30
+   ],
+   [
+    "IS THAT YOU?",
+    292,
+    437,
+    236,
+    30
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MOM, IS THAT YOU?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "Mixed-case Dad centred over 'would you…' is a call.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "Dad",
+    374,
+    400,
+    73,
+    45
+   ],
+   [
+    "would you stop that!",
+    260,
+    447,
+    300,
+    41
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Dad, would you stop that!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "MOM flush left over a wider caption line with WAS ALWAYS is narration.",
+  "frame": [
+   900,
+   2300
+  ],
+  "rows": [
+   [
+    "MOM",
+    50,
+    1960,
+    54,
+    28
+   ],
+   [
+    "WAS ALWAYS THE FIRST ONE AWAKE.",
+    50,
+    1995,
+    496,
+    28
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MOM WAS ALWAYS THE FIRST ONE AWAKE."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 27,
+  "why": "DAD before NEVER in a caption box is the subject, not a speaker.",
+  "frame": [
+   900,
+   2400
+  ],
+  "rows": [
+   [
+    "DAD",
+    50,
+    426,
+    64,
+    31
+   ],
+   [
+    "NEVER CAME HOME THAT NIGHT. NOBODY KNEW WHY.",
+    51,
+    461,
+    710,
+    28
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "DAD NEVER CAME HOME THAT NIGHT. NOBODY KNEW WHY."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "GRANDMA before TAUGHT in a caption box is the subject, not a name tab.",
+  "frame": [
+   900,
+   2400
+  ],
+  "rows": [
+   [
+    "GRANDMA",
+    51,
+    1867,
+    141,
+    29
+   ],
+   [
+    "TAUGHT ME TO SAIL BEFORE I COULD EVEN SWIM.",
+    51,
+    1899,
+    651,
+    31
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "GRANDMA TAUGHT ME TO SAIL BEFORE I COULD EVEN SWIM."
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 27,
+  "why": "A MEANWHILE head is narration, never a speaker line.",
+  "frame": [
+   900,
+   2400
+  ],
+  "rows": [
+   [
+    "MEANWHILE",
+    50,
+    1027,
+    166,
+    28
+   ],
+   [
+    "AT THE HARBOR, SOMEONE WAS WATCHING THE LIGHTHOUSE.",
+    51,
+    1061,
+    816,
+    28
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "MEANWHILE AT THE HARBOR, SOMEONE WAS WATCHING THE LIGHTHOUSE."
+  ],
+  "accept": [
+   [
+    "MEANWHILE, AT THE HARBOR, SOMEONE WAS WATCHING THE LIGHTHOUSE."
+   ],
+   [
+    "MEANWHILE",
+    "AT THE HARBOR, SOMEONE WAS WATCHING THE LIGHTHOUSE."
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "그날밤 (space lost by OCR) heading a caption is not a name tab.",
+  "frame": [
+   820,
+   1500
+  ],
+  "rows": [
+   [
+    "그날밤",
+    49,
+    47,
+    85,
+    35
+   ],
+   [
+    "아빠는 끝내 집에 돌아오지 않았다.",
+    52,
+    82,
+    344,
+    30
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "그날밤 아빠는 끝내 집에 돌아오지 않았다."
+  ],
+  "accept": [
+   [
+    "그날밤, 아빠는 끝내 집에 돌아오지 않았다."
+   ],
+   [
+    "그날밤",
+    "아빠는 끝내 집에 돌아오지 않았다."
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 28,
+  "why": "Chinese kin word over a narration line is its subject, not a name tab.",
+  "frame": [
+   820,
+   1500
+  ],
+  "rows": [
+   [
+    "妈妈",
+    48,
+    563,
+    63,
+    38
+   ],
+   [
+    "总是说大海会把他带回来。",
+    52,
+    600,
+    303,
+    33
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "妈妈总是说大海会把他带回来。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 17,
+  "why": "A browser tab title, URL, menu item 홈 and the episode heading are separate.",
+  "frame": [
+   1000,
+   1500
+  ],
+  "rows": [
+   [
+    "비밀의정원-45화|웹툰",
+    17,
+    6,
+    195,
+    29
+   ],
+   [
+    "https://webtoon.example.com/detail?titleld=81234&no=45",
+    77,
+    49,
+    465,
+    23
+   ],
+   [
+    "홈",
+    55,
+    97,
+    30,
+    33
+   ],
+   [
+    "웹툰",
+    224,
+    95,
+    54,
+    35
+   ],
+   [
+    "베스트도전",
+    393,
+    95,
+    116,
+    34
+   ],
+   [
+    "마이페이지",
+    565,
+    95,
+    114,
+    34
+   ],
+   [
+    "제45화 -비밀의 정원",
+    55,
+    162,
+    260,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "비밀의정원-45화|웹툰",
+   "https://webtoon.example.com/detail?titleld=81234&no=45",
+   "홈",
+   "웹툰",
+   "베스트도전",
+   "마이페이지",
+   "제45화 -비밀의 정원"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 20,
+  "why": "A small kana lead-in flush over a kanji line is kept, not dropped as furigana.",
+  "frame": [
+   820,
+   1500
+  ],
+  "rows": [
+   [
+    "えっと",
+    217,
+    786,
+    73,
+    32
+   ],
+   [
+    "先生、質問です！",
+    215,
+    818,
+    315,
+    50
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "えっと先生、質問です!"
+  ],
+  "accept": [
+   [
+    "えっと 先生、質問です!"
+   ],
+   [
+    "えっと、先生、質問です!"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 20,
+  "why": "Real furigana over a horizontal line is still dropped.",
+  "frame": [
+   820,
+   1500
+  ],
+  "rows": [
+   [
+    "あした",
+    183,
+    131,
+    64,
+    25
+   ],
+   [
+    "とうきょう",
+    288,
+    130,
+    114,
+    30
+   ],
+   [
+    "明日、東京に行くの？",
+    164,
+    142,
+    442,
+    56
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "明日、東京に行くの?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 21,
+  "why": "An all-caps bubble at leading 1.45 stays one block.",
+  "frame": [
+   820,
+   1800
+  ],
+  "rows": [
+   [
+    "WE HAVE TO",
+    328,
+    453,
+    185,
+    35
+   ],
+   [
+    "GET OUT OF",
+    332,
+    496,
+    178,
+    30
+   ],
+   [
+    "HERE RIGHT",
+    329,
+    535,
+    183,
+    34
+   ],
+   [
+    "NOW",
+    380,
+    578,
+    79,
+    31
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "WE HAVE TO GET OUT OF HERE RIGHT NOW"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 24,
+  "why": "An unpunctuated all-caps bubble at loose leading is not a menu.",
+  "frame": [
+   820,
+   1800
+  ],
+  "rows": [
+   [
+    "HEY KID",
+    360,
+    1149,
+    119,
+    31
+   ],
+   [
+    "WHERE ARE",
+    331,
+    1195,
+    177,
+    30
+   ],
+   [
+    "YOUR PARENTS",
+    307,
+    1241,
+    225,
+    27
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "HEY KID WHERE ARE YOUR PARENTS"
+  ],
+  "accept": [
+   [
+    "HEY KID, WHERE ARE YOUR PARENTS"
+   ]
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 23,
+  "why": "Unpunctuated sentence-case rows at 1.6 leading are one bubble, not menu items.",
+  "frame": [
+   800,
+   2000
+  ],
+  "rows": [
+   [
+    "So where have",
+    276,
+    904,
+    208,
+    35
+   ],
+   [
+    "you been all",
+    291,
+    951,
+    176,
+    39
+   ],
+   [
+    "these years",
+    295,
+    999,
+    169,
+    40
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "So where have you been all these years"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 24,
+  "why": "One-word all-caps rows at 1.4 em are one bubble.",
+  "frame": [
+   820,
+   1700
+  ],
+  "rows": [
+   [
+    "I DON'T",
+    366,
+    459,
+    107,
+    31
+   ],
+   [
+    "KNOW WHAT",
+    329,
+    499,
+    183,
+    30
+   ],
+   [
+    "YOU'RE",
+    365,
+    537,
+    112,
+    31
+   ],
+   [
+    "TALKING",
+    357,
+    577,
+    126,
+    31
+   ],
+   [
+    "ABOUT!",
+    364,
+    616,
+    113,
+    32
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "I DON'T KNOW WHAT YOU'RE TALKING ABOUT!"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 24,
+  "why": "Loose-leading Korean webtoon bubble is one block, not a list.",
+  "frame": [
+   800,
+   2100
+  ],
+  "rows": [
+   [
+    "선배한테",
+    364,
+    1303,
+    114,
+    40
+   ],
+   [
+    "그런 말투는",
+    347,
+    1354,
+    147,
+    36
+   ],
+   [
+    "좀 아니지 않아",
+    330,
+    1402,
+    180,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "선배한테 그런 말투는 좀 아니지 않아"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 25,
+  "why": "Short-row Chinese bubble is not split into a fake speaker and a line.",
+  "frame": [
+   820,
+   1700
+  ],
+  "rows": [
+   [
+    "你怎么",
+    350,
+    87,
+    98,
+    42
+   ],
+   [
+    "又来了",
+    350,
+    134,
+    97,
+    39
+   ],
+   [
+    "烦不烦啊",
+    336,
+    179,
+    127,
+    39
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "你怎么又来了烦不烦啊"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "Two-row Korean bubble at 1.6 leading is one block.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "오늘따라",
+    203,
+    719,
+    114,
+    38
+   ],
+   [
+    "예뻐 보이네",
+    186,
+    767,
+    148,
+    38
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "오늘따라 예뻐 보이네"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "Two-row Japanese bubble at 1.6 leading is one block.",
+  "frame": [
+   820,
+   2000
+  ],
+  "rows": [
+   [
+    "本当に",
+    509,
+    417,
+    101,
+    43
+   ],
+   [
+    "いいの?",
+    503,
+    469,
+    115,
+    35
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "本当にいいの?"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 22,
+  "why": "Two quest objectives under a tracker heading stay separate.",
+  "frame": [
+   1920,
+   1080
+  ],
+  "rows": [
+   [
+    "진행 중인 퀘스트",
+    1427,
+    179,
+    188,
+    33
+   ],
+   [
+    "철광석 모으기(2/5)",
+    1426,
+    222,
+    205,
+    33
+   ],
+   [
+    "광산 입구의 고블린 처치",
+    1425,
+    264,
+    250,
+    36
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "진행 중인 퀘스트",
+   "철광석 모으기(2/5)",
+   "광산 입구의 고블린 처치"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 23,
+  "why": "A centred pause menu keeps its items apart.",
+  "frame": [
+   1280,
+   720
+  ],
+  "rows": [
+   [
+    "Resume",
+    571,
+    213,
+    139,
+    45
+   ],
+   [
+    "Options",
+    572,
+    269,
+    137,
+    54
+   ],
+   [
+    "Load Game",
+    544,
+    330,
+    192,
+    50
+   ],
+   [
+    "Quit to Title",
+    547,
+    390,
+    187,
+    48
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "Resume",
+   "Options",
+   "Load Game",
+   "Quit to Title"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 26,
+  "why": "A centred Japanese pause menu over a hint keeps every item.",
+  "frame": [
+   1280,
+   720
+  ],
+  "rows": [
+   [
+    "ゲームに戻る",
+    531,
+    210,
+    215,
+    50
+   ],
+   [
+    "設定",
+    599,
+    273,
+    82,
+    48
+   ],
+   [
+    "ロード",
+    582,
+    330,
+    115,
+    51
+   ],
+   [
+    "タイトルへ",
+    549,
+    393,
+    181,
+    47
+   ],
+   [
+    "セーブしていない進行状況は失われます。",
+    409,
+    467,
+    449,
+    32
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ゲームに戻る",
+   "設定",
+   "ロード",
+   "タイトルへ",
+   "セーブしていない進行状況は失われます。"
+  ]
+ },
+ {
+  "kind": "group",
+  "area": "manga",
+  "round": 1,
+  "why": "Manga bubbles are listed right to left within a panel row.",
+  "frame": [
+   1280,
+   900
+  ],
+  "rows": [
+   [
+    "話を聞いてよ。",
+    1067,
+    130,
+    43,
+    212
+   ],
+   [
+    "ちょっと待って！",
+    1112,
+    130,
+    43,
+    256
+   ],
+   [
+    "一分だけ！",
+    773,
+    170,
+    47,
+    161
+   ],
+   [
+    "お願い",
+    818,
+    165,
+    49,
+    128
+   ],
+   [
+    "ないだろ。",
+    913,
+    184,
+    49,
+    156
+   ],
+   [
+    "聞く必要なんか",
+    963,
+    186,
+    40,
+    227
+   ],
+   [
+    "できるさ。",
+    287,
+    440,
+    43,
+    141
+   ],
+   [
+    "お前なら",
+    330,
+    441,
+    41,
+    128
+   ],
+   [
+    "絶対に勝つぞ。",
+    426,
+    451,
+    45,
+    197
+   ],
+   [
+    "明日の試合、",
+    469,
+    451,
+    43,
+    173
+   ]
+  ],
+  "mode": "screen",
+  "expect": [
+   "ちょっと待って!話を聞いてよ。",
+   "聞く必要なんかないだろ。",
+   "お願い一分だけ!",
+   "明日の試合、絶対に勝つぞ。",
+   "お前ならできるさ。"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 8,
+  "why": "Romanized Noona gives em/chị.",
+  "line": "Noona, did you eat my pudding again?",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 8,
+  "why": "Traditional 姊姊 gives the same cue as 姐姐.",
+  "line": "姊姊,這件衣服好看嗎?",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 10,
+  "why": "叔母さん is an aunt, not mother.",
+  "line": "叔母さん、ただいま！",
+  "expect": [
+   "cháu",
+   "cô"
+  ],
+  "accept": [
+   [
+    "cháu",
+    "dì"
+   ],
+   [
+    "cháu",
+    "bác"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 12,
+  "why": "사저 leaves the speaker's own word open (gender unknown).",
+  "line": "사저, 이 검 좀 봐 주세요.",
+  "expect": [
+   "",
+   "sư tỷ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 10,
+  "why": "All-caps UNCLE at the end of a line gives the niece/nephew cue.",
+  "line": "I'M NOT AFRAID OF YOU, UNCLE!",
+  "expect": [
+   "cháu",
+   "chú"
+  ],
+  "accept": [
+   [
+    "cháu",
+    "bác"
+   ],
+   [
+    "cháu",
+    "cậu"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "师尊 gives disciple/master.",
+  "line": "师尊,弟子知错了。",
+  "expect": [
+   "đệ tử",
+   "sư tôn"
+  ],
+  "accept": [
+   [
+    "đệ tử",
+    "sư phụ"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "师叔 gives the martial-uncle cue.",
+  "line": "师叔,您怎么来了?",
+  "expect": [
+   "đệ tử",
+   "sư thúc"
+  ],
+  "accept": [
+   [
+    "cháu",
+    "sư thúc"
+   ],
+   [
+    "",
+    "sư thúc"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "A senior brother calling 师妹 after her name gives sư huynh/sư muội.",
+  "line": "婉儿师妹,别怕,师兄替你挡着!",
+  "expect": [
+   "sư huynh",
+   "sư muội"
+  ],
+  "accept": [
+   [
+    "huynh",
+    "muội"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "师傅 in a shop is how one calls a worker: no master cue.",
+  "line": "师傅,这个多少钱?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "大长老 is addressed as trưởng lão.",
+  "line": "多谢大长老出手相救!",
+  "expect": [
+   "",
+   "trưởng lão"
+  ],
+  "accept": [
+   [
+    "đệ tử",
+    "trưởng lão"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 24,
+  "why": "A genderless lover's call gives a couple hint with no direction, never parent/child.",
+  "line": "자기야, 일어나. 늦었어!",
+  "expect": [
+   "",
+   ""
+  ],
+  "accept": [
+   null
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "A vertical 課長 call that lost its 、 still gives the office cue.",
+  "line": "課長この書類を確認してください。",
+  "expect": [
+   "em",
+   "sếp"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 11,
+  "why": "部長お疲れ様です without 、 still gives the office cue.",
+  "line": "部長お疲れ様です!",
+  "expect": [
+   "em",
+   "sếp"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 14,
+  "why": "学姐 is a female senior: em/chị.",
+  "line": "学姐,你今天好漂亮!",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 14,
+  "why": "学长 is a male senior: em/anh.",
+  "line": "学长,这道题能教教我吗?",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 12,
+  "why": "ママ、 gives the child cue.",
+  "line": "ママ、猫がいない!",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 12,
+  "why": "パパ、 gives the child cue.",
+  "line": "パパ、知らない?",
+  "expect": [
+   "con",
+   "bố"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 12,
+  "why": "老师好 gives the pupil cue.",
+  "line": "老师好!",
+  "expect": [
+   "em",
+   "thầy"
+  ],
+  "accept": [
+   [
+    "em",
+    "cô"
+   ],
+   [
+    "em",
+    ""
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 14,
+  "why": "公子 and 小女子 give công tử / tiểu nữ.",
+  "line": "公子说笑了,小女子不敢当。",
+  "expect": [
+   "tiểu nữ",
+   "công tử"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 14,
+  "why": "姑娘 is the listener for 在下.",
+  "line": "在下姓林,敢问姑娘芳名?",
+  "expect": [
+   "tại hạ",
+   "cô nương"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 13,
+  "why": "晚辈/前辈 give vãn bối / tiền bối.",
+  "line": "晚辈林风,见过前辈。",
+  "expect": [
+   "vãn bối",
+   "tiền bối"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 14,
+  "why": "本宫 speaking down keeps palace register.",
+  "line": "本宫不怪你。起来吧。",
+  "expect": [
+   "bổn cung",
+   "ngươi"
+  ],
+  "accept": [
+   [
+    "bổn cung",
+    ""
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 15,
+  "why": "소인 is the speaker's humble self-word.",
+  "line": "소인,죽을죄를 지었사옵니다!",
+  "expect": [
+   "tiểu nhân",
+   ""
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 15,
+  "why": "English 'mister' from a child gives cháu/chú.",
+  "line": "Thanks, mister! You saved my cat!",
+  "expect": [
+   "cháu",
+   "chú"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 15,
+  "why": "A sister referring to herself as お姉ちゃん is the elder.",
+  "line": "大丈夫。お姉ちゃんがいるから。",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 16,
+  "why": "お姉ちゃんに任せなさい: the speaker is the elder sister.",
+  "line": "お姉ちゃんに任せなさい!",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 16,
+  "why": "哥哥我 after 别怕 is the elder brother speaking.",
+  "line": "别怕,哥哥我会保护你的。",
+  "expect": [
+   "anh",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 16,
+  "why": "姐姐我 bragging with no 你 is the elder sister speaking.",
+  "line": "姐姐我可是学霸,这点小事难不倒我!",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 16,
+  "why": "爷爷我当年 is the grandfather speaking.",
+  "line": "爷爷我当年可是村里的神枪手!",
+  "expect": [
+   "ông",
+   "cháu"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 18,
+  "why": "姐我求你了 reads both ways: no cue.",
+  "line": "姐我求你了,别告诉爸爸!",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 17,
+  "why": "With a comma the title is a call: em/chị.",
+  "line": "姐,我求你了,别告诉爸爸!",
+  "expect": [
+   "em",
+   "chị"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 16,
+  "why": "おばちゃん gives cháu/cô like おばさん.",
+  "line": "おばちゃん、いつもの!",
+  "expect": [
+   "cháu",
+   "cô"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 18,
+  "why": "爺ちゃん gives cháu/ông.",
+  "line": "爺ちゃん、ただいま!",
+  "expect": [
+   "cháu",
+   "ông"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 19,
+  "why": "じいちゃん with no 、 before ただいま still gives cháu/ông.",
+  "line": "じいちゃんただいま!",
+  "expect": [
+   "cháu",
+   "ông"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 19,
+  "why": "お母さん with no 、 before おかわり still gives con/mẹ.",
+  "line": "お母さんおかわり!",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 19,
+  "why": "Opening quotes do not hide the call.",
+  "line": "“哥,你到哪儿了?”",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 19,
+  "why": "A label and an opening quote do not hide the call.",
+  "line": "林小雨: “哥,你到哪儿了?",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 21,
+  "why": "我这个当妈的 is a mother scolding her child.",
+  "line": "我这个当妈的,还不能说你两句了?",
+  "expect": [
+   "mẹ",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 22,
+  "why": "我妈的 is not a swear: no rough cue.",
+  "line": "这是我妈的手机,你看到了吗?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 21,
+  "why": "你都当妈妈的人了 gives no swear cue.",
+  "line": "你都当妈妈的人了,还这么幼稚。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 22,
+  "why": "A real swear still gives tao/mày.",
+  "line": "你他妈的给我滚!",
+  "expect": [
+   "tao",
+   "mày"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 23,
+  "why": "身为姐姐: the speaker is the elder sister.",
+  "line": "身为姐姐,我当然要让着你。",
+  "expect": [
+   "chị",
+   "em"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 22,
+  "why": "亲爱的 followed by 妈妈回来了 is a mother to her child.",
+  "line": "亲爱的，妈妈回来了。",
+  "expect": [
+   "mẹ",
+   "con"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 25,
+  "why": "A parent asking 선생님 about their own child: no pupil cue.",
+  "line": "선생님,우리애 괜찮은 거죠?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 26,
+  "why": "A parent asking 先生 about their daughter's fever: no pupil cue.",
+  "line": "先生、娘の熱は下がりますか?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 25,
+  "why": "A pupil to 선생님 keeps the pupil cue.",
+  "line": "선생님, 숙제 다 했어요!",
+  "expect": [
+   "em",
+   ""
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 26,
+  "why": "A suitor meeting her mother is neither her child nor staff: no cue (policy 2).",
+  "line": "어머님, 처음 뵙겠습니다. 지수 씨 남자친구입니다.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 25,
+  "why": "A suitor meeting her mother is neither her child nor staff: no cue (policy 2).",
+  "line": "お母さん、お嬢さんを僕にください!",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 24,
+  "why": "DAD LOOK OUT! is a call even without its comma.",
+  "line": "DAD LOOK OUT!",
+  "expect": [
+   "con",
+   "bố"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 26,
+  "why": "Bro, gives em/anh.",
+  "line": "Bro, run!",
+  "expect": [
+   "em",
+   "anh"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 27,
+  "why": "Romanized Kaa-san gives con/mẹ.",
+  "line": "Kaa-san, I'm home!",
+  "expect": [
+   "con",
+   "mẹ"
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 27,
+  "why": "Romanized Shizun gives disciple/master.",
+  "line": "Shizun, I was wrong.",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ],
+  "accept": [
+   [
+    "đệ tử",
+    "sư tôn"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 28,
+  "why": "할머니가 … 보고 싶었는지 reads both ways (who missed whom): no cue.",
+  "line": "할머니가 얼마나 보고 싶었는지 알아?",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 27,
+  "why": "DAD over a NEVER narration line is the subject, not a speaker.",
+  "line": "DAD\nNEVER CAME HOME THAT NIGHT. NOBODY KNEW WHY.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 28,
+  "why": "妈妈 over a 总是说 narration line is the subject.",
+  "line": "妈妈\n总是说大海会把他带回来。",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 28,
+  "why": "할머니 over a -셨다 narration line is the subject.",
+  "line": "할머니\n내가 걷기도 전에 배 타는 법을 가르쳐 주셨다.",
+  "expect": null
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 9,
+  "why": "Young Master is a servant to a young lord, not master/disciple.",
+  "line": "Young Master, please wait! The carriage isn't ready yet!",
+  "expect": [
+   "tôi",
+   "thiếu gia"
+  ],
+  "accept": [
+   [
+    "tôi",
+    "ngài"
+   ]
+  ]
+ },
+ {
+  "kind": "cue",
+  "area": "manga",
+  "round": 9,
+  "why": "Master + disciple is the real master/disciple cue.",
+  "line": "Master, please take me as your disciple!",
+  "expect": [
+   "đệ tử",
+   "sư phụ"
+  ]
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 27,
+  "why": "MEANWHILE is a heading, never a speaker.",
+  "text": "MEANWHILE\nAT THE HARBOR, SOMEONE WAS WATCHING THE LIGHTHOUSE.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "그날밤 without its space is still a heading.",
+  "text": "그날밤\n아빠는 끝내 집에 돌아오지 않았다.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "NEXT MORNING is a heading.",
+  "text": "NEXT MORNING\nTHE SEA WAS CALM AGAIN, AS IF NOTHING HAD HAPPENED.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "한편 is a heading.",
+  "text": "한편\n항구에서는 누군가 등대를 지켜보고 있었다.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "三年后 is a heading.",
+  "text": "三年后\n小镇已经完全变了样。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "一方その頃 is a heading.",
+  "text": "一方その頃\n港では誰かが灯台を見つめていた。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 27,
+  "why": "DAD before NEVER is the subject.",
+  "text": "DAD\nNEVER CAME HOME THAT NIGHT. NOBODY KNEW WHY.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "妈妈 before 总是说 is the subject.",
+  "text": "妈妈\n总是说大海会把他带回来。",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 28,
+  "why": "엄마 before a -다 narration line is the subject.",
+  "text": "엄마\n항상 바다가 아빠를 데려다줄 거라고 했다.",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 27,
+  "why": "A role name over a caption line is a real speaker.",
+  "text": "OLD MINER\nTHE TUNNELS COLLAPSED YEARS AGO. NOBODY GOES DOWN THERE.",
+  "expect": "OLD MINER"
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 22,
+  "why": "Interjection 헐 is not a speaker.",
+  "text": "헐\n대박",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 22,
+  "why": "Reply 응 is not a speaker.",
+  "text": "응\n알아",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 25,
+  "why": "The pronoun 너 is not a speaker.",
+  "text": "너\n지금 뭐라고 했어?",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 5,
+  "why": "A vocative with 야 is the listener, not a speaker.",
+  "text": "지수야\n어젯밤에 어디 있었어?전화도 안 받고",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 5,
+  "why": "A first row with a comma and 你 is not a name.",
+  "text": "哥，你明天\n陪我去买书好不好？",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 12,
+  "why": "A status-window key is not a speaker.",
+  "text": "이름:이도윤",
+  "expect": null
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 19,
+  "why": "A chat-style 'Name:' label is a speaker.",
+  "text": "林小雨:“哥,你到哪儿了?",
+  "expect": "林小雨"
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 9,
+  "why": "A boxed hanzi name over its line is a speaker.",
+  "text": "萧寒\n我答应过你，一定会回来。",
+  "expect": "萧寒"
+ },
+ {
+  "kind": "speaker",
+  "area": "manga",
+  "round": 8,
+  "why": "A chat name tab is a speaker.",
+  "text": "민지\n내가 도시락 갖다줄게",
+  "expect": "민지"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 8,
+  "why": "The fixed romanization replaces the model's spelling of a name tab.",
+  "source": "민지\n내가 도시락 갖다줄게",
+  "translation": "Minh\nĐể em mang cơm trưa cho.",
+  "names": {
+   "민지": "Minji"
+  },
+  "expect": "Minji: Để em mang cơm trưa cho."
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 9,
+  "why": "A hanzi name tab uses the Hán-Việt spelling, not the model's.",
+  "source": "萧寒\n我答应过你，一定会回来。",
+  "translation": "Tào Hàn\nTa đã hứa với huynh, nhất định sẽ trở về.",
+  "names": {
+   "萧寒": "Tiêu Hàn"
+  },
+  "expect": "Tiêu Hàn: Ta đã hứa với huynh, nhất định sẽ trở về."
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 18,
+  "why": "Quotes around the body go after a speaker label.",
+  "source": "タクミ\nじいちゃん、肩もんであげるよ!",
+  "translation": "Takumi: \"Ông ơi, để cháu bóp vai cho!\"",
+  "names": {
+   "タクミ": "Takumi"
+  },
+  "expect": "Takumi: Ông ơi, để cháu bóp vai cho!"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 19,
+  "why": "An unclosed opening quote after a label is removed.",
+  "source": "王浩：“快到了，等我五分钟。”",
+  "translation": "Wang Hao: “Đã gần đến rồi, hãy chờ tôi thêm năm phút nữa.",
+  "names": {
+   "王浩": "Vương Hạo"
+  },
+  "expect": "Vương Hạo: Đã gần đến rồi, hãy chờ tôi thêm năm phút nữa."
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "An inline label the model dropped is restored.",
+  "source": "小雨：“哈哈哈，你又迟到了！”",
+  "translation": "Haha, bạn lại đến muộn rồi!",
+  "names": {
+   "小雨": "Tiểu Vũ"
+  },
+  "expect": "Tiểu Vũ: Haha, bạn lại đến muộn rồi!"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "A model-invented title label on a called line becomes a call.",
+  "source": "爷爷，您慢点吃。",
+  "translation": "Ông: Ông ăn chậm thôi ạ.",
+  "names": {},
+  "expect": "Ông, ông ăn chậm thôi ạ."
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 12,
+  "why": "A model-invented title label on a comma-less call becomes a call.",
+  "source": "部長お疲れ様です!",
+  "translation": "Bộ trưởng: Làm việc vất vả quá!",
+  "names": {},
+  "expect": "Bộ trưởng, làm việc vất vả quá!"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "A second label that is the called listener becomes a call with a lower-case body.",
+  "source": "ケンジ\n母さん、ただいま!",
+  "translation": "Kenji: Mẹ: Con về rồi!",
+  "names": {
+   "ケンジ": "Kenji"
+  },
+  "expect": "Kenji: Mẹ ơi, con về rồi!",
+  "accept": [
+   "Kenji: Mẹ, con về rồi!"
+  ]
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "The called listener's comma is followed by a lower-case word.",
+  "source": "叶凡\n鬼王，你的对手是我！",
+  "translation": "Diệp Phàm: Quỷ Vương: Đối thủ của ngươi là ta!",
+  "names": {
+   "叶凡": "Diệp Phàm"
+  },
+  "expect": "Diệp Phàm: Quỷ Vương, đối thủ của ngươi là ta!"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "Quest text with nested headings is left alone.",
+  "source": "任务：目标：击败魔王",
+  "translation": "Nhiệm vụ: Mục tiêu: Đánh bại Ma Vương",
+  "names": {},
+  "expect": "Nhiệm vụ: Mục tiêu: Đánh bại Ma Vương"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 20,
+  "why": "An in-sentence colon after a speaker label is left alone.",
+  "source": "ミサキ\nねえ聞いて、大ニュースだよ!",
+  "translation": "Misaki: Này, nghe nè: Tin lớn đây!",
+  "names": {
+   "ミサキ": "Misaki"
+  },
+  "expect": "Misaki: Này, nghe nè: Tin lớn đây!"
+ },
+ {
+  "kind": "label",
+  "area": "manga",
+  "round": 12,
+  "why": "A status key is not replaced by a romanized speaker name.",
+  "source": "직업:없음",
+  "translation": "Nghề nghiệp: Không có",
+  "names": {
+   "직업": "Jikeop"
+  },
+  "expect": "Nghề nghiệp: Không có"
+ },
+ {
+  "kind": "case",
+  "area": "manga",
+  "round": 9,
+  "why": "All-caps comic lettering reaches the model in sentence case.",
+  "text": "DON'T TOUCH THAT, IT'S EXTRAORDINARILY DANGEROUS!",
+  "expect": "Don't touch that, it's extraordinarily dangerous!"
+ },
+ {
+  "kind": "case",
+  "area": "manga",
+  "round": 24,
+  "why": "A call keeps I capitalised.",
+  "text": "MOM, I'M HOME!",
+  "expect": "Mom, I'm home!"
+ },
+ {
+  "kind": "case",
+  "area": "manga",
+  "round": 3,
+  "why": "The SFX acronym stays in capitals.",
+  "text": "SFX: CREAK",
+  "expect": "SFX: creak",
+  "accept": [
+   "SFX: Creak"
+  ]
+ },
+ {
+  "kind": "case",
+  "area": "manga",
+  "round": 16,
+  "why": "Game stat keys HP/MP stay in capitals.",
+  "text": "HP: 340/340  MP: 120/120",
+  "expect": "HP: 340/340  MP: 120/120"
+ },
+ {
+  "kind": "case",
+  "area": "manga",
+  "round": 14,
+  "why": "A line starting with a lower-case brand is not touched.",
+  "text": "iPhone's dead again... Mom's gonna kill me.",
+  "expect": "iPhone's dead again... Mom's gonna kill me."
+ }
+]
