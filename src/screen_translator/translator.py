@@ -261,7 +261,7 @@ def sentence_case(text: str) -> str:
 
     lowered = re.sub(r"[A-Za-z][A-Za-z0-9]*", lower, text)
     lowered = re.sub(r"\bi\b", "I", lowered)
-    return re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), lowered)
+    return re.sub(r"(^(?:\[\w+\]\s+)?|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), lowered)
 
 
 _ACRONYMS = {"OK", "HP", "MP", "EXP", "TV", "USA", "UK", "FBI", "CIA", "NYC", "AI", "DNA", "CEO", "PC", "GPS", "VIP", "XP",

@@ -726,4 +726,4 @@ def test_round_26_calls_and_tabs_before_questions_and_contractions():
     tab = [px("Mom", 200, 800, 90, 36, W, H), px("Was that you who called?", 200, 846, 420, 36, W, H)]
     assert [b.text for b in group_blocks(tab, W, H)] == ["Mom\nWas that you who called?"]
     assert sentence_case("DON'T GO, IT'S DANGEROUS") == "Don't go, it's dangerous"
-    assert sentence_case("[F] PICK UP") == "[F] pick up" and sentence_case("PRESS A TO JUMP") == "Press A to jump"
+    assert sentence_case("[F] PICK UP") == "[F] Pick up" and sentence_case("PRESS A TO JUMP") == "Press A to jump"
