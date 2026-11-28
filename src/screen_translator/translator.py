@@ -158,7 +158,7 @@ def build_screen_messages(
 def for_hy_mt(messages: list[dict]) -> list[dict]:
     """The same request in Tencent HY-MT's own prompt format, which it follows far better than a system prompt.
 
-    https://huggingface.co/tencent/HY-MT1.5-1.8B#prompts. The text is also listed above the instruction: on its
+    https://github.com/Tencent-Hunyuan/Hy-MT2#prompts. The text is also listed above the instruction: on its
     own, a short line loses its subject ("ユキはまだ？" became "hasn't returned yet?").
     """
     facts, last = messages[0], messages[-1]

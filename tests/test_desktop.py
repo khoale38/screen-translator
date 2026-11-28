@@ -361,6 +361,14 @@ def test_settings_from_the_speech_only_test_build_turn_into_the_add_on(tmp_path)
     assert (settings.scope, settings.listen) == ("area", True)
 
 
+def test_a_saved_hy_mt15_choice_moves_to_hy_mt2():
+    from screen_translator.config import Settings
+    from screen_translator.models import MODELS
+
+    settings = Settings.from_dict({"model": "hy-mt1.5-1.8b"})
+    assert settings.model == "hy-mt2-1.8b" and settings.model in MODELS
+
+
 def test_dubbing_appears_with_speech_and_offers_voices_accents_and_game_sound(app, tmp_path):
     window, api = make_window(tmp_path, scope="area", target_lang="en")
     api.responses["/api/voices"] = {"voices": [
@@ -433,6 +441,6 @@ def test_choosing_claude_asks_for_a_key_and_needs_no_download(app, tmp_path):
 
 
 def test_dubbing_with_hy_mt_suggests_a_model_that_keeps_up(app, tmp_path):
-    window, api = make_window(tmp_path, listen=True, dub=True, model="hy-mt1.5-1.8b")
+    window, api = make_window(tmp_path, listen=True, dub=True, model="hy-mt2-1.8b")
     window.show_dub()
     assert window.status.text() == desktop.HY_MT_DUB_TIP

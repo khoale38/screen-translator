@@ -47,7 +47,7 @@ if (-not (Select-String -Path $log -Pattern "^Pronouns: " -Quiet)) {
 if (-not (Select-String -Path $log -Pattern "^Dub: Natural voice" -Quiet)) {
     Write-Error "The self-test did not speak with a natural voice; are they in $env:SCREEN_TRANSLATOR_HOME\models\voices?"
 }
-if (-not (Select-String -Path $log -Pattern "^Model hy-mt1.5-1.8b loaded" -Quiet)) {
+if (-not (Select-String -Path $log -Pattern "^Model hy-mt2-1.8b loaded" -Quiet)) {
     Write-Error "The self-test did not load HY-MT; is it in $env:SCREEN_TRANSLATOR_HOME\models?"
 }
 if (-not (Select-String -Path $log -Pattern "^Translation:" -Quiet)) {

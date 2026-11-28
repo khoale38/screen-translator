@@ -143,13 +143,13 @@ jobs:
         id: hymt
         uses: actions/cache@v4
         with:
-          path: .st-home/models/HY-MT1.5-1.8B-Q6_K.gguf
-          key: model-HY-MT1.5-1.8B-Q6_K
+          path: .st-home/models/Hy-MT2-1.8B-Q6_K.gguf
+          key: model-Hy-MT2-1.8B-Q6_K
       - name: Download translation model
         if: env.WARM_CACHE_ONLY != 'true' && steps.hymt.outputs.cache-hit != 'true'
         run: |
           New-Item -ItemType Directory -Force .st-home\models | Out-Null
-          curl.exe -fL --retry 8 --retry-all-errors --retry-delay 15 -C - -o .st-home\models\HY-MT1.5-1.8B-Q6_K.gguf https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/resolve/main/HY-MT1.5-1.8B-Q6_K.gguf
+          curl.exe -fL --retry 8 --retry-all-errors --retry-delay 15 -C - -o .st-home\models\Hy-MT2-1.8B-Q6_K.gguf https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF/resolve/main/Hy-MT2-1.8B-Q6_K.gguf
       - name: Restore speech model
         if: env.WARM_CACHE_ONLY != 'true'
         id: speech

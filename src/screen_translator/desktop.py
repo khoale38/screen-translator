@@ -632,7 +632,7 @@ class MainWindow(QWidget):
             widget.setVisible(on)
         if on and self.dub_voice.count() == 0:
             self.refresh_voices()
-        if on and self.model.currentData() == "hy-mt1.5-1.8b":
+        if on and self.model.currentData() == "hy-mt2-1.8b":
             self.status.setText(HY_MT_DUB_TIP)
 
     def refresh_voices(self) -> None:

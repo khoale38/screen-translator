@@ -124,6 +124,8 @@ class Settings:
     def from_dict(cls, raw: dict) -> "Settings":
         known = {f.name for f in fields(cls)}
         values = {k: v for k, v in raw.items() if k in known}
+        if values.get("model") == "hy-mt1.5-1.8b":
+            values["model"] = "hy-mt2-1.8b"
         if values.get("scope") == "speech":
             values["scope"], values["listen"] = "area", True
         # The old default, saved into every settings file; nothing in the window sets it.
